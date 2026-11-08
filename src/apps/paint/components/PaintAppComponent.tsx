@@ -84,9 +84,11 @@ export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
           {/* §63g: every item clicks a control the wall already has; disabled when that control is. */}
           <Menu label="File" host={host} items={[
             ["Postcard…", "[data-graffiti-postcard]"],
+            // §57 TODO: nest Share ▸ here once author-A's helper lands.
+          ]} />
+          <Menu label="Edit" host={host} items={[
             ["Undo", "[data-graffiti-undo]"],
             ["Redo", "[data-graffiti-redo]"],
-            // §57 TODO: nest Edit ▸ / Share ▸ here once author-A's helper lands.
           ]} />
           <Menu label="Tools" host={host} items={[
             ["Hand", '[data-graffiti-tool="hand"]'],

@@ -5,9 +5,6 @@ import {
   MenubarItem,
   MenubarSeparator,
   MenubarCheckboxItem,
-  MenubarSub,
-  MenubarSubTrigger,
-  MenubarSubContent,
 } from "@/components/ui/menubar";
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { ShortcutHint } from "@/components/shared/menubar/ShortcutHint";
@@ -183,36 +180,37 @@ export function FinderMenuBar({
             {t("apps.finder.menu.emptyTrash")}
           </MenubarItem>
           <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
-          <MenubarSub>
-            <MenubarSubTrigger className="text-md h-6 px-3">
-              {t("common.menu.edit")}
-            </MenubarSubTrigger>
-            <MenubarSubContent>
-              <MenubarItem
-                onClick={undo}
-                disabled={!canUndo}
-                className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t("common.menu.undo")}
-                <ShortcutHint id="undo" />
-              </MenubarItem>
-              <MenubarItem
-                onClick={redo}
-                disabled={!canRedo}
-                className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t("common.menu.redo")}
-                <ShortcutHint id="redo" />
-              </MenubarItem>
-            </MenubarSubContent>
-          </MenubarSub>
-          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
           <MenubarItem
             onClick={onClose}
             className="text-md h-6 px-3"
           >
             {t("common.menu.close")}
             <ShortcutHint id="close" />
+          </MenubarItem>
+        </MenubarContent>
+      </MenubarMenu>
+
+      {/* Edit Menu */}
+      <MenubarMenu>
+        <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+          {t("common.menu.edit")}
+        </MenubarTrigger>
+        <MenubarContent align="start" sideOffset={1} className="px-0">
+          <MenubarItem
+            onClick={undo}
+            disabled={!canUndo}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("common.menu.undo")}
+            <ShortcutHint id="undo" />
+          </MenubarItem>
+          <MenubarItem
+            onClick={redo}
+            disabled={!canRedo}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("common.menu.redo")}
+            <ShortcutHint id="redo" />
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>

@@ -86,9 +86,16 @@ export function CalendarMenuBar({
         },
         { type: "separator" },
         {
-          type: "submenu",
-          label: t("common.menu.edit"),
-          items: [
+          type: "action",
+          label: t("common.menu.close"),
+          onClick: onClose,
+          shortcutId: "close",
+        },
+      ],
+    },
+    {
+      label: t("common.menu.edit"),
+      items: [
         {
           type: "action",
           label: t("common.menu.undo"),
@@ -117,15 +124,6 @@ export function CalendarMenuBar({
           label: t("apps.calendar.menu.deleteEvent"),
           onClick: onDeleteEvent,
           disabled: !hasSelectedEvent,
-        },
-      ],
-        },
-        { type: "separator" },
-        {
-          type: "action",
-          label: t("common.menu.close"),
-          onClick: onClose,
-          shortcutId: "close",
         },
       ],
     },

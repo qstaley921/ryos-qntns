@@ -84,15 +84,6 @@ export function GhostReaderMenuBar({
             </MenubarItem>
           )}
           <MenubarSub>
-            <MenubarSubTrigger className={ITEM}>{t("common.menu.edit")}</MenubarSubTrigger>
-            <MenubarSubContent className="px-0">
-              <MenubarItem onClick={() => document.execCommand("copy")} className={ITEM}>
-                {t("common.menu.copy")}
-                <ShortcutHint id="copy" />
-              </MenubarItem>
-            </MenubarSubContent>
-          </MenubarSub>
-          <MenubarSub>
             <MenubarSubTrigger className={ITEM}>Share</MenubarSubTrigger>
             <MenubarSubContent className="px-0">
               {SHARE.map(([k, label]) => (
@@ -106,6 +97,16 @@ export function GhostReaderMenuBar({
           <MenubarItem onClick={onClose} className={ITEM}>
             {t("common.menu.close")}
             <ShortcutHint id="close" />
+          </MenubarItem>
+        </MenubarContent>
+      </MenubarMenu>
+
+      <MenubarMenu>
+        <MenubarTrigger className={TRIGGER}>{t("common.menu.edit")}</MenubarTrigger>
+        <MenubarContent align="start" sideOffset={1} className="px-0">
+          <MenubarItem onClick={() => document.execCommand("copy")} className={ITEM}>
+            {t("common.menu.copy")}
+            <ShortcutHint id="copy" />
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>
