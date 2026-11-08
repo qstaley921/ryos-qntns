@@ -216,12 +216,12 @@ export function BooksShelfView({
             <div className="font-os-ui text-sm drop-shadow">
               {mode === "store"
                 ? "Nothing for sale right now"
-                : t("apps.books.shelf.emptyTitle")}
+                : "Bookshelf is empty"}
             </div>
             <div className="mt-1 font-os-ui text-xs text-white/65">
               {mode === "store"
                 ? "Books you’ve bought are in Library."
-                : t("apps.books.shelf.emptyHint")}
+                : "Go to the store to buy a book"}
             </div>
           </motion.div>
         ) : (
