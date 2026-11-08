@@ -578,8 +578,10 @@ export function useFileSystem(
       else {
         const itemsMetadata = getItemsInPath(currentPath).filter(
           (item) =>
-            currentPath !== "/Desktop" ||
-            !item.hiddenOnThemes?.includes(currentTheme)
+            // Trash stays in the dock, not on the disk (CHECKLIST-35 §76)
+            !(currentPath === "/" && item.path === "/Trash") &&
+            (currentPath !== "/Desktop" ||
+              !item.hiddenOnThemes?.includes(currentTheme))
         );
         const visibleItemsMetadata =
           currentPath === "/Desktop"
