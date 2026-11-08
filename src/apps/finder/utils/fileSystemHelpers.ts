@@ -13,6 +13,9 @@ export interface ExtendedDisplayFileItem
   originalPath?: string; // For trash items
   deletedAt?: number; // For trash items
   status?: "active" | "trashed"; // Include status for potential UI differences
+  tags?: string[]; // Ghost posts: tag names, searched by the toolbar field
+  views?: number; // Ghost posts: counts for the Viewed / Liked sorts
+  likes?: number;
 }
 
 export const getParentPath = (path: string): string => {
@@ -62,7 +65,6 @@ export const resolveFinderSelectionSnapshot = (
 export const DEFAULT_FILE_PATHS = new Set([
   "/Documents/README.md",
   "/Documents/Quick Tips.md",
-  "/Books/Meditations - Marcus Aurelius.epub",
   "/Images/steve-jobs.png",
   "/Images/susan-kare.png",
 ]);
