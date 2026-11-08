@@ -13,6 +13,7 @@ import {
   useTimeScaleGestures,
 } from "../../hooks/useTimeScaleGestures";
 import { TimedEventBlock } from "../TimedEventBlock";
+import { Availability, type Bookable } from "./Availability";
 import {
   EVENT_COLOR_LIGHT,
   EVENT_COLOR_MAP,
@@ -29,7 +30,8 @@ export function WeekTimeGrid({
   weekDates,
   selectedEventId,
   onDateClick,
-  onTimeSlotClick,
+  bookable,
+  onSlot,
   onEventClick,
   onEventDoubleClick,
   isWindowsTheme,
@@ -44,7 +46,8 @@ export function WeekTimeGrid({
   weekDates: WeekDay[];
   selectedEventId: string | null;
   onDateClick: (date: string) => void;
-  onTimeSlotClick: (date: string, hour: number) => void;
+  bookable: Bookable;
+  onSlot: (slot: string, minutes: number) => void;
   onEventClick: (event: CalendarEvent) => void;
   onEventDoubleClick: (event: CalendarEvent) => void;
   isWindowsTheme: boolean;
@@ -107,19 +110,6 @@ export function WeekTimeGrid({
     const interval = setInterval(() => setMinuteTick((n) => n + 1), 60000);
     return () => clearInterval(interval);
   }, []);
-
-  const [busy, setBusy] = useState<{ start: string; end: string }[]>([]);
-  const week = weekDates[0]?.date;
-  useEffect(() => {
-    let live = true;
-    setBusy([]);
-    if (week)
-      fetch(`https://qntns-reads.qstaley921.workers.dev/cal/busy?week=${week}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j) => live && setBusy(Array.isArray(j?.busy) ? j.busy : []))
-        .catch(() => {}); // silent: no blocks
-    return () => { live = false; };
-  }, [week]);
 
   const totalHours = HOUR_END - HOUR_START;
   const hasAllDayEvents = weekDates.some((d) => d.allDayEvents.length > 0);
@@ -236,11 +226,9 @@ export function WeekTimeGrid({
                 style={{ borderLeft: isWindowsTheme ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(0,0,0,0.04)" }}
               >
                 {Array.from({ length: totalHours }, (_, hourOffset) => HOUR_START + hourOffset).map((hour) => (
-                  <button
+                  <div
                     key={hour}
-                    type="button"
-                    onClick={() => onTimeSlotClick(day.date, hour)}
-                    className="absolute left-0 right-0 border-t hover:bg-black/[0.02] transition-colors"
+                    className="absolute left-0 right-0 border-t pointer-events-none"
                     style={{
                       top: (hour - HOUR_START) * hourHeight,
                       height: hourHeight,
@@ -249,18 +237,7 @@ export function WeekTimeGrid({
                   />
                 ))}
 
-                {busy.map((b, bi) => {
-                  const d0 = new Date(`${day.date}T00:00:00`).getTime();
-                  const lo = Math.max(Date.parse(b.start), d0 + HOUR_START * 3600000);
-                  const hi = Math.min(Date.parse(b.end), d0 + HOUR_END * 3600000);
-                  if (!(lo < hi)) return null;
-                  return (
-                    <div key={`busy-${bi}`} className="absolute left-0 right-0 bg-black/10 text-[9px] px-1 pointer-events-none overflow-hidden"
-                      style={{ top: ((lo - d0) / 3600000 - HOUR_START) * hourHeight, height: ((hi - lo) / 3600000) * hourHeight }}>
-                      Busy
-                    </div>
-                  );
-                })}
+                <Availability date={day.date} bookable={bookable} hourHeight={hourHeight} onSlot={onSlot} />
 
                 {day.timedEvents.map((ev) => (
                   <TimedEventBlock

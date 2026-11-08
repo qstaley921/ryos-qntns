@@ -21,7 +21,7 @@ import { CalendarList } from "./CalendarList";
 import { DayTimeGrid } from "./DayTimeGrid";
 import { MiniCalendar } from "./MiniCalendar";
 import { MonthGrid } from "./MonthGrid";
-import { BookPanel } from "./BookPanel";
+import { useBookable } from "./Availability";
 import { WeekTimeGrid } from "./WeekTimeGrid";
 import { isKeyboardDeleteTargetEditable } from "./calendarAppUtils";
 import { usePersistHydrated } from "@/hooks/usePersistHydrated";
@@ -55,7 +55,7 @@ export function CalendarAppComponent({
     selectedEventId, setSelectedEventId,
     calendars, toggleCalendarVisibility,
     navigateMonth, navigateWeek, goToToday, setView, setSelectedDate,
-    handleDateClick, handleDateDoubleClick, handleNewEvent, handleNewEventAtTime, handleEditSelectedEvent, handleDeleteSelectedEvent, handleUpdateEvent,
+    handleDateClick, handleDateDoubleClick, handleNewEvent, handleNewEventAtSlot, handleEditSelectedEvent, handleDeleteSelectedEvent, handleUpdateEvent,
     fileInputRef, handleImport, handleFileSelected, handleExport,
     undoCalendar, redoCalendar, canUndo, canRedo,
   } = logic;
@@ -95,13 +95,7 @@ export function CalendarAppComponent({
   }, [selectedEventId, handleDeleteSelectedEvent]);
 
   const onNewEvent = handleNewEvent;
-
-  const onNewEventAtTime = useCallback(
-    (date: string, hour: number) => {
-      handleNewEventAtTime(date, hour);
-    },
-    [handleNewEventAtTime]
-  );
+  const bookable = useBookable(weekDates[0]?.date ?? "");
 
   const onDateDoubleClick = useCallback(
     (date: string) => {
@@ -343,16 +337,18 @@ export function CalendarAppComponent({
 
             {(
               <div
-                className={cn("flex-1 flex overflow-hidden calendar-grid bg-white os-inset-pane", effectiveView === "week" && "flex-col")}
+                className={cn("flex-1 flex overflow-hidden calendar-grid bg-white os-inset-pane", effectiveView !== "month" && "flex-col")}
                 style={isMacOSTheme ? {
                   border: "1px solid rgba(0, 0, 0, 0.55)",
                   boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.4)",
                 } : undefined}
               >
-                {effectiveView === "week" && weekDates[0] && <BookPanel week={weekDates[0].date} />}
+                {effectiveView !== "month" && bookable.failed && (
+                  <div className="shrink-0 border-b border-black/10 px-2 py-1 text-[11px]">Booking is unavailable right now</div>
+                )}
                 {effectiveView === "week" && (
                   <WeekTimeGrid weekDates={weekDates} selectedEventId={selectedEventId}
-                    onDateClick={handleDateClick} onTimeSlotClick={onNewEventAtTime}
+                    onDateClick={handleDateClick} bookable={bookable} onSlot={handleNewEventAtSlot}
                     onEventClick={(ev) => handleSelectEvent(ev.id)}
                     onEventDoubleClick={(ev) => handleSelectEvent(ev.id, { toggle: false })}
                     isWindowsTheme={isWindowsTheme} isMacOSTheme={isMacOSTheme} isSystem7Theme={isSystem7Theme} searchQuery={normalizedSearchQuery} hourLabels={hourLabels}
@@ -361,7 +357,7 @@ export function CalendarAppComponent({
                 )}
                 {effectiveView === "day" && (
                   <DayTimeGrid date={selectedDate} events={selectedDateEvents} selectedEventId={selectedEventId}
-                    onTimeSlotClick={onNewEventAtTime}
+                    bookable={bookable} onSlot={handleNewEventAtSlot}
                     onEventClick={(ev) => handleSelectEvent(ev.id)}
                     onEventDoubleClick={(ev) => handleSelectEvent(ev.id, { toggle: false })}
                     isWindowsTheme={isWindowsTheme} isMacOSTheme={isMacOSTheme} isSystem7Theme={isSystem7Theme} searchQuery={normalizedSearchQuery} hourLabels={hourLabels}

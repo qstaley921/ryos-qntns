@@ -15,7 +15,7 @@ const Stubbed = ({ Story }: { Story: () => JSX.Element }) => {
       if (!u.includes("qntns-reads.qstaley921.workers.dev")) return real(input, init);
       const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
       if (u.includes("/cal/slots")) return json({ slots: [0, 1, 2].map(slot) });
-      if (u.includes("/cal/event")) return json({ locations: [{ type: "link", label: "Video call" }, { type: "phone", label: "Phone" }] });
+      if (u.includes("/cal/event")) return json({ minutes: 60, locations: [{ type: "link", label: "Video call" }, { type: "phone", label: "Phone" }] });
       return json({}); // /cal/book and anything else: no network
     }) as typeof fetch;
     setReady(true);

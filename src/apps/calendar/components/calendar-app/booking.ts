@@ -30,10 +30,17 @@ export async function postBook(f: { name: string; email: string; start: string; 
   }
 }
 
-export const getLocations = (): Promise<BookLocation[]> =>
-  fetch(`${WORKER}/cal/event`).then((r) => (r.ok ? r.json() : null))
-    .then((j) => (Array.isArray(j?.locations) ? j.locations : []), () => []).catch(() => []);
+let eventInfo: Promise<{ minutes: number; locations: BookLocation[] }> | null = null;
+/** GET /cal/event once per page load: the event's length and public locations. */
+export const getEvent = () =>
+  (eventInfo ??= fetch(`${WORKER}/cal/event`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    .then((j) => ({ minutes: Number(j?.minutes) || 30, locations: Array.isArray(j?.locations) ? (j.locations as BookLocation[]) : [] })));
 
-export const getSlots = (week: string): Promise<string[]> =>
+export const getLocations = (): Promise<BookLocation[]> => getEvent().then((e) => e.locations);
+
+/** The free slots for a week; null when they could not be loaded. */
+export const fetchSlots = (week: string): Promise<string[] | null> =>
   fetch(`${WORKER}/cal/slots?week=${week}`).then((r) => (r.ok ? r.json() : null))
-    .then((j) => (Array.isArray(j?.slots) ? j.slots : []), () => []).catch(() => []);
+    .then((j) => (Array.isArray(j?.slots) ? (j.slots as string[]) : null), () => null).catch(() => null);
+
+export const getSlots = (week: string): Promise<string[]> => fetchSlots(week).then((l) => l ?? []);

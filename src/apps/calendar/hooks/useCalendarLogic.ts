@@ -1,3 +1,4 @@
+import { BOOKED_TITLE } from "../components/calendar-app/booking";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useAppHelpAboutDialogs } from "@/hooks/useAppHelpAboutDialogs";
 import { useTranslation } from "react-i18next";
@@ -419,16 +420,12 @@ export function useCalendarLogic() {
     [setSelectedDate, calendars, addEvent, t, pushUndo, setSelectedEventId]
   );
 
-  const handleNewEventAtTime = useCallback(
-    (date: string, hour: number) => {
+  const createTimedEvent = useCallback(
+    (date: string, startTime: string, endTime: string) => {
       setSelectedDate(date);
-      const title = t("apps.calendar.tray.newEventTitle");
       const cal = calendars[0];
-      const startTime = `${String(hour).padStart(2, "0")}:00`;
-      const endH = hour >= 23 ? 23 : hour + 1;
-      const endTime = `${String(endH).padStart(2, "0")}:00`;
       const id = addEvent({
-        title,
+        title: t("apps.calendar.tray.newEventTitle"),
         date,
         startTime,
         endTime,
@@ -441,8 +438,36 @@ export function useCalendarLogic() {
       if (created) pushUndo({ type: "addEvent", event: { ...created } });
       setSelectedEventId(id);
       track(CALENDAR_ANALYTICS.EVENT_CREATE, { source: "timeSlot" });
+      return id;
     },
     [setSelectedDate, calendars, addEvent, t, pushUndo, setSelectedEventId]
+  );
+
+  const handleNewEventAtTime = useCallback(
+    (date: string, hour: number) => {
+      const pad = (n: number) => String(n).padStart(2, "0");
+      createTimedEvent(date, `${pad(hour)}:00`, `${pad(hour >= 23 ? 23 : hour + 1)}:00`);
+    },
+    [createTimedEvent]
+  );
+
+  /** A click on a free cal.com slot: an event at the slot's start, as long as the booking. */
+  const unsentSlotEvent = useRef<string | null>(null);
+  const handleNewEventAtSlot = useCallback(
+    (slot: string, minutes: number) => {
+      // at most one unsent booking event: the previous one (not yet Booked) is replaced
+      const prev = useCalendarStore.getState().events.find((e) => e.id === unsentSlotEvent.current);
+      if (prev && !prev.title.startsWith(BOOKED_TITLE)) deleteEvent(prev.id);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const s = new Date(slot);
+      const e = new Date(s.getTime() + minutes * 60000);
+      unsentSlotEvent.current = createTimedEvent(
+        `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`,
+        `${pad(s.getHours())}:${pad(s.getMinutes())}`,
+        e.getDate() === s.getDate() ? `${pad(e.getHours())}:${pad(e.getMinutes())}` : "23:59"
+      );
+    },
+    [createTimedEvent, deleteEvent]
   );
 
   const handleNewEvent = useCallback(() => {
@@ -630,6 +655,7 @@ export function useCalendarLogic() {
     handleDateDoubleClick,
     handleNewEvent,
     handleNewEventAtTime,
+    handleNewEventAtSlot,
     handleEditSelectedEvent,
     handleDeleteSelectedEvent,
     handleUpdateEvent,

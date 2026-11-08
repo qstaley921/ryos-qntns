@@ -42,7 +42,7 @@ export function EventTrayEditor({
   const setEndDate = (value: string) => dispatch({ type: "setEndDate", value });
   const allDay = !event.startTime;
 
-  // Booking form: same helper and POST /cal/book as BookPanel.
+  // Booking form: POST /cal/book via booking.ts.
   const [bName, setBName] = useState("");
   const [bEmail, setBEmail] = useState("");
   const [bGuests, setBGuests] = useState("");

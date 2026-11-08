@@ -7,6 +7,7 @@ import {
   useTimeScaleGestures,
 } from "../../hooks/useTimeScaleGestures";
 import { TimedEventBlock } from "../TimedEventBlock";
+import { Availability, type Bookable } from "./Availability";
 import {
   EVENT_COLOR_LIGHT,
   EVENT_COLOR_MAP,
@@ -26,7 +27,8 @@ export function DayTimeGrid({
   date,
   events,
   selectedEventId,
-  onTimeSlotClick,
+  bookable,
+  onSlot,
   onEventClick,
   onEventDoubleClick,
   isWindowsTheme,
@@ -41,7 +43,8 @@ export function DayTimeGrid({
   date: string;
   events: CalendarEvent[];
   selectedEventId: string | null;
-  onTimeSlotClick: (date: string, hour: number) => void;
+  bookable: Bookable;
+  onSlot: (slot: string, minutes: number) => void;
   onEventClick: (event: CalendarEvent) => void;
   onEventDoubleClick: (event: CalendarEvent) => void;
   isWindowsTheme: boolean;
@@ -152,11 +155,9 @@ export function DayTimeGrid({
 
           <div className="flex-1 relative min-w-0">
             {Array.from({ length: totalHours }, (_, hourOffset) => HOUR_START + hourOffset).map((hour) => (
-              <button
+              <div
                 key={hour}
-                type="button"
-                onClick={() => onTimeSlotClick(date, hour)}
-                className="absolute left-0 right-0 border-t hover:bg-black/[0.02] transition-colors"
+                className="absolute left-0 right-0 border-t pointer-events-none"
                 style={{
                   top: (hour - HOUR_START) * hourHeight,
                   height: hourHeight,
@@ -164,6 +165,8 @@ export function DayTimeGrid({
                 }}
               />
             ))}
+
+            <Availability date={date} bookable={bookable} hourHeight={hourHeight} onSlot={onSlot} />
 
             {timedEvents.map((ev) => (
               <TimedEventBlock
