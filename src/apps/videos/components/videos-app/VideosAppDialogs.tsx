@@ -1,5 +1,4 @@
 import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
-import { InputDialog } from "@/components/dialogs/InputDialog";
 import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { ShareItemDialog } from "@/components/dialogs/ShareItemDialog";
 import { appMetadata } from "../..";
@@ -19,23 +18,12 @@ export function VideosAppDialogs({ c }: VideosAppDialogsProps) {
     setIsAboutDialogOpen,
     isConfirmClearOpen,
     setIsConfirmClearOpen,
-    isConfirmResetOpen,
-    setIsConfirmResetOpen,
-    isAddDialogOpen,
-    setIsAddDialogOpen,
     isShareDialogOpen,
     setIsShareDialogOpen,
     setVideos,
     safeSetCurrentVideoId,
     setIsPlaying,
-    setOriginalOrder,
-    showStatus,
-    DEFAULT_VIDEOS,
     getCurrentVideo,
-    urlInput,
-    setUrlInput,
-    isAddingVideo,
-    addVideo,
     videosGenerateShareUrl,
   } = c;
 
@@ -61,32 +49,6 @@ export function VideosAppDialogs({ c }: VideosAppDialogsProps) {
         }}
         title={t("apps.videos.dialogs.clearPlaylistTitle")}
         description={t("apps.videos.dialogs.clearPlaylistDescription")}
-      />
-      <ConfirmDialog
-        isOpen={isConfirmResetOpen}
-        onOpenChange={setIsConfirmResetOpen}
-        onConfirm={() => {
-          setVideos(DEFAULT_VIDEOS);
-          safeSetCurrentVideoId(
-            DEFAULT_VIDEOS.length > 0 ? DEFAULT_VIDEOS[0].id : null
-          );
-          setIsPlaying(false);
-          setOriginalOrder(DEFAULT_VIDEOS);
-          setIsConfirmResetOpen(false);
-          showStatus(t("apps.videos.status.playlistReset"));
-        }}
-        title={t("apps.videos.dialogs.resetPlaylistTitle")}
-        description={t("apps.videos.dialogs.resetPlaylistDescription")}
-      />
-      <InputDialog
-        isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onSubmit={addVideo}
-        title={t("apps.videos.dialogs.addVideoTitle")}
-        description={t("apps.videos.dialogs.addVideoDescription")}
-        value={urlInput}
-        onChange={setUrlInput}
-        isLoading={isAddingVideo}
       />
       <ShareItemDialog
         isOpen={isShareDialogOpen}

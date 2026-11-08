@@ -21,7 +21,6 @@ export function VideosVideoPane({
   const {
     t,
     videos,
-    setIsAddDialogOpen,
     getCurrentVideo,
     isPlaying,
     playbackRequested,
@@ -61,17 +60,7 @@ export function VideosVideoPane({
         </div>
       );
     }
-    return (
-      <div className="flex items-center justify-center h-full text-neutral-400 font-geneva-12 text-sm">
-        <a
-          onClick={() => setIsAddDialogOpen(true)}
-          className="text-[#ff00ff] hover:underline cursor-pointer"
-        >
-          {t("apps.videos.status.addVideos")}
-        </a>
-        &nbsp;{t("apps.videos.status.toGetStarted")}
-      </div>
-    );
+    return <div className="w-full h-full bg-black" />;
   }
 
   return (
@@ -97,11 +86,6 @@ export function VideosVideoPane({
             onReady={handleReady}
             onPlaybackAttemptFailed={handlePlaybackAttemptFailed}
             loop={loopCurrent}
-            config={{
-              youtube: {
-                playerVars: { fs: 0, autoplay: 0 },
-              },
-            }}
           />
         )}
         <AnimatePresence>

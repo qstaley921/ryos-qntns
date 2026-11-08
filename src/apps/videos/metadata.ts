@@ -1,8 +1,8 @@
 export const helpItems = [
   {
     icon: "🎥",
-    title: "Add from YouTube",
-    description: "Paste any YouTube URL and ryOS fetches the metadata into your playlist",
+    title: "Video Posts",
+    description: "The playlist is the video posts on qntns.com, newest first",
   },
   {
     icon: "▶️",
@@ -18,11 +18,6 @@ export const helpItems = [
     icon: "🔀",
     title: "Shuffle Order",
     description: "Toggle shuffle to randomize playlist order without losing your queue",
-  },
-  {
-    icon: "📺",
-    title: "Powers Ryo TV",
-    description: "Your playlist also feeds the TV app's curated channel lineup",
   },
   {
     icon: "🔗",

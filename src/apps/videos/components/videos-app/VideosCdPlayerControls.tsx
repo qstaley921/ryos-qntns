@@ -31,7 +31,6 @@ export function VideosCdPlayerControls({ c }: VideosCdPlayerControlsProps) {
     setLoopAll,
     loopCurrent,
     setLoopCurrent,
-    setIsAddDialogOpen,
   } = c;
 
   const currentVideo = getCurrentVideo();
@@ -227,15 +226,6 @@ export function VideosCdPlayerControls({ c }: VideosCdPlayerControlsProps) {
                   {loopCurrent ? "↺" : "→"}
                 </button>
               </div>
-              <div className="metal-inset-btn-group">
-                <button
-                  type="button"
-                  className="metal-inset-btn font-geneva-12 !text-[11px]"
-                  onClick={() => setIsAddDialogOpen(true)}
-                >
-                  {t("apps.videos.status.add")}
-                </button>
-              </div>
             </>
           ) : (
             <>
@@ -265,13 +255,6 @@ export function VideosCdPlayerControls({ c }: VideosCdPlayerControlsProps) {
                   {loopCurrent ? "↺" : "→"}
                 </Button>
               </div>
-              <Button
-                onClick={() => setIsAddDialogOpen(true)}
-                variant="player"
-                className="h-[22px] px-2"
-              >
-                {t("apps.videos.status.add")}
-              </Button>
             </>
           )}
         </div>

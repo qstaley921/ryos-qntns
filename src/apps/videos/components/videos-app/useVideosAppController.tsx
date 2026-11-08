@@ -30,7 +30,6 @@ export function useVideosAppController({
     setIsHelpDialogOpen,
     setIsAboutDialogOpen,
     setIsConfirmClearOpen,
-    setIsConfirmResetOpen,
     toggleShuffle,
     setLoopAll,
     loopAll,
@@ -43,7 +42,6 @@ export function useVideosAppController({
     isShuffled,
     handleFullScreen,
     handleShareVideo,
-    setIsAddDialogOpen,
   } = logic;
 
   const menuBar = (
@@ -60,9 +58,6 @@ export function useVideosAppController({
       onClearPlaylist={() => {
         setIsConfirmClearOpen(true);
       }}
-      onResetPlaylist={() => {
-        setIsConfirmResetOpen(true);
-      }}
       onShufflePlaylist={toggleShuffle}
       onToggleLoopAll={() => setLoopAll(!loopAll)}
       onToggleLoopCurrent={() => setLoopCurrent(!loopCurrent)}
@@ -71,10 +66,6 @@ export function useVideosAppController({
       }}
       onNext={nextVideo}
       onPrevious={previousVideo}
-      onAddVideo={() => setIsAddDialogOpen(true)}
-      onOpenVideo={() => {
-        setIsAddDialogOpen(true);
-      }}
       isPlaying={isPlaying}
       isLoopAll={loopAll}
       isLoopCurrent={loopCurrent}

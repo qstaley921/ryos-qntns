@@ -11,8 +11,7 @@ import { useAudioSettingsStore } from "@/stores/useAudioSettingsStore";
 import { useCustomEventListener } from "@/hooks/useEventListener";
 import { helpItems } from "..";
 import type { VideosInitialData } from "../../base/types";
-import { parseYouTubeVideoId } from "@/utils/youtubeUrl";
-import { fetchYouTubeOembed, parseYouTubeTitle } from "@/utils/youtubeMetadata";
+import { listVideos } from "@/lib/ghost";
 import { onAppUpdate } from "@/utils/appEventBus";
 import { MEDIA_ANALYTICS, track } from "@/utils/analytics";
 import { formatSecondsMmSs } from "@/utils/formatDuration";
@@ -119,11 +118,7 @@ export function useVideosLogic({
   interface VideosUiState {
     animationDirection: "next" | "prev";
     originalOrder: Video[];
-    urlInput: string;
-    isAddDialogOpen: boolean;
     isConfirmClearOpen: boolean;
-    isConfirmResetOpen: boolean;
-    isAddingVideo: boolean;
     isFullScreen: boolean;
     statusMessage: string | null;
     isShareDialogOpen: boolean;
@@ -136,11 +131,7 @@ export function useVideosLogic({
   const initialState: VideosUiState = {
     animationDirection: "next",
     originalOrder: videos,
-    urlInput: "",
-    isAddDialogOpen: false,
     isConfirmClearOpen: false,
-    isConfirmResetOpen: false,
-    isAddingVideo: false,
     isFullScreen: false,
     statusMessage: null,
     isShareDialogOpen: false,
@@ -165,11 +156,7 @@ export function useVideosLogic({
   const {
     animationDirection,
     originalOrder,
-    urlInput,
-    isAddDialogOpen,
     isConfirmClearOpen,
-    isConfirmResetOpen,
-    isAddingVideo,
     isFullScreen,
     statusMessage,
     isShareDialogOpen,
@@ -190,20 +177,8 @@ export function useVideosLogic({
   const setOriginalOrder = useCallback((value: Video[]) => {
     dispatchUi({ type: "patch", payload: { originalOrder: value } });
   }, []);
-  const setUrlInput = useCallback((value: string) => {
-    dispatchUi({ type: "patch", payload: { urlInput: value } });
-  }, []);
-  const setIsAddDialogOpen = useCallback((value: boolean) => {
-    dispatchUi({ type: "patch", payload: { isAddDialogOpen: value } });
-  }, []);
   const setIsConfirmClearOpen = useCallback((value: boolean) => {
     dispatchUi({ type: "patch", payload: { isConfirmClearOpen: value } });
-  }, []);
-  const setIsConfirmResetOpen = useCallback((value: boolean) => {
-    dispatchUi({ type: "patch", payload: { isConfirmResetOpen: value } });
-  }, []);
-  const setIsAddingVideo = useCallback((value: boolean) => {
-    dispatchUi({ type: "patch", payload: { isAddingVideo: value } });
   }, []);
   const setIsFullScreen = useCallback((value: boolean) => {
     dispatchUi({ type: "patch", payload: { isFullScreen: value } });
@@ -291,163 +266,24 @@ export function useVideosLogic({
     [safeSetCurrentVideoId]
   );
 
-  const extractVideoId = useCallback(
-    (url: string): string | null => parseYouTubeVideoId(url),
-    []
-  );
-
-  const addVideo = useCallback(
-    async (url: string) => {
-      setIsAddingVideo(true);
-      try {
-        const videoId = extractVideoId(url);
-        if (!videoId) {
-          throw new Error("Invalid YouTube URL");
-        }
-
-        const existingVideos = useVideoStore.getState().videos;
-        const existing = existingVideos.find((v) => v.id === videoId);
-        if (existing) {
-          safeSetCurrentVideoId(existing.id);
-          setIsPlaying(true);
-          showStatus(t("apps.videos.status.videoAdded"));
-          dispatchUi({
-            type: "patch",
-            payload: {
-              urlInput: "",
-              isAddDialogOpen: false,
-            },
-          });
-          return;
-        }
-
-        // 1. Fetch initial info from oEmbed
-        const oembed = await fetchYouTubeOembed(videoId);
-        if (!oembed.ok) {
-          throw new Error(
-            `Failed to fetch video info (${oembed.status}). Please check the YouTube URL.`
-          );
-        }
-        const rawTitle = oembed.rawTitle || `Video ID: ${videoId}`;
-
-        // 2. Resolve a cleaned title/artist via /api/parse-title
-        const { title, artist } = await parseYouTubeTitle(
-          rawTitle,
-          oembed.authorName
-        );
-
-        const newVideo: Video = {
-          id: videoId,
-          url,
-          title,
-          artist,
-        };
-
-        // Add video to store
-        const currentVideos = useVideoStore.getState().videos;
-        const newVideos = [...currentVideos, newVideo];
-        log.debug("Adding video", {
-          videoId: newVideo.id,
-          previousCount: currentVideos.length,
-          nextCount: newVideos.length,
-        });
-        setVideos(newVideos);
-
-        // Update original order if not shuffled
-        if (!isShuffled) {
-          setOriginalOrder(newVideos);
-        }
-
-        // Set current video to the newly added video
-        log.debug("Setting current video to newly added", {
-          videoId: newVideo.id,
-        });
-        safeSetCurrentVideoId(newVideo.id);
-        setIsPlaying(true);
-        log.debug("Video added successfully", { videoId: newVideo.id });
-        track(MEDIA_ANALYTICS.VIDEO_ADD, {
-          appId: "videos",
-          source: "url",
-          videoCount: newVideos.length,
-        });
-
-        showStatus(t("apps.videos.status.videoAdded"));
-
-        dispatchUi({
-          type: "patch",
-          payload: {
-            urlInput: "",
-            isAddDialogOpen: false,
-          },
-        });
-      } catch (error) {
-        console.error("Failed to add video:", error);
-        showStatus(
-          t("apps.videos.status.errorAdding", {
-            error:
-              error instanceof Error
-                ? error.message
-                : t("apps.videos.status.unknownError"),
-          })
-        );
-        // Reset state on error to prevent inconsistent state
-        if (videos.length > 0) {
-          safeSetCurrentVideoId(videos[videos.length - 1].id);
-        }
-        setIsPlaying(false);
-      } finally {
-        setIsAddingVideo(false);
-      }
-    },
-    [
-      extractVideoId,
-      isShuffled,
-      setVideos,
-      safeSetCurrentVideoId,
-      setIsPlaying,
-      showStatus,
-      t,
-      videos,
-    ]
-  );
-
-  // Function to add and play video by ID
-  const handleAddAndPlayVideoById = useCallback(
-    async (videoId: string) => {
-      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      try {
-        await addVideo(youtubeUrl); // addVideo sets current index and plays
-
-        // Check if on iOS Safari and show appropriate status message
-        const ua = navigator.userAgent;
-        const isIOS = /iP(hone|od|ad)/.test(ua);
-        const isSafari =
-          /Safari/.test(ua) && !/Chrome/.test(ua) && !/CriOS/.test(ua);
-
-        if (isIOS && isSafari) {
-          showStatus(t("apps.videos.status.pressToPlay"));
-        }
-      } catch (error) {
-        console.error(
-          `[Videos] Error adding video for videoId ${videoId}:`,
-          error
-        );
-        showStatus(t("apps.videos.status.failedToAddVideo"));
-        throw error; // Re-throw to let caller handle
-      }
-    },
-    [addVideo, showStatus, t]
-  );
+  // Playlist = Ghost video posts, newest first.
+  useEffect(() => {
+    let live = true;
+    listVideos().then((list) => {
+      if (!live || list.length === 0) return;
+      setVideos(list);
+      setOriginalOrder(list);
+    });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Function to process video ID (find or add/play)
   const processVideoId = useCallback(
     async (videoId: string) => {
       try {
-        // Validate videoId format
-        if (!videoId || typeof videoId !== "string" || videoId.length !== 11) {
-          throw new Error(`Invalid video ID format: ${videoId}`);
-        }
-
         const currentVideos = useVideoStore.getState().videos;
         const existingVideoIndex = currentVideos.findIndex(
           (video) => video.id === videoId
@@ -478,16 +314,7 @@ export function useVideosLogic({
             })
           );
         } else {
-          log.debug("Video not found in playlist; adding", {
-            videoId,
-            shouldAutoplay,
-          });
-          await handleAddAndPlayVideoById(videoId);
-          // Note: handleAddAndPlayVideoById already sets isPlaying to true
-          // Only need to handle mobile Safari case here
-          if (!shouldAutoplay) {
-            setIsPlaying(false);
-          }
+          throw new Error(`Video not in playlist: ${videoId}`);
         }
       } catch (error) {
         console.error(`[Videos] Error processing video ID ${videoId}:`, error);
@@ -495,7 +322,7 @@ export function useVideosLogic({
         throw error; // Re-throw to let caller handle
       }
     },
-    [safeSetCurrentVideoId, setIsPlaying, handleAddAndPlayVideoById, showStatus, t]
+    [safeSetCurrentVideoId, setIsPlaying, showStatus, t]
   );
 
   const nextVideo = useCallback(() => {
@@ -1060,19 +887,12 @@ export function useVideosLogic({
     animationDirection,
     originalOrder,
     setOriginalOrder,
-    urlInput,
-    setUrlInput,
-    isAddDialogOpen,
-    setIsAddDialogOpen,
     isHelpDialogOpen,
     setIsHelpDialogOpen,
     isAboutDialogOpen,
     setIsAboutDialogOpen,
     isConfirmClearOpen,
     setIsConfirmClearOpen,
-    isConfirmResetOpen,
-    setIsConfirmResetOpen,
-    isAddingVideo,
     isFullScreen,
     statusMessage,
     isShareDialogOpen,
@@ -1114,7 +934,6 @@ export function useVideosLogic({
     toggleFullScreen,
     handleShareVideo,
     videosGenerateShareUrl,
-    addVideo,
     processVideoId,
     showStatus,
     formatTime: formatSecondsMmSs,

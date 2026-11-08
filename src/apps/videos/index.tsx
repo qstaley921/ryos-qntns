@@ -11,7 +11,7 @@ export const VideosApp: BaseApp<VideosInitialData> = {
   id: "videos",
   name: "Videos",
   icon: { type: "image", src: "/icons/default/videos.png" },
-  description: "A retro-style YouTube playlist player",
+  description: "A retro-style playlist player for qntns.com videos",
   component: VideosAppComponent,
   helpItems,
   metadata: appMetadata,
