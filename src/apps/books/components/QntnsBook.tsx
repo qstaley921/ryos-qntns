@@ -13,10 +13,11 @@ import { QNTNS_BOOK_PREFIX } from "./BookCover";
 import { Button } from "@/components/ui/button";
 import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { Input } from "@/components/ui/input";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
 
 /** A book the reader can buy (CHECKLIST-36 §14d): a price tag, a lock and
  *  the post's page. */
-export type ForSale = { book: GhostBook; price: string; draft: string };
+export type ForSale = { book: GhostBook; price: string; draft: string; owned: boolean };
 
 /** The #password posts as shelf entries, beside the EPUBs (CHECKLIST-36
  *  §14b). Empty on failure: the shelf shows the EPUBs alone. A book for sale
@@ -51,9 +52,13 @@ export function useQntnsShelf() {
       primeBookCover(path, { coverUrl: b.feature_image ?? null, title: bookTitle(b), author: null });
       const entry = { path, name: bookTitle(b), fileName: path };
       const { price, buy, draft } = parseBook(b);
-      if (price && buy && draft && !savedPhrase(draft)) {
-        sale.set(path, { book: b, price, draft });
+      if (price && buy && draft) {
+        // §14i: a bought book stays in Store (ribbon "Purchased", Buy again)
+        // and sits in Library once.
+        const owned = !!savedPhrase(draft);
+        sale.set(path, { book: b, price, draft, owned });
         store.push(entry);
+        if (owned) library.push(entry);
       } else library.push(entry);
     }
     return { store, library, all: [...store, ...library], byPath, sale, markOwned };
@@ -82,6 +87,7 @@ export function StoreCallout({
   onRestored: () => void;
 }) {
   const launchApp = useLaunchApp();
+  const { isMacOSTheme } = useThemeFlags();
   const ref = useRef<HTMLDivElement>(null);
   const [phrase, setPhrase] = useState("");
   const [error, setError] = useState("");
@@ -132,10 +138,24 @@ export function StoreCallout({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.16 }}
       className="absolute z-30 rounded-md border bg-popover p-3 text-popover-foreground shadow-lg font-os-ui text-[12px]"
-      style={{ top: Math.max(CALLOUT_INSET, top), left, width: CALLOUT_W, transformOrigin: fitsRight ? "left top" : "right top" }}
+      style={{
+        top: Math.max(CALLOUT_INSET, top),
+        left,
+        width: CALLOUT_W,
+        transformOrigin: fitsRight ? "left top" : "right top",
+        // Same Aqua chrome as ryOS's menus (dropdown-menu.tsx).
+        ...(isMacOSTheme && {
+          border: "none",
+          borderRadius: 0,
+          background: "var(--os-pinstripe-window)",
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
+          fontFamily: "var(--os-font-ui)",
+        }),
+      }}
     >
       <p className="font-bold leading-4">{bookTitle(sale.book)}</p>
       <Button
+        variant="default"
         className="mt-3 w-full"
         onClick={() =>
           launchApp("internet-explorer", {
@@ -144,8 +164,11 @@ export function StoreCallout({
           })
         }
       >
-        Buy {sale.price}
+        {sale.owned ? "Buy again" : `Buy ${sale.price}`}
       </Button>
+      {sale.owned ? (
+        <p className="mt-3 border-t pt-3 leading-4">Already in your Library.</p>
+      ) : (
       <form onSubmit={submit} noValidate aria-busy={busy} className="mt-3 border-t pt-3">
         <label htmlFor="books-restore" className="block leading-4">
           Bought it already? Enter the password from your receipt.
@@ -169,6 +192,7 @@ export function StoreCallout({
           </p>
         )}
       </form>
+      )}
     </motion.div>
   );
 }

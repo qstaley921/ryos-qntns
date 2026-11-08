@@ -113,15 +113,16 @@ export function BooksAppComponent({
         : undefined,
     [activeQntns, markOwned]
   );
+  // Never the same book twice (§14i), whatever the sources hold.
   const shelfLibrary =
     shelfMode === "store"
       ? qntnsShelf.store
-      : qntnsShelf.library.length
-        ? [...qntnsShelf.library, ...library]
-        : library;
+      : [...qntnsShelf.library, ...library].filter(
+          (e, i, a) => a.findIndex((x) => x.path === e.path) === i
+        );
   const ribbons = useMemo(
     () =>
-      new Map([...qntnsShelf.sale].map(([path, s]) => [path, s.price])),
+      new Map([...qntnsShelf.sale].map(([path, s]) => [path, s.owned ? "Purchased" : s.price])),
     [qntnsShelf.sale]
   );
   const [highlightsOpen, setHighlightsOpen] = useState(false);
