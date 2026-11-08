@@ -193,7 +193,7 @@ export function GhostReader({
       listDocs().then(({ docs }) => {
         const hit = docs.find((d) => d.slug === slug);
         if (hit) launchRef.current("textedit", { initialData: { ghost: { id: hit.id, type: hit.type } } });
-        else window.open(a.href, "_blank", "noopener");
+        else launchRef.current("internet-explorer", { initialData: { mini: true, path: u.pathname }, multiWindow: true });
       });
     };
     root.addEventListener("click", onCapture);

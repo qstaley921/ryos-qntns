@@ -11,6 +11,7 @@ import { primeBookCover } from "../utils/useBookCover";
 import type { BookOriginRect, BooksLibraryEntry } from "../hooks/useBooksLogic";
 import { QNTNS_BOOK_PREFIX } from "./BookCover";
 import { Button } from "@/components/ui/button";
+import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { Input } from "@/components/ui/input";
 
 /** A book the reader can buy (CHECKLIST-36 §14d): a price tag, a lock and
@@ -80,6 +81,7 @@ export function StoreCallout({
   onClose: () => void;
   onRestored: () => void;
 }) {
+  const launchApp = useLaunchApp();
   const ref = useRef<HTMLDivElement>(null);
   const [phrase, setPhrase] = useState("");
   const [error, setError] = useState("");
@@ -133,11 +135,16 @@ export function StoreCallout({
       style={{ top: Math.max(CALLOUT_INSET, top), left, width: CALLOUT_W, transformOrigin: fitsRight ? "left top" : "right top" }}
     >
       <p className="font-bold leading-4">{bookTitle(sale.book)}</p>
-      {/* shortcut: plain link out; switch to Mini Safari's open function once CHECKLIST-37 §79 lands. */}
-      <Button asChild className="mt-3 w-full">
-        <a href={sale.book.url} target="_blank" rel="noopener">
-          Buy {sale.price}
-        </a>
+      <Button
+        className="mt-3 w-full"
+        onClick={() =>
+          launchApp("internet-explorer", {
+            initialData: { mini: true, path: new URL(sale.book.url, "https://www.qntns.com/").pathname },
+            multiWindow: true,
+          })
+        }
+      >
+        Buy {sale.price}
       </Button>
       <form onSubmit={submit} noValidate aria-busy={busy} className="mt-3 border-t pt-3">
         <label htmlFor="books-restore" className="block leading-4">

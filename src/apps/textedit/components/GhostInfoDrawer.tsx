@@ -1,3 +1,4 @@
+import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { AppDrawer } from "@/components/shared/AppDrawer";
 import type { GhostDoc } from "@/lib/ghost";
 import type { PostLinks } from "@/lib/ghost/postLinks";
@@ -33,6 +34,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; onClose: () => void; info: GhostInfo }) {
+  const launchApp = useLaunchApp();
   const { doc, words, views, likes, links } = info;
   // Ghost's internal tags are the #-tags, slug "hash-…"; only public ones are shown.
   const tags = (doc.tags ?? []).filter((t) => !t.slug.startsWith("hash-"));
@@ -50,7 +52,17 @@ export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; on
         <Row label="Likes">{num(likes)}</Row>
         {doc.url && (
           <Row label="Link">
-            <a className={A} href={doc.url} target="_blank" rel="noopener">
+            <a
+              className={A}
+              href={doc.url}
+              onClick={(e) => {
+                e.preventDefault();
+                launchApp("internet-explorer", {
+                  initialData: { mini: true, path: new URL(doc.url!, "https://www.qntns.com/").pathname },
+                  multiWindow: true,
+                });
+              }}
+            >
               {doc.url.replace(/^https?:\/\/(www\.)?/, "")}
             </a>
           </Row>
