@@ -135,7 +135,8 @@ export function resolveIconLegacyAware(
     const rest = iconOrName.slice("/icons/".length); // e.g. default/file.png OR file.png OR macpaint/brush.png
     const parts = rest.split("/");
     const maybeTheme = parts[0];
-    // Known themes (even before manifest loads). Include 'default'.
+    // Known themes (even before manifest loads). Include 'default'. The deleted
+    // themes stay listed so old saved paths (/icons/xp/…) re-theme to Aqua.
     const KNOWN_THEMES = ["default", "macosx", "system7", "xp", "win98"];
     const m = manifestCache;
     const isKnownTheme =

@@ -13,7 +13,6 @@ import { getTranslatedAppName, AppId } from "@/utils/i18n";
 import { useAppStore } from "@/stores/useAppStore";
 
 const APP_DOC_NAMES: Partial<Record<AppId, string>> = {
-  pc: "virtual-pc",
   "applet-viewer": "applet-store",
 };
 

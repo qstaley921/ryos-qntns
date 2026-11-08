@@ -16,7 +16,7 @@ export interface ThemeBootstrapEntry {
 export interface ThemeBootstrapConfig {
   defaultTheme: OsThemeId;
   defaultAquaMaterial: AquaMaterial;
-  themes: Record<OsThemeId, ThemeBootstrapEntry>;
+  themes: Partial<Record<OsThemeId, ThemeBootstrapEntry>>;
 }
 
 export function getThemeBootstrapConfig(): ThemeBootstrapConfig {
@@ -27,7 +27,7 @@ export function getThemeBootstrapConfig(): ThemeBootstrapConfig {
       {
         platform: getOsPlatform(themeId),
         macChrome: getOsMacChrome(themeId),
-        supportsDarkMode: themes[themeId].metadata.supportsDarkMode,
+        supportsDarkMode: themes[themeId]!.metadata.supportsDarkMode,
       },
     ] as const;
   });
@@ -35,6 +35,6 @@ export function getThemeBootstrapConfig(): ThemeBootstrapConfig {
   return {
     defaultTheme: DEFAULT_OS_THEME_ID,
     defaultAquaMaterial: DEFAULT_AQUA_MATERIAL,
-    themes: Object.fromEntries(entries) as Record<OsThemeId, ThemeBootstrapEntry>,
+    themes: Object.fromEntries(entries) as Partial<Record<OsThemeId, ThemeBootstrapEntry>>,
   };
 }

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 
 export interface WindowFrameTrailingTitlebarControlsProps {
-  variant: "aqua" | "system7";
+  variant: "aqua";
   titleBarRightContent?: ReactNode;
   isNoTitlebar: boolean;
   isForeground: boolean;

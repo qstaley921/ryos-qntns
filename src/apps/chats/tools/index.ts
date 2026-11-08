@@ -13,8 +13,6 @@ export type { MediaControlInput } from "./mediaHandler";
 export { handleStickiesControl } from "./stickiesHandler";
 export type { StickiesControlInput } from "./stickiesHandler";
 
-export { handleInfiniteMacControl } from "./infiniteMacHandler";
-export type { InfiniteMacControlInput } from "./infiniteMacHandler";
 
 export { handleCalendarControl } from "./calendarHandler";
 export type { CalendarControlInput } from "./calendarHandler";

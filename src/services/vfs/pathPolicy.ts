@@ -49,7 +49,18 @@ const NON_WRITABLE_ROOTS = new Set<string>([
   ...LEGACY_ROOTS,
   // Applets are import-only (managed by the Applet Viewer / Finder import).
   "/Applets",
+  // Ghost-backed folders: computed listings, read-only.
+  "/Poems",
+  "/Recents",
 ]);
+
+/** Ghost tag folders are `/Tag-<slug>`; matched by prefix. */
+const GHOST_TAG_ROOT_PREFIX = "/Tag-";
+
+/** Whether a root segment is read-only (static set or a Ghost tag folder). */
+function isNonWritableRoot(root: string): boolean {
+  return NON_WRITABLE_ROOTS.has(root) || root.startsWith(GHOST_TAG_ROOT_PREFIX);
+}
 
 const SYSTEM_ROOT_SET = new Set<string>(SYSTEM_ROOTS);
 
@@ -77,7 +88,7 @@ export function isWritablePath(path: string): boolean {
   if (path === "/") return true;
   const root = getRootSegment(path);
   if (!root) return false;
-  return !NON_WRITABLE_ROOTS.has(root);
+  return !isNonWritableRoot(root);
 }
 
 /** Whether a path is a system-managed root that cannot be renamed or trashed. */
@@ -94,7 +105,7 @@ export function canPathHaveContent(path: string): boolean {
   if (!path.startsWith("/") || path === "/") return false;
   const root = getRootSegment(path);
   if (!root) return false;
-  return !NON_WRITABLE_ROOTS.has(root);
+  return !isNonWritableRoot(root);
 }
 
 export interface WritableDirectoryEntry {

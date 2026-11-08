@@ -1,7 +1,4 @@
 import { cn } from "@/lib/utils";
-import { getAppIconPath } from "@/config/appRegistry";
-import { AppId } from "@/config/appIds";
-import { ThemedIcon } from "@/components/shared/ThemedIcon";
 import { TrafficLightButton } from "@/components/shared/TrafficLightButton";
 import { useTranslation } from "react-i18next";
 import type { MouseEvent, ReactNode, TouchEvent } from "react";
@@ -9,16 +6,12 @@ import { isFromTitlebarControls } from "./windowFrameUtils";
 import { WindowFrameTrailingTitlebarControls } from "./WindowFrameTrailingTitlebarControls";
 
 export interface WindowFrameTitleBarProps {
-  isWindowsTheme: boolean;
-  isWinXp: boolean;
-  isMacOSTheme: boolean;
   isForeground: boolean;
   isNoTitlebar: boolean;
   disableTitlebarAutoHide: boolean;
   effectiveTransparentBackground: boolean;
   isBrushedMetal: boolean;
   isGlassSurface: boolean;
-  isTransparent: boolean;
   isTitlebarHovered: boolean;
   showTitlebarWithAutoHide: () => void;
   handleMouseDownWithForeground: (
@@ -30,7 +23,6 @@ export interface WindowFrameTitleBarProps {
   handleTouchMove: (e: TouchEvent<HTMLElement>) => void;
   handleTouchEnd: () => void;
   isPhone: boolean;
-  appId: AppId;
   title: string;
   titleBarRightContent?: ReactNode;
   onCoverFlowToggle?: () => void;
@@ -42,16 +34,12 @@ export interface WindowFrameTitleBarProps {
 }
 
 export function WindowFrameTitleBar({
-  isWindowsTheme,
-  isWinXp,
-  isMacOSTheme,
   isForeground,
   isNoTitlebar,
   disableTitlebarAutoHide,
   effectiveTransparentBackground,
   isBrushedMetal,
   isGlassSurface,
-  isTransparent,
   isTitlebarHovered,
   showTitlebarWithAutoHide,
   handleMouseDownWithForeground,
@@ -61,7 +49,6 @@ export function WindowFrameTitleBar({
   handleTouchMove,
   handleTouchEnd,
   isPhone,
-  appId,
   title,
   titleBarRightContent,
   onCoverFlowToggle,
@@ -72,146 +59,9 @@ export function WindowFrameTitleBar({
   handleMinimize,
 }: WindowFrameTitleBarProps) {
   const { t } = useTranslation();
-  const coverFlowLabel = t("apps.ipod.menu.coverFlow");
 
+  // Aqua title bar with traffic lights (the only theme, CHECKLIST-35 §7)
   return (
-    isWindowsTheme ? (
-        // XP/98 theme title bar structure
-        <div
-          className={cn(
-            "title-bar relative z-50",
-            !isForeground && "inactive" // Add inactive class when not in foreground
-          )}
-          style={{
-            ...(isWinXp ? { minHeight: "30px" } : undefined),
-            ...(!isForeground
-              ? {
-                  background: "var(--os-color-titlebar-inactive-bg)",
-                }
-              : undefined),
-          }}
-          onMouseDown={handleMouseDownWithForeground}
-          onDoubleClick={(e) => {
-            if (isFromTitlebarControls(e.target)) return;
-            handleFullMaximize(e);
-          }}
-          onTouchStart={(e: TouchEvent<HTMLElement>) => {
-            if (isFromTitlebarControls(e.target)) {
-              e.stopPropagation();
-              return;
-            }
-            handleTitleBarTap(e);
-            handleMouseDownWithForeground(e);
-            if (isPhone) {
-              handleTouchStart(e);
-            }
-          }}
-          onTouchMove={(e: TouchEvent<HTMLElement>) => {
-            if (isPhone) {
-              handleTouchMove(e);
-            }
-          }}
-          onTouchEnd={() => {
-            if (isPhone) {
-              handleTouchEnd();
-            }
-          }}
-        >
-          <div
-            className={cn(
-              "title-bar-text min-w-0",
-              !isForeground && "inactive"
-            )}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              overflow: "hidden",
-              ...(!isForeground
-                ? {
-                    color: "var(--os-color-titlebar-text-inactive)",
-                  }
-                : {}),
-            }}
-            onTouchMove={(e) => e.preventDefault()}
-          >
-            <ThemedIcon
-              name={getAppIconPath(appId)}
-              alt={title}
-              className="size-4 mr-1 shrink-0 [image-rendering:pixelated]"
-              style={{
-                filter: !isForeground ? "grayscale(100%)" : "none",
-              }}
-            />
-            <span className="truncate">{title}</span>
-          </div>
-          <div className="title-bar-controls flex items-center gap-0.5" data-titlebar-controls>
-            {titleBarRightContent ? (
-              titleBarRightContent
-            ) : (
-              <>
-                {onCoverFlowToggle ? (
-                  <button
-                    type="button"
-                    aria-label={coverFlowLabel}
-                    title={coverFlowLabel}
-                    aria-pressed={isCoverFlowActive}
-                    data-action="cover-flow"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCoverFlowToggle();
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                  />
-                ) : null}
-                {onFullscreenToggle ? (
-                  <button
-                    aria-label={t("common.window.fullscreen")}
-                    data-action="fullscreen"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onFullscreenToggle();
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                  />
-                ) : null}
-              </>
-            )}
-            <button
-              aria-label={t("common.window.minimize")}
-              data-action="minimize"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMinimize();
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-            />
-            <button
-              aria-label={t("common.window.maximize")}
-              data-action="maximize"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleFullMaximize(e);
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-            />
-            <button
-              aria-label={t("common.window.close")}
-              data-action="close"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClose();
-              }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      ) : isMacOSTheme ? (
-        // Mac OS X theme title bar with traffic light buttons
         <div
           className={cn(
             "title-bar relative flex items-center h-6 min-h-[1.25rem] mx-0 mb-0 px-[0.1rem] py-[0.1rem] select-none cursor-move user-select-none z-50 draggable-area",
@@ -356,87 +206,5 @@ export function WindowFrameTitleBar({
             />
           </div>
         </div>
-      ) : (
-        // Original Mac theme title bar (for System 7)
-        <div
-          className={cn(
-            "flex items-center shrink-0 h-os-titlebar min-h-[1.5rem] mx-0 my-[0.1rem] mb-0 px-[0.1rem] py-[0.2rem] select-none cursor-move border-b-[1.5px] user-select-none z-50 draggable-area",
-            isTransparent && "mt-0",
-            isForeground
-              ? isTransparent
-                ? "bg-white/70 backdrop-blur-sm border-b-os-window"
-                : "bg-os-titlebar-active-bg bg-os-titlebar-pattern bg-clip-content bg-[length:6.6666666667%_13.3333333333%] border-b-os-window"
-              : isTransparent
-              ? "bg-white/20 backdrop-blur-sm border-b-os-window"
-              : "bg-os-titlebar-inactive-bg border-b-neutral-400"
-          )}
-          onMouseDown={handleMouseDownWithForeground}
-          onDoubleClick={(e) => {
-            if (isFromTitlebarControls(e.target)) return;
-            handleFullMaximize(e);
-          }}
-          onTouchStart={(e: TouchEvent<HTMLElement>) => {
-            if (isFromTitlebarControls(e.target)) {
-              e.stopPropagation();
-              return;
-            }
-            handleTitleBarTap(e);
-            handleMouseDownWithForeground(e);
-            if (isPhone) {
-              handleTouchStart(e);
-            }
-          }}
-          onTouchMove={(e: TouchEvent<HTMLElement>) => {
-            if (isPhone) {
-              handleTouchMove(e);
-            }
-          }}
-          onTouchEnd={() => {
-            if (isPhone) {
-              handleTouchEnd();
-            }
-          }}
-        >
-          <div
-            onClick={handleClose}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="relative ml-2 size-4 cursor-default select-none"
-            data-titlebar-controls
-          >
-            <div className="absolute inset-0 -m-2" />{" "}
-            {/* Larger click area */}
-            <div
-              className={`size-4 ${
-                !isTransparent &&
-                "bg-os-button-face shadow-[0_0_0_1px_var(--os-color-button-face)]"
-              } border-2 border-os-window hover:bg-neutral-200 active:bg-neutral-300 flex items-center justify-center ${
-                !isForeground && "invisible"
-              }`}
-            />
-          </div>
-          <span
-            className={cn(
-              "select-none mx-auto px-2 py-0 h-full flex items-center whitespace-nowrap overflow-hidden text-ellipsis min-w-0 max-w-[calc(100%-56px)]",
-              !isTransparent && "bg-os-button-face",
-              isForeground
-                ? "text-os-titlebar-active-text"
-                : "text-os-titlebar-inactive-text"
-            )}
-            onTouchMove={(e) => e.preventDefault()}
-          >
-            <span className="truncate">{title}</span>
-          </span>
-          <WindowFrameTrailingTitlebarControls
-            variant="system7"
-            titleBarRightContent={titleBarRightContent}
-            isNoTitlebar={isNoTitlebar}
-            isForeground={isForeground}
-            onCoverFlowToggle={onCoverFlowToggle}
-            isCoverFlowActive={isCoverFlowActive}
-            onFullscreenToggle={onFullscreenToggle}
-          />
-        </div>
-      )
   );
 }

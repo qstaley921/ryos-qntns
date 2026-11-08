@@ -414,64 +414,6 @@ export function getToolInvocationResultMessage(
           error: out.error,
         });
       }
-    } else if (toolName === "infiniteMacControl") {
-      const action = input?.action;
-      const x = input?.x;
-      const y = input?.y;
-      const key = input?.key;
-      const button = input?.button;
-      
-      // Try to extract system name from output
-      let systemName = "";
-      if (typeof output === "string") {
-        // Parse system name from output like "Successfully launched System 7.5.3 (1996)"
-        const systemMatch = output.match(/launched\s+([^(]+)/i);
-        if (systemMatch) {
-          systemName = systemMatch[1].trim();
-        }
-        // Or "Running System 7.5.3"
-        const runningMatch = output.match(/Running\s+(.+)/);
-        if (runningMatch) {
-          systemName = runningMatch[1].trim();
-        }
-      } else if (typeof output === "object" && output !== null) {
-        const outputObj = output as { currentSystem?: string; message?: string };
-        if (outputObj.currentSystem) {
-          systemName = outputObj.currentSystem;
-        }
-      }
-      
-      if (action === "launchSystem") {
-        if (typeof output === "string" && output.includes("loading")) {
-          displayResultMessage = t("apps.chats.toolCalls.infiniteMac.systemLoading", { system: systemName || "System" });
-        } else {
-          displayResultMessage = t("apps.chats.toolCalls.infiniteMac.startedSystem", { system: systemName || "System" });
-        }
-      } else if (action === "getStatus") {
-        if (systemName) {
-          displayResultMessage = t("apps.chats.toolCalls.infiniteMac.statusRunning", { system: systemName });
-        } else {
-          displayResultMessage = t("apps.chats.toolCalls.infiniteMac.statusNotRunning");
-        }
-      } else if (action === "readScreen") {
-        displayResultMessage = t("apps.chats.toolCalls.infiniteMac.capturedScreen");
-      } else if (action === "mouseMove") {
-        displayResultMessage = t("apps.chats.toolCalls.infiniteMac.movedMouse", { x: x ?? 0, y: y ?? 0 });
-      } else if (action === "mouseClick") {
-        if (button === "right") {
-          displayResultMessage = t("apps.chats.toolCalls.infiniteMac.rightClicked", { x: x ?? 0, y: y ?? 0 });
-        } else {
-          displayResultMessage = t("apps.chats.toolCalls.infiniteMac.clicked", { x: x ?? 0, y: y ?? 0 });
-        }
-      } else if (action === "doubleClick") {
-        displayResultMessage = t("apps.chats.toolCalls.infiniteMac.doubleClicked", { x: x ?? 0, y: y ?? 0 });
-      } else if (action === "keyPress") {
-        displayResultMessage = t("apps.chats.toolCalls.infiniteMac.pressedKey", { key: key ?? "key" });
-      } else if (action === "pause") {
-        displayResultMessage = t("apps.chats.toolCalls.infiniteMac.paused");
-      } else if (action === "unpause") {
-        displayResultMessage = t("apps.chats.toolCalls.infiniteMac.resumed");
-      }
     }
 
   return displayResultMessage;

@@ -894,11 +894,6 @@
 }
 
 /* --- Title bar text-shadow ------------------------------------------------ */
-/* Regular (non-brushed-metal) windows keep the light-mode dark-colored
-   text-shadow on titlebar / menubar labels so dark mode looks visually
-   continuous with light mode. The brushed-metal variant (white halo in
-   light mode) is the one exception — its dark-mode override stays in the
-   brushed-metal block above. */
 
 /* --- Aqua tabs ------------------------------------------------------------ */
 /* Inactive tab: dark graphite gradient instead of light gray-to-white. Active

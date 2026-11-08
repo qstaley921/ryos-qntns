@@ -13,7 +13,6 @@ import { convertImageFileToWallpaperJpeg } from "@/utils/customWallpaperProcessi
 import { useCloudSyncStore } from "@/stores/useCloudSyncStore";
 import { SETTINGS_ANALYTICS, track } from "@/utils/analytics";
 import {
-  buildShuffleDescriptor,
   isDynamicWallpaper,
   resolveWallpaperSourceForSelection,
 } from "@/utils/dynamicWallpaper";
@@ -23,9 +22,10 @@ import {
 } from "@/utils/debug";
 import { setConsoleCaptureEnabled } from "@/utils/consoleCapture";
 import { setNetworkCaptureEnabled } from "@/utils/networkCapture";
+import { QNTNS_WALLPAPER } from "@/utils/wallpapers";
 
 /** Default desktop wallpaper selection. */
-export const DEFAULT_WALLPAPER_PATH = buildShuffleDescriptor("nature");
+export const DEFAULT_WALLPAPER_PATH = QNTNS_WALLPAPER;
 
 /**
  * Display settings store - manages wallpaper, shaders, and screen saver settings.
@@ -399,6 +399,9 @@ export const useDisplaySettingsStore = create<DisplaySettingsState>()(
           // such as "false"/"0" and malformed values hydrate as disabled.
           debugMode: normalizeDebugMode(persisted?.debugMode),
         };
+        // The wallpaper is fixed to QNTNs; whatever a reader saved is ignored.
+        merged.currentWallpaper = QNTNS_WALLPAPER;
+        merged.wallpaperSource = QNTNS_WALLPAPER;
         const cw = merged.currentWallpaper;
         const ws = merged.wallpaperSource;
         // Persisted blob: object URLs are invalid after reload; never hydrate them as the CSS/video src.

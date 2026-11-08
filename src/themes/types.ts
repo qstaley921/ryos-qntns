@@ -1,3 +1,8 @@
+/**
+ * Only "macosx" (Aqua) exists at runtime (CHECKLIST-35 §7). The other three ids
+ * stay in the type until the app files that still compare against them drop
+ * those branches; narrowing it now would break their compile.
+ */
 export type OsThemeId = "system7" | "macosx" | "xp" | "win98";
 
 export type AquaMaterial = "classic" | "glass";

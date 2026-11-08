@@ -2,6 +2,13 @@
 
 /* Default/fallback values */
 :root {
+  /* QNTNs wallpaper (CHECKLIST-35 §35). Colours from the theme's assets/css/tokens.css:8–14.
+     Size is fluid (vw), a type metric and so off the base-4 grid by exemption. */
+  --qntns-wall-bg: #cdbba4;
+  --qntns-wall-ink: #182952;
+  --qntns-wall-size: 16vw;
+  --qntns-wall-place: center;
+  --qntns-wall-pad: 32px;
   --os-font-ui: "Geneva-12", "ArkPixel", "SerenityOS-Emoji", system-ui,
     -apple-system, sans-serif;
   --os-font-mono: "Monaco", "ArkPixel", "SerenityOS-Emoji", monospace;
@@ -51,15 +58,9 @@
   --os-metrics-titlebar-height: 1.5rem;
   --os-metrics-menubar-height: 28px;
   --os-window-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.5);
-  /* Menus (menubar + dropdown); Windows sizes in platform block, Aqua in macosx tokens */
+  /* Menus (menubar + dropdown); Aqua sizes in macosx tokens */
   --os-menu-item-font-size: inherit;
   --os-menu-subtrigger-font-size: inherit;
-}
-
-/* Windows family — values identical for XP + Classic; theme tokens still set colors */
-:root[data-os-platform="windows"] {
-  --os-menu-item-font-size: 11px;
-  --os-menu-subtrigger-font-size: 11px;
 }
 
 /* Selection styling utility — replaces 12+ inline style blocks */
@@ -84,67 +85,6 @@
   --z-submenu: 901;
   --z-spotlight-backdrop: 950;
   --z-spotlight: 951;
-}
-
-/* System 7 Theme */
-:root[data-os-theme="system7"] {
-  --os-font-ui: "ChicagoKare", "ArkPixel", "SerenityOS-Emoji", system-ui,
-    -apple-system, sans-serif;
-  --os-font-mono: "Monaco", "ArkPixel", "SerenityOS-Emoji", monospace;
-  --os-color-window-bg: #ffffff;
-  --os-color-menubar-bg: #ffffff;
-  --os-color-menubar-border: #000000;
-  --os-color-menubar-text: #000000;
-  --os-color-window-border: #000000;
-  --os-color-titlebar-active-bg: #ffffff;
-  --os-color-titlebar-inactive-bg: #ffffff;
-  --os-color-titlebar-text: #000000;
-  --os-color-titlebar-text-inactive: #666666;
-  --os-color-titlebar-pattern: linear-gradient(#000 50%, transparent 0);
-  --os-color-button-face: #ffffff;
-  --os-color-button-highlight: #ffffff;
-  --os-color-button-shadow: #808080;
-  --os-color-button-active-face: #cccccc;
-  --os-color-selection-bg: #000000;
-  --os-color-selection-text: #ffffff;
-  --os-color-text-primary: #000000;
-  --os-color-text-secondary: #666666;
-  --os-color-text-disabled: #999999;
-  --os-color-panel-bg: #e3e3e3;
-  --os-color-separator: #808080;
-  --os-color-input-bg: #ffffff;
-  --os-color-input-border: #000000;
-  --os-color-input-focus-border: #000000;
-  --os-color-input-focus-ring: transparent;
-  --os-color-sidebar-border: #000000;
-  --os-color-sidebar-inset-shadow: none;
-  --os-color-switch-track: #9ca3af;
-  --os-color-switch-track-checked: #000000;
-  --os-metrics-border-width: 2px;
-  --os-metrics-radius: 0px; /* System 7 has square corners */
-  --os-metrics-titlebar-height: 1.5rem;
-  --os-metrics-menubar-height: 30px;
-  --os-window-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.5);
-}
-
-/* Geneva is System 7's antialiased content font; Chicago chrome stays pixel-sharp. */
-:root[data-os-theme="system7"]
-  :where(.font-geneva-12, [data-os-font="geneva"]) {
-  -webkit-font-smoothing: antialiased !important;
-  -moz-osx-font-smoothing: grayscale !important;
-  font-smooth: always !important;
-  text-rendering: auto;
-}
-
-/* Inactive selection palette for background windows (System 7) */
-:root[data-os-theme="system7"] .window:not(.is-foreground) {
-  --os-color-selection-bg: #cfcfcf; /* neutral gray */
-  --os-color-selection-text: #000000;
-}
-
-/* System 7 title bar: grid/back button icon black */
-:root[data-os-theme="system7"] .h-os-titlebar > span.mr-2 > button {
-  color: #000;
 }
 
 /* Mac OS X Theme */
@@ -249,100 +189,4 @@
   --os-font-ui: "LucidaGrande", "Lucida Grande", "Hiragino Sans GB",
     "PingFang SC", "Heiti SC", "Microsoft YaHei", "Noto Sans CJK SC", "SimSun",
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-/* Windows 98 Theme */
-:root[data-os-theme="win98"] {
-  --os-font-ui: "Pixelated MS Sans Serif", "MS Sans Serif", "ArkPixel",
-    "SerenityOS-Emoji", sans-serif;
-  --os-font-mono: Monaco, Consolas, "Courier New", monospace;
-  --font-ms-sans: "Pixelated MS Sans Serif", "MS Sans Serif", "ArkPixel",
-    "SerenityOS-Emoji", system-ui, sans-serif;
-  --os-color-window-bg: #c0c0c0;
-  --os-color-menubar-bg: #c0c0c0;
-  --os-color-menubar-border: #808080;
-  --os-color-menubar-text: #000000;
-  --os-color-window-border: #000000;
-  --os-color-titlebar-active-bg: linear-gradient(to right, #000084, #1084d0);
-  --os-color-titlebar-inactive-bg: linear-gradient(to right, #808080, #c0c0c0);
-  --os-color-titlebar-text: #ffffff;
-  --os-color-titlebar-text-inactive: #e0e0e0;
-  --os-color-button-face: #c0c0c0;
-  --os-color-button-highlight: #ffffff;
-  --os-color-button-shadow: #808080;
-  --os-color-button-active-face: #b0b0b0;
-  --os-color-selection-bg: #000080;
-  --os-color-selection-text: #ffffff;
-  --os-color-text-primary: #000000;
-  --os-color-text-secondary: #333333;
-  --os-color-text-disabled: #7f7f7f;
-  --os-color-panel-bg: #c0c0c0;
-  --os-color-separator: #808080;
-  --os-color-input-bg: #ffffff;
-  --os-color-input-border: #808080;
-  --os-color-input-focus-border: #000080;
-  --os-color-input-focus-ring: transparent;
-  --os-color-sidebar-border: #808080;
-  --os-color-sidebar-inset-shadow: none;
-  --os-color-switch-track: #9ca3af;
-  --os-color-switch-track-checked: #000080;
-  --os-metrics-border-width: 2px;
-  --os-metrics-radius: 0px;
-  --os-metrics-titlebar-height: 1.375rem;
-  --os-metrics-menubar-height: 30px;
-  --os-window-shadow: none;
-}
-
-/* Inactive selection palette for background windows (Windows 98) */
-:root[data-os-theme="win98"] .window:not(.is-foreground) {
-  --os-color-selection-bg: #c0c0c0; /* classic 98 gray */
-  --os-color-selection-text: #000000;
-}
-
-/* Windows XP Theme */
-:root[data-os-theme="xp"] {
-  --os-font-ui: Tahoma, "Pixelated MS Sans Serif", "MS Sans Serif", "ArkPixel",
-    "SerenityOS-Emoji", sans-serif;
-  --os-font-mono: Consolas, Courier New, monospace;
-  --font-ms-sans: "Pixelated MS Sans Serif", "MS Sans Serif", "ArkPixel",
-    "SerenityOS-Emoji", system-ui, sans-serif;
-  --os-color-window-bg: #ece9d8;
-  --os-color-menubar-bg: linear-gradient(to bottom, #245edc, #1941a5);
-  --os-color-menubar-border: #0a246a;
-  --os-color-menubar-text: #ffffff;
-  --os-color-window-border: #0054e3;
-  --os-color-titlebar-active-bg: linear-gradient(to bottom, #0058e6, #1941a5);
-  --os-color-titlebar-inactive-bg: linear-gradient(to bottom, #8b9dc3, #7a8aab);
-  --os-color-titlebar-text: #ffffff;
-  --os-color-titlebar-text-inactive: #d5ddf3;
-  --os-color-button-face: #ece9d8;
-  --os-color-button-highlight: #ffffff;
-  --os-color-button-shadow: #aca899;
-  --os-color-button-active-face: #d8d5c8;
-  --os-color-selection-bg: #316ac5;
-  --os-color-selection-text: #ffffff;
-  --os-color-text-primary: #000000;
-  --os-color-text-secondary: #5a5a5a;
-  --os-color-text-disabled: #a0a0a0;
-  --os-color-panel-bg: #ece9d8;
-  --os-color-separator: #aca899;
-  --os-color-input-bg: #ffffff;
-  --os-color-input-border: #7f9db9;
-  --os-color-input-focus-border: #316ac5;
-  --os-color-input-focus-ring: transparent;
-  --os-color-sidebar-border: #aca899;
-  --os-color-sidebar-inset-shadow: none;
-  --os-color-switch-track: #9ca3af;
-  --os-color-switch-track-checked: #316ac5;
-  --os-metrics-border-width: 3px;
-  --os-metrics-radius: 0.5rem;
-  --os-metrics-titlebar-height: 1.875rem;
-  --os-metrics-menubar-height: 30px;
-  --os-window-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-}
-
-/* Inactive selection palette for background windows (Windows XP) */
-:root[data-os-theme="xp"] .window:not(.is-foreground) {
-  --os-color-selection-bg: #ece9da; /* soft gray */
-  --os-color-selection-text: #000000;
 }

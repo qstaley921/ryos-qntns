@@ -398,7 +398,6 @@ const TOOL_SPECIFIC_ANIMATIONS: Record<string, readonly string[]> = {
   settings: ["GetWizardy", "DoMagic1", "DoMagic2"],
   generateHtml: ["DoMagic1", "GetWizardy"],
   aquarium: ["DoMagic1", "GetArtsy"],
-  infiniteMacControl: ["GetTechy", "DoMagic1"],
   cursorCloudAgent: ["GetTechy", "Writing"],
 };
 

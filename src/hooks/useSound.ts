@@ -19,6 +19,9 @@ import { createClientLogger } from "@/utils/logger";
 
 const log = createClientLogger("Sound");
 
+// No sound files ship (CHECKLIST-35 §5, Q16): never request one. Flip when files return.
+const SOUND_FILES_SHIP: boolean = false;
+
 // Mobile detection for performance tuning
 const isMobileDevice =
   typeof navigator !== "undefined" &&
@@ -101,9 +104,8 @@ const preloadSound = async (soundPath: string): Promise<AudioBuffer> => {
 };
 
 // Preload multiple sounds at once
-export const preloadSounds = async (sounds: string[]) => {
-  await Promise.all(sounds.map(preloadSound));
-};
+// No sound files ship (CHECKLIST-35 §5, Q16): preloading is a no-op.
+export const preloadSounds = async (_sounds: string[]) => {};
 
 export function useSound(soundPath: string, volume: number = 0.3) {
   const gainNodeRef = useRef<GainNode | null>(null);
@@ -151,6 +153,7 @@ export function useSound(soundPath: string, volume: number = 0.3) {
   // Internal function to create and play a source
   const createAndPlaySource = useCallback(async (loop: boolean = false) => {
     // Check if UI sounds are enabled via audio settings store
+    if (!SOUND_FILES_SHIP) return null;
     if (!useAudioSettingsStore.getState().uiSoundsEnabled) {
       return null;
     }

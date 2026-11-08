@@ -16,7 +16,6 @@ import {
   handleSettings,
   handleMediaControl,
   handleStickiesControl,
-  handleInfiniteMacControl,
   handleCalendarControl,
   handleContactsControl,
   type ToolContext,
@@ -26,7 +25,6 @@ import {
   type SettingsInput,
   type MediaControlInput,
   type StickiesControlInput,
-  type InfiniteMacControlInput,
   type CalendarControlInput,
   type ContactsControlInput,
 } from "./index";
@@ -218,15 +216,6 @@ export async function dispatchToolCall(
       case "stickiesControl": {
         handleStickiesControl(
           toolCall.input as StickiesControlInput,
-          toolCall.toolCallId,
-          toolContext
-        );
-        result = "";
-        break;
-      }
-      case "infiniteMacControl": {
-        await handleInfiniteMacControl(
-          toolCall.input as InfiniteMacControlInput,
           toolCall.toolCallId,
           toolContext
         );

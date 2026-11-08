@@ -204,3 +204,12 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* QNTNs display face, copied from the theme (assets/css/type.css:110). */
+@font-face {
+  font-family: "Gill Sans Ultra";
+  src: url("/fonts/gill_sans-ultrabold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}

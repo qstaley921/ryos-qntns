@@ -223,32 +223,7 @@ export function getToolInvocationCallMessage(
         }
         break;
       }
-      case "infiniteMacControl": {
-        const action = input?.action;
-        const system = typeof input?.system === "string" ? input.system : "";
-        if (action === "launchSystem") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.startingSystem", { system: system || "system" });
-        } else if (action === "getStatus") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.gettingStatus");
-        } else if (action === "readScreen") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.capturingScreen");
-        } else if (action === "mouseMove") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.movingMouse");
-        } else if (action === "mouseClick") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.clicking");
-        } else if (action === "doubleClick") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.doubleClicking");
-        } else if (action === "keyPress") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.pressingKey");
-        } else if (action === "pause") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.pausing");
-        } else if (action === "unpause") {
-          displayCallMessage = t("apps.chats.toolCalls.infiniteMac.resuming");
-        } else {
-          displayCallMessage = t("apps.chats.toolCalls.running", { toolName: "Infinite Mac" });
-        }
-        break;
-      }
+
       default:
         displayCallMessage = t("apps.chats.toolCalls.running", { toolName: formatToolName(toolName) });
     }

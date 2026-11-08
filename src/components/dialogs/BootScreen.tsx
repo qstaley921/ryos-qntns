@@ -9,7 +9,6 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useSound, Sounds } from "@/hooks/useSound";
 import { useTranslation } from "react-i18next";
-import { useThemeFlags } from "@/hooks/useThemeFlags";
 
 interface BootScreenProps {
   isOpen: boolean;
@@ -49,13 +48,6 @@ export function BootScreen({
   };
   const [{ progress }, dispatch] = useReducer(reducer, initialState);
   const { t } = useTranslation();
-  const {
-    currentTheme,
-    isWindowsTheme,
-    isMacOSTheme: isMacOSX,
-    isWinXp,
-    isWin98,
-  } = useThemeFlags();
   const localizedTitle = title ?? t("common.system.systemRestoring");
   const dialogDescription = localizedTitle;
   const onBootCompleteRef = useRef(onBootComplete);
@@ -113,82 +105,7 @@ export function BootScreen({
 
   if (!isOpen) return null;
 
-  // Get splash image based on theme
-  const getSplashImage = () => {
-    switch (currentTheme) {
-      case "xp":
-        return "/assets/splash/xp-boot.gif";
-      case "win98":
-        return "/assets/splash/win98.gif";
-      case "system7":
-        return "/assets/splash/hello.svg";
-      default:
-        return "/assets/splash/macos.svg";
-    }
-  };
-
-  // Windows themes use full boot screen images
-  if (isWindowsTheme) {
-    return (
-      <Dialog open={isOpen} onOpenChange={() => {}} modal>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay
-            className="fixed inset-0 z-[75] bg-black data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-            style={{ 
-              position: "fixed", 
-              top: 0, 
-              left: 0, 
-              right: 0, 
-              bottom: 0,
-              backgroundColor: "#000000"
-            }}
-          />
-          <DialogPrimitive.Content
-            className="fixed inset-0 z-[80] bg-black p-0 size-full max-w-none border-none shadow-none outline-none rounded-none m-0"
-            style={{ 
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "#000000",
-              zIndex: 80,
-              margin: 0,
-              padding: 0,
-              border: "none",
-              boxShadow: "none",
-              borderRadius: 0
-            }}
-          >
-            <VisuallyHidden>
-              <DialogTitle>{localizedTitle}</DialogTitle>
-              <DialogDescription>{dialogDescription}</DialogDescription>
-            </VisuallyHidden>
-            <div 
-              className="flex flex-col items-center justify-center size-full bg-black"
-              onClick={debugMode ? handleDone : undefined}
-              style={{
-                width: "100%",
-                height: "100%",
-                backgroundColor: "#000000",
-                cursor: debugMode ? "pointer" : undefined
-              }}
-            >
-              <img
-                src={getSplashImage()}
-                alt={isWinXp ? "Windows XP" : "Windows 98"}
-                className={isWin98 ? "size-full object-fill" : "max-w-full max-h-full object-contain"}
-                style={{ display: "block" }}
-              />
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </Dialog>
-    );
-  }
-
-  // macOS X boot screen - classic Aqua style
-  if (isMacOSX) {
+  // Aqua boot screen (the only theme, CHECKLIST-35 §7)
     return (
       <Dialog open={isOpen} onOpenChange={() => {}} modal>
         <DialogPrimitive.Portal>
@@ -265,52 +182,4 @@ export function BootScreen({
         </DialogPrimitive.Portal>
       </Dialog>
     );
-  }
-
-  // System 7 boot screen
-  return (
-    <Dialog open={isOpen} onOpenChange={() => {}} modal>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[75] bg-neutral-500/90 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-        <DialogContent
-          className="bg-neutral-100 p-0 w-[calc(100%-24px)] border-none shadow-xl max-w-lg z-[80] outline-none rounded-none"
-          style={{ position: "fixed", zIndex: 80 }}
-        >
-          <VisuallyHidden>
-            <DialogTitle>{localizedTitle}</DialogTitle>
-            <DialogDescription>{dialogDescription}</DialogDescription>
-          </VisuallyHidden>
-          <div 
-            className="flex flex-col items-center justify-center p-8 min-h-[300px] w-full"
-            onClick={debugMode ? handleDone : undefined}
-            style={debugMode ? { cursor: "pointer" } : undefined}
-          >
-            <div className="flex flex-col items-center justify-center border border-neutral-200 bg-white p-8 w-full pb-4">
-              <img
-                src={getSplashImage()}
-                alt="Hello"
-                className="w-64 h-32"
-                style={{ filter: "invert(1)" }}
-              />
-              <h1 className="text-[36px] font-mondwest mt-4 mb-0">
-                <span className="text-blue-500">ry</span>OS
-              </h1>
-            </div>
-            <h2 className="text-[16px] font-chicago mt-4 mb-1">
-              {localizedTitle}
-            </h2>
-            <div className="w-[50%] h-3 border-1 border-neutral-500 rounded-sm overflow-hidden">
-              <div
-                className="h-full bg-neutral-900 transition-all duration-200"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        </DialogContent>
-      </DialogPrimitive.Portal>
-    </Dialog>
-  );
 }

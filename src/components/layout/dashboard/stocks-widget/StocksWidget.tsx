@@ -5,7 +5,6 @@ import { STOCKS_FONT } from "./constants";
 import type { StocksWidgetProps } from "./types";
 import { useStocksWidgetData } from "./useStocksWidgetData";
 import { StocksWidgetMacView } from "./StocksWidgetMacView";
-import { StocksWidgetXpView } from "./StocksWidgetXpView";
 
 export function StocksWidget({ widgetId }: StocksWidgetProps) {
   const { t } = useTranslation();
@@ -81,10 +80,6 @@ export function StocksWidget({ widgetId }: StocksWidgetProps) {
     selectedRange,
     onSelectRange: setSelectedRange,
   };
-
-  if (isWindowsTheme) {
-    return <StocksWidgetXpView {...viewProps} />;
-  }
 
   return <StocksWidgetMacView {...viewProps} />;
 }

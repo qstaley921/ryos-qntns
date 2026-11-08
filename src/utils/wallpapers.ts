@@ -2,6 +2,18 @@
 // Similar approach to icons.ts
 import { abortableFetch } from "./abortableFetch";
 
+/** QNTNs wordmark on beige, drawn in CSS by DesktopDynamicWallpaper (CHECKLIST-35 §35). */
+export const QNTNS_WALLPAPER = "dynamic://qntns";
+
+/** ryOS's built-in wallpapers are off: the picker, shuffle and video backgrounds all read this empty list. */
+const EMPTY_MANIFEST: WallpaperManifest = {
+  version: 0,
+  generatedAt: "",
+  tiles: [],
+  photos: {},
+  videos: [],
+};
+
 export interface WallpaperManifest {
   version: number;
   generatedAt: string;
@@ -33,6 +45,11 @@ let placeholdersPromise: Promise<Record<string, WallpaperPlaceholder>> | null =
   null;
 
 export async function loadWallpaperManifest(): Promise<WallpaperManifest> {
+  return EMPTY_MANIFEST;
+}
+
+// Upstream loader, unused until built-in wallpapers come back.
+export async function loadRyosWallpaperManifest(): Promise<WallpaperManifest> {
   if (manifestCache) return manifestCache;
   if (!manifestPromise) {
     // Bypass HTTP caches to ensure we always see the newest manifest.

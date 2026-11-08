@@ -32,6 +32,7 @@ import {
 
 migrateLocalStorageKey(LEGACY_STORAGE_KEYS.theme, STORAGE_KEYS.theme);
 
+/** Aqua is the only theme (CHECKLIST-35 §7): any old saved id ("system7", "xp", "win98") maps to it. */
 function sanitizeStoredTheme(id: string | null | undefined): OsThemeId {
   if (id && id in themes) {
     return id as OsThemeId;
@@ -59,25 +60,6 @@ function coercePreference(value: unknown): DarkModePreference | undefined {
   return undefined;
 }
 
-function safeReadDarkModeMap(): DarkModeMap {
-  try {
-    const raw = localStorage.getItem(DARK_MODE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return {};
-    const out: DarkModeMap = {};
-    for (const id of Object.keys(themes) as OsThemeId[]) {
-      const coerced = coercePreference(
-        (parsed as Record<string, unknown>)[id]
-      );
-      if (coerced) out[id] = coerced;
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
 function writeDarkModeMap(map: DarkModeMap) {
   try {
     localStorage.setItem(DARK_MODE_KEY, JSON.stringify(map));
@@ -87,31 +69,10 @@ function writeDarkModeMap(map: DarkModeMap) {
 }
 
 /**
- * Per-theme accent-color preference. Keyed by theme id (only Aqua + System 7
- * advertise an accent picker today). Absent / `"default"` means "use the
+ * Per-theme accent-color preference. Keyed by theme id (only Aqua remains). Absent / `"default"` means "use the
  * theme's classic selection color".
  */
 type AccentMap = Partial<Record<OsThemeId, AccentId>>;
-
-function safeReadAccentMap(): AccentMap {
-  try {
-    const raw = localStorage.getItem(ACCENT_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return {};
-    const out: AccentMap = {};
-    for (const id of Object.keys(themes) as OsThemeId[]) {
-      const chrome = getAccentChrome(id);
-      const value = (parsed as Record<string, unknown>)[id];
-      if (chrome && typeof value === "string" && isValidAccent(chrome, value)) {
-        out[id] = value;
-      }
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
 
 function writeAccentMap(map: AccentMap) {
   try {
@@ -225,46 +186,6 @@ interface ThemeState {
   hydrate: () => void;
 }
 
-// Dynamically manage loading/unloading of legacy Windows CSS (xp.css variants)
-let legacyCssLink: HTMLLinkElement | null = null;
-
-async function ensureLegacyCss(theme: OsThemeId) {
-  // Only xp and win98 use xp.css
-  if (theme !== "xp" && theme !== "win98") {
-    if (legacyCssLink) {
-      legacyCssLink.remove();
-      legacyCssLink = null;
-    }
-    return;
-  }
-
-  const desiredVariant = theme === "xp" ? "XP" : "98";
-  const currentVariant = legacyCssLink?.dataset.variant;
-  if (currentVariant === desiredVariant) return; // already loaded
-
-  try {
-    // Use our forked CSS files from public directory
-    const href = theme === "xp" ? "/css/xp-custom.css" : "/css/98-custom.css";
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    link.dataset.role = "legacy-win-css";
-    link.dataset.variant = desiredVariant;
-
-    // Replace existing link if present
-    if (legacyCssLink) legacyCssLink.replaceWith(link);
-    else document.head.appendChild(link);
-    legacyCssLink = link;
-  } catch (e) {
-    console.error(
-      "Failed to load legacy Windows CSS variant",
-      desiredVariant,
-      e
-    );
-  }
-}
-
 // Storage keys
 const THEME_KEY = STORAGE_KEYS.theme;
 /**
@@ -301,14 +222,6 @@ const SYSTEM_FONT_KEY = "ryos:theme:system-font";
  */
 const WALLPAPER_ACCENT_COLOR_KEY = "ryos:theme:accent:wallpaper-color";
 
-function safeReadWallpaperAccentColor(): string | null {
-  try {
-    return normalizeAccentHex(localStorage.getItem(WALLPAPER_ACCENT_COLOR_KEY));
-  } catch {
-    return null;
-  }
-}
-
 function writeWallpaperAccentColor(hex: string | null) {
   try {
     if (hex) localStorage.setItem(WALLPAPER_ACCENT_COLOR_KEY, hex);
@@ -340,6 +253,26 @@ function resolvePreference(map: DarkModeMap, theme: OsThemeId): DarkModePreferen
  * `"default"` accent we remove the inline vars entirely, restoring the
  * stylesheet's classic look (including dark-mode + brushed-metal variants).
  */
+/**
+ * §36: what Aqua's "System" (default) accent resolves to — stock #2765ca mixed
+ * toward the QNTNs ink #182952 in RGB. Built by the same generator as the
+ * picker accents, so the gloss/glass gradients are kept. `null` = stock stylesheet.
+ */
+export const AQUA_BLUE_ALTS = {
+  stock: null,
+  nudge15: "#255cb8", // 15% toward #182952
+  nudge30: "#2353a6", // 30%
+  nudge45: "#204a94", // 45%
+} as const;
+let aquaDefaultBlue: string | null = AQUA_BLUE_ALTS.nudge30;
+
+/** Storybook alts: swap the Aqua default blue and repaint. */
+export function setAquaDefaultBlue(hex: string | null) {
+  aquaDefaultBlue = hex;
+  const s = useThemeStore.getState();
+  applyRootAccent(s.current, s.accentByTheme, s.isDark, s.wallpaperAccentColor);
+}
+
 function applyRootAccent(
   theme: OsThemeId,
   accentMap: AccentMap,
@@ -349,9 +282,11 @@ function applyRootAccent(
   const root = document.documentElement;
   const chrome = getAccentChrome(theme);
   const accent = chrome ? accentMap[theme] ?? DEFAULT_ACCENT : "default";
-  const vars = chrome
-    ? getAccentCssVars(chrome, accent, isDark, wallpaperColor)
-    : {};
+  const vars = !chrome
+    ? {}
+    : chrome === "aqua" && accent === "default" && aquaDefaultBlue
+      ? getAccentCssVars(chrome, "wallpaper", isDark, aquaDefaultBlue)
+      : getAccentCssVars(chrome, accent, isDark, wallpaperColor);
 
   for (const name of ACCENT_CSS_VAR_NAMES) {
     const value = vars[name];
@@ -484,7 +419,6 @@ const createThemeStore = () => create<ThemeState>((set) => ({
       state.aquaMaterial,
       state.systemFont
     );
-    ensureLegacyCss(safe);
     // Note: No need to invalidate icon cache on theme switch.
     // Theme switching changes the icon PATH (e.g., /icons/default/ → /icons/macosx/),
     // and the service worker caches each path separately.
@@ -617,12 +551,10 @@ const createThemeStore = () => create<ThemeState>((set) => ({
     }
   },
   hydrate: () => {
-    const saved = localStorage.getItem(THEME_KEY);
-    const theme = sanitizeStoredTheme(saved);
-    if (saved && theme !== saved) {
-      localStorage.setItem(THEME_KEY, theme);
-    }
-    const map = safeReadDarkModeMap();
+    // QNTNs look is fixed: Aqua, light, "System" accent (the §36 blue). Anything saved is ignored.
+    const theme = DEFAULT_OS_THEME_ID;
+    localStorage.setItem(THEME_KEY, theme);
+    const map: DarkModeMap = { [theme]: "light" };
     // If the persisted map upgraded from booleans, rewrite so we don't keep
     // re-coercing on every page load (and so sync payloads carry strings).
     try {
@@ -637,8 +569,8 @@ const createThemeStore = () => create<ThemeState>((set) => ({
     } catch {
       // ignore
     }
-    const accentMap = safeReadAccentMap();
-    const wallpaperAccentColor = safeReadWallpaperAccentColor();
+    const accentMap: AccentMap = { [theme]: "default" };
+    const wallpaperAccentColor = null;
     const aquaMaterial = safeReadAquaMaterial();
     const systemFont = safeReadSystemFont();
     const isDark = effectiveDarkFor(theme, map);
@@ -659,7 +591,6 @@ const createThemeStore = () => create<ThemeState>((set) => ({
       aquaMaterial,
       systemFont
     );
-    ensureLegacyCss(theme);
     ensureSystemDarkListener();
   },
 }));

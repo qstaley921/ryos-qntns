@@ -483,9 +483,6 @@ export function WindowFrame({
                   onMouseLeave={noTitlebarMouseHandlers.onMouseLeave}
                 >
                   <WindowFrameTitleBar
-                    isWindowsTheme={isWindowsTheme}
-                    isMacOSTheme={isMacOSTheme}
-                    isWinXp={isWinXp}
                     isForeground={isForeground}
                     isNoTitlebar={isNoTitlebar}
                     disableTitlebarAutoHide={effectiveDisableTitlebarAutoHide}
@@ -495,9 +492,7 @@ export function WindowFrame({
                     }
                     isBrushedMetal={isBrushedMetal}
                     isGlassSurface={isGlassRegular}
-                    isTransparent={isTransparent}
                     showResizers={showResizers}
-                    appId={appId}
                     title={title}
                     isPhone={isPhone}
                     titleBarRightContent={titleBarRightContent}

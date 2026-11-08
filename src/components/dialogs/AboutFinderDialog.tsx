@@ -264,15 +264,7 @@ export function AboutFinderDialog({
                 )}
               >
                 ryOS
-                {currentTheme === "system7"
-                  ? " 7"
-                  : currentTheme === "macosx"
-                  ? " X"
-                  : currentTheme === "win98"
-                  ? " 98"
-                  : currentTheme === "xp"
-                  ? " XP"
-                  : ""}
+                {" X"}
               </div>
               <div
                 className={cn(

@@ -55,7 +55,7 @@ const log = createClientLogger("Prefetch");
 // Storage key for manifest timestamp (for cache invalidation)
 const MANIFEST_KEY = 'ryos:manifest-timestamp';
 const THEME_WARMUP_KEY_PREFIX = "ryos:theme-assets";
-const OS_THEME_IDS = ["system7", "macosx", "xp", "win98"] as const satisfies readonly OsThemeId[];
+const OS_THEME_IDS = ["macosx"] as const satisfies readonly OsThemeId[]; // Aqua only (CHECKLIST-35 §7)
 const warmedThemeVersions = new Set<string>();
 
 // Periodic update check interval (5 minutes)

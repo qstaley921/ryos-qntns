@@ -1231,8 +1231,7 @@ export function DebugLogOverlay() {
                   "h-5 rounded px-2.5 py-0 font-os-ui text-[10px] font-medium shadow-none transition-none",
                   "border border-transparent",
                   "data-[state=active]:bg-os-selection-bg data-[state=active]:text-os-selection-text data-[state=active]:shadow-none",
-                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0",
-                  "os-theme-system7:rounded-none os-windows:rounded-none"
+                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0"
                 )}
               >
                 {t("debug.tabs.logs")}
@@ -1243,8 +1242,7 @@ export function DebugLogOverlay() {
                   "h-5 rounded px-2.5 py-0 font-os-ui text-[10px] font-medium shadow-none transition-none",
                   "border border-transparent",
                   "data-[state=active]:bg-os-selection-bg data-[state=active]:text-os-selection-text data-[state=active]:shadow-none",
-                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0",
-                  "os-theme-system7:rounded-none os-windows:rounded-none"
+                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0"
                 )}
               >
                 {t("debug.tabs.live")}
@@ -1255,8 +1253,7 @@ export function DebugLogOverlay() {
                   "h-5 rounded px-2.5 py-0 font-os-ui text-[10px] font-medium shadow-none transition-none",
                   "border border-transparent",
                   "data-[state=active]:bg-os-selection-bg data-[state=active]:text-os-selection-text data-[state=active]:shadow-none",
-                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0",
-                  "os-theme-system7:rounded-none os-windows:rounded-none"
+                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0"
                 )}
               >
                 {t("debug.tabs.network")}
@@ -1267,8 +1264,7 @@ export function DebugLogOverlay() {
                   "h-5 rounded px-2.5 py-0 font-os-ui text-[10px] font-medium shadow-none transition-none",
                   "border border-transparent",
                   "data-[state=active]:bg-os-selection-bg data-[state=active]:text-os-selection-text data-[state=active]:shadow-none",
-                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0",
-                  "os-theme-system7:rounded-none os-windows:rounded-none"
+                  "focus-visible:ring-1 focus-visible:ring-os-selection-bg focus-visible:ring-offset-0"
                 )}
               >
                 {t("debug.tabs.idb")}
