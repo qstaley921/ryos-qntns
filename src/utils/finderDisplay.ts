@@ -117,13 +117,6 @@ export function getFinderDisplayName(file: FinderDisplayItem): string {
     return file.name.replace(/\.[^/.]+$/, "");
   }
 
-  if (
-    file.path.startsWith("/Applets/") &&
-    file.name.toLowerCase().endsWith(".app")
-  ) {
-    return file.name.slice(0, -4);
-  }
-
   return file.name;
 }
 

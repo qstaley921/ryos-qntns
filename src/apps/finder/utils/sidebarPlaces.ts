@@ -12,7 +12,7 @@ export const SIDEBAR_HIDDEN_FOLDERS = new Set([
 ]);
 
 /** Pinned at the top of Finder places (sidebar + Go menu), in this order. */
-export const SIDEBAR_PINNED_FOLDERS = ["/Applications", "/Applets"];
+export const SIDEBAR_PINNED_FOLDERS = ["/Applications"];
 
 export const SIDEBAR_LAST_FOLDER = "/Desktop";
 
@@ -28,7 +28,7 @@ function placeSortName(folder: { name: string }): string {
 
 /**
  * Order root folders for Finder places (sidebar + Go menu):
- * Applications and Applets pinned first, then alphabetical, Desktop last.
+ * Applications pinned first, then alphabetical, Desktop last.
  */
 export function orderFinderRootFolders<T extends { path: string; name: string }>(
   folders: T[]

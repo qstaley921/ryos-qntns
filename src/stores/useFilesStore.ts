@@ -117,9 +117,7 @@ interface FilesStoreState {
 
 // In-memory cache for JSON data to avoid repeated fetches
 let cachedFileSystemData: FileSystemData | null = null;
-let cachedAppletsData: { applets: FileSystemItemData[] } | null = null;
 let fileSystemDataPromise: Promise<FileSystemData> | null = null;
-let appletsDataPromise: Promise<{ applets: FileSystemItemData[] }> | null = null;
 let defaultLibraryLoadGeneration = 0;
 
 /**
@@ -130,9 +128,7 @@ let defaultLibraryLoadGeneration = 0;
 export function resetDefaultLibraryCacheForTests(): void {
   defaultLibraryLoadGeneration += 1;
   cachedFileSystemData = null;
-  cachedAppletsData = null;
   fileSystemDataPromise = null;
-  appletsDataPromise = null;
 }
 
 // Preload status tracking
@@ -207,6 +203,7 @@ async function loadDefaultFiles(): Promise<FileSystemData> {
       if (!isFileSystemData(data)) {
         throw new Error("filesystem.json has an unexpected shape");
       }
+      data.directories = data.directories.filter((d) => d.path !== "/Applets");
       if (generation !== defaultLibraryLoadGeneration) return data;
       cachedFileSystemData = data;
       return cachedFileSystemData;
@@ -224,47 +221,11 @@ async function loadDefaultFiles(): Promise<FileSystemData> {
   return load;
 }
 
-// Function to load default applets from JSON (with caching)
+// Default applets are no longer shipped (CHECKLIST-35 §74): no fetch, always empty.
 async function loadDefaultApplets(): Promise<{
   applets: FileSystemItemData[];
 }> {
-  // Return cached data immediately if available
-  if (cachedAppletsData) {
-    return cachedAppletsData;
-  }
-  
-  // Return existing promise if fetch is in progress (deduplication)
-  if (appletsDataPromise) {
-    return appletsDataPromise;
-  }
-  
-  // Start new fetch
-  const generation = defaultLibraryLoadGeneration;
-  // `const` is illegal: the callback reads `load` while the binding initializes.
-  let load!: Promise<{ applets: FileSystemItemData[] }>;
-  load = (async () => { // eslint-disable-line prefer-const
-    try {
-      const res = await abortableFetch("/data/applets.json", {
-        timeout: 15000,
-        retry: { maxAttempts: 2, initialDelayMs: 500 },
-      });
-      const data = await res.json();
-      const applets = { applets: data.applets || [] };
-      if (generation !== defaultLibraryLoadGeneration) return applets;
-      cachedAppletsData = applets;
-      return cachedAppletsData;
-    } catch (err) {
-      console.error("Failed to load applets.json", err);
-      return { applets: [] };
-    } finally {
-      if (generation === defaultLibraryLoadGeneration && appletsDataPromise === load) {
-        appletsDataPromise = null;
-      }
-    }
-  })();
-  appletsDataPromise = load;
-
-  return load;
+  return { applets: [] };
 }
 
 // Helper function to get parent path
@@ -766,7 +727,7 @@ async function saveDefaultContents(
 // Function to generate an empty initial state (just for typing)
 const getEmptyFileSystemState = (): Record<string, FileSystemItem> => ({});
 
-export const FILES_STORE_VERSION = 15; // Drop the default Meditations EPUB
+export const FILES_STORE_VERSION = 16; // Drop /Applets (CHECKLIST-35 §74)
 export const FILES_STORE_PERSIST_KEY = "ryos:files";
 
 type FilesPersistedState = Pick<FilesStoreState, "items" | "libraryState">;
@@ -935,6 +896,18 @@ function migrateV15DropMeditationsBook(
   if (!items[DEFAULT_MEDITATIONS_BOOK_PATH]) return items;
   const { [DEFAULT_MEDITATIONS_BOOK_PATH]: _dropped, ...rest } = items;
   return rest;
+}
+
+/** v16: Finder shows no Applets (CHECKLIST-35 §74); drop a saved /Applets folder and its contents. */
+function migrateV16DropApplets(
+  state: FilesPersistedState
+): FilesPersistedState {
+  const items = Object.fromEntries(
+    Object.entries(state.items).filter(
+      ([path]) => path !== "/Applets" && !path.startsWith("/Applets/")
+    )
+  );
+  return { ...state, items };
 }
 
 const initialFilesData: FilesStoreState = {
@@ -1860,10 +1833,8 @@ export const useFilesStore = create<FilesStoreState>()(
         items: state.items, // Persist the entire file structure
         libraryState: state.libraryState,
       }),
-      migrate: (
-        persistedState: unknown,
-        version: number
-      ): FilesPersistedState => {
+      migrate: (persistedState: unknown, version: number) =>
+        migrateV16DropApplets((() => {
         if (version < 5) {
           const oldState = persistedState as {
             items: Record<string, FileSystemItem>;
@@ -2037,7 +2008,7 @@ export const useFilesStore = create<FilesStoreState>()(
         }
 
         return persistedState as FilesPersistedState;
-      },
+      })()),
       onRehydrateStorage: () => {
         return (state, error) => {
           if (error) {

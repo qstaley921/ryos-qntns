@@ -73,7 +73,6 @@ export const useFinderStore = create<FinderStoreState>()(
         if (path.startsWith("/Images")) return "large";
         if (path.startsWith("/Videos")) return "large";
         if (path.startsWith("/Applications")) return "large";
-        if (path.startsWith("/Applets")) return "large";
         if (path.startsWith("/Trash")) return "large";
         if (path.startsWith("/Documents")) return "list";
         if (path.startsWith("/Music")) return "large";
