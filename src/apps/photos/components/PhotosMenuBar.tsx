@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { AppMenuBarMenus, type MenuDescriptor } from "@/components/shared/menubar/AppMenuBarMenus";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
+import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
 
 // File: Order Postcard, Play Slideshow, Close. View: Library, Previous/Next Photo, Back to Album.
 // An action the window can't do now is passed undefined and shows disabled.
@@ -40,6 +41,7 @@ export function PhotosMenuBar({
       items: [
         { type: "action", label: "Order Postcard", onClick: onOrderPostcard ?? (() => {}), disabled: !onOrderPostcard },
         { type: "action", label: playLabel, onClick: onPlay ?? (() => {}), disabled: !onPlay },
+        ...fileSubmenus({ t, onShareApp: () => setIsShareDialogOpen(true) }),
         { type: "separator" },
         { type: "action", label: t("common.menu.close"), onClick: onClose, shortcutId: "close" },
       ],
