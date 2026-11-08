@@ -137,10 +137,11 @@ export function WindowFrameTitleBar({
             }
           }}
         >
-          {/* Traffic Light Buttons. §65: gap 8px → 12px (gap-3); 16px buttons
-              fit the 24px (h-6) bar with 4px above and below, so it keeps its height. */}
+          {/* Traffic Light Buttons. §68a: gap 8px (gap-2), so the 24px hit areas
+              (-inset-1) touch edge to edge. §65: 16px buttons fit the 24px (h-6)
+              bar with 4px above and below, so it keeps its height. */}
           <div
-            className="group/traffic flex items-center gap-3 ml-1.5 relative"
+            className="group/traffic flex items-center gap-2 ml-1.5 relative"
             data-titlebar-controls
           >
             <TrafficLightButton
