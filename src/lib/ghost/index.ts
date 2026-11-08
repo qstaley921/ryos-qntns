@@ -70,7 +70,14 @@ function baked(): GhostList | null {
   try {
     const el = document.getElementById("ryos-ghost");
     if (!el?.textContent) return null;
-    const j = JSON.parse(el.textContent);
+    const j = JSON.parse(el.textContent, (_k, v) => {
+      if (typeof v !== "string") return v;
+      try {
+        return decodeURIComponent(v);
+      } catch {
+        return v;
+      }
+    });
     return {
       docs: [
         ...(j.posts ?? []).map((d: GhostDoc) => ({ ...d, type: "post" as const })),
