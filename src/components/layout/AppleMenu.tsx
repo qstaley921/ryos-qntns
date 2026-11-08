@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   MenubarMenu,
@@ -24,6 +24,7 @@ import { getDesktopCapabilities } from "@/utils/platform";
 import { cn } from "@/lib/utils";
 import { ThemedIcon } from "@/components/shared/ThemedIcon";
 import { getTranslatedAppName } from "@/utils/i18n";
+import { listDocs, type GhostDoc } from "@/lib/ghost";
 
 // Helper to check if an icon is an emoji
 const isEmojiIcon = (icon?: string): boolean => {
@@ -74,6 +75,29 @@ export function AppleMenu() {
   const [aboutFinderOpen, setAboutFinderOpen] = useState(false);
   const [aboutQntnsOpen, setAboutQntnsOpen] = useState(false);
   const launchApp = useLaunchApp();
+  // Site footer pages (footer-bar partial: pages, minus #hidden and "history"), newest first.
+  const [sitePages, setSitePages] = useState<GhostDoc[]>([]);
+  useEffect(() => {
+    let live = true;
+    listDocs()
+      .then((l) => {
+        if (!live) return;
+        setSitePages(
+          l.docs
+            .filter(
+              (d) =>
+                d.type === "page" &&
+                d.slug !== "history" &&
+                !d.tags.some((t) => t.slug === "hash-hidden")
+            )
+            .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
+        );
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const { isMacOSTheme } = useThemeFlags();
   const { isFullscreen, supported: fullscreenSupported, toggle: toggleFullscreen } =
     useRyosFullscreen();
@@ -183,6 +207,18 @@ export function AppleMenu() {
           >
             About QNTNs
           </MenubarItem>
+
+          {sitePages.map((d) => (
+            <MenubarItem
+              key={d.id}
+              onClick={() =>
+                launchApp("textedit" as AppId, { initialData: { ghost: { id: d.id, type: d.type } } })
+              }
+              className="text-md h-6 px-3"
+            >
+              {d.title}
+            </MenubarItem>
+          ))}
 
           {/* Native desktop shell auto-update (Electron). Web has no shell to update. */}
           {canSelfUpdate && (
