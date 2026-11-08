@@ -65,6 +65,8 @@ export function WindowFrameResizeHandles({
           showResizers && "bg-red-500/50",
           resizeType?.includes("s")
             ? "bottom-[-100px] h-[200px]"
+            : isMacOSTheme
+            ? "bottom-0 h-4" // §66: 8px outside + the 8px bottom bar WindowFrame adds; stops at the content box
             : isMobile
             ? "bottom-0 h-6"
             : "bottom-1 h-2"
@@ -87,7 +89,7 @@ export function WindowFrameResizeHandles({
             ? "left-[-100px] w-[200px]"
             : "left-1 w-2"
         )}
-        style={{ bottom: resizeType?.includes("s") ? "32px" : "24px" }}
+        style={{ bottom: resizeType?.includes("s") ? "32px" : isMacOSTheme ? "16px" : "24px" }}
         onMouseDown={(e) =>
           handleResizeStartWithForeground(e, "w" as ResizeType)
         }
@@ -103,9 +105,11 @@ export function WindowFrameResizeHandles({
           showResizers && "bg-red-500/50",
           resizeType?.includes("e")
             ? "right-[-100px] w-[200px]"
+            : isMacOSTheme
+            ? "right-0 w-2" // §66: wholly outside the window, off the vertical scroll bar
             : "right-1 w-2"
         )}
-        style={{ bottom: resizeType?.includes("s") ? "32px" : "24px" }}
+        style={{ bottom: resizeType?.includes("s") ? "32px" : isMacOSTheme ? "16px" : "24px" }}
         onMouseDown={(e) =>
           handleResizeStartWithForeground(e, "e" as ResizeType)
         }
@@ -139,6 +143,8 @@ export function WindowFrameResizeHandles({
           isMobile && "hidden",
           resizeType === "sw"
             ? "bottom-[-100px] left-[-100px] size-[200px]"
+            : isMacOSTheme
+            ? "bottom-0 left-0 size-4" // §66: 16px grip, 8px outside + 8px of the bottom bar; drawn after the edges so it wins
             : "bottom-0 left-0 size-6"
         )}
         onMouseDown={(e) =>
@@ -156,6 +162,8 @@ export function WindowFrameResizeHandles({
           isMobile && "hidden",
           resizeType === "se"
             ? "bottom-[-100px] right-[-100px] size-[200px]"
+            : isMacOSTheme
+            ? "bottom-0 right-0 size-4" // §66: 16px grip, 8px outside + 8px of the bottom bar; drawn after the edges so it wins
             : "bottom-0 right-0 size-6"
         )}
         onMouseDown={(e) =>

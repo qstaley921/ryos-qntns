@@ -471,7 +471,9 @@ export function WindowFrame({
                     isNoTitlebar &&
                       isMacOSTheme &&
                       "window-material-notitlebar",
-                    isGlassRegular && "window-material-glass"
+                    isGlassRegular && "window-material-glass",
+                    // §66: Tiger's slim bottom bar, the bottom resize strip's grab zone (brushed metal already has mb-[8px])
+                    isMacOSTheme && !isNoTitlebar && !isBrushedMetal && "pb-2"
                   )}
                   style={{
                     ...(!isWindowsTheme
