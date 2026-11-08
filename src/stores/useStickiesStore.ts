@@ -135,6 +135,14 @@ export const useStickiesStore = create<StickiesState>()(
         legacyNames: [LEGACY_STORAGE_KEYS.stickies],
       }),
       partialize: (state) => ({ notes: state.notes }),
+      // §62a: read-only site, so the welcome note is the only note that ever loads
+      // (keeps its saved position; drops old blank notes).
+      merge: (persisted, current) => {
+        const saved = (persisted as Partial<StickiesState> | undefined)?.notes?.find(
+          (n) => n.id === WELCOME_NOTE.id
+        );
+        return { ...current, notes: [saved ?? WELCOME_NOTE] };
+      },
     }
   )
 );
