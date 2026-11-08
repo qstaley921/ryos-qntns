@@ -132,7 +132,10 @@ export function resolveIconLegacyAware(
   }
   // If it's already a full /icons/... path, try to reduce to relative name & re-theme.
   if (iconOrName.startsWith("/icons/")) {
-    const rest = iconOrName.slice("/icons/".length); // e.g. default/file.png OR file.png OR macpaint/brush.png
+    // e.g. default/file.png OR file.png OR macpaint/brush.png. replace, not
+    // slice("/icons/".length): the minifier folds that length to 7 before
+    // scripts/ghost-zip.mjs rewrites "/icons/" to /assets/r-<stamp>/icons/ (§77).
+    const rest = iconOrName.replace("/icons/", "");
     const parts = rest.split("/");
     const maybeTheme = parts[0];
     // Known themes (even before manifest loads). Include 'default'. The deleted

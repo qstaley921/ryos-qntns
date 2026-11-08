@@ -107,11 +107,14 @@ const ThemedIconInner: React.FC<ThemedIconProps> = ({
   // Derive logical name for async theming only if inside /icons/ path.
   // Strip any query string to avoid duplicating cache-busting params downstream.
   const withoutQuery = resolved.split("?")[0];
-  const logical = withoutQuery.startsWith("/icons/")
-    ? withoutQuery
-        .replace("/icons/default/", "")
-        .replace(/^(?:\/icons\/[^/]+\/)/, "")
-    : withoutQuery;
+  // Drop "/icons/" and the theme folder. A string, not a regex literal:
+  // scripts/ghost-zip.mjs rewrites "/icons/" to the build base, never /\/icons\// (§77).
+  const iconsRest = withoutQuery.replace("/icons/", "");
+  const iconsCut = iconsRest.indexOf("/");
+  const logical =
+    withoutQuery.startsWith("/icons/") && iconsCut >= 0
+      ? iconsRest.slice(iconsCut + 1)
+      : withoutQuery;
 
   // Call hook unconditionally at the top level
   const themedPath = useIconPath(logical, themeOverride ?? currentTheme);
