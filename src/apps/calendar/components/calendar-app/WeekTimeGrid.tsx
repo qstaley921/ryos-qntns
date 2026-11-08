@@ -13,13 +13,11 @@ import {
   useTimeScaleGestures,
 } from "../../hooks/useTimeScaleGestures";
 import { TimedEventBlock } from "../TimedEventBlock";
-import { Availability, type Bookable } from "./Availability";
+import { Availability, hoursOf, type Bookable } from "./Availability";
 import {
   EVENT_COLOR_LIGHT,
   EVENT_COLOR_MAP,
   getEventOpacity,
-  HOUR_END,
-  HOUR_START,
   TODAY_RED,
   TODAY_RED_XP,
 } from "./calendarAppConstants";
@@ -60,6 +58,7 @@ export function WeekTimeGrid({
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
 }) {
   const { t } = useTranslation();
+  const [gridStart, gridEnd] = hoursOf(bookable);
   const useGeneva = isMacOSTheme || isSystem7Theme;
   const scrollRef = useRef<HTMLDivElement>(null);
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
@@ -102,16 +101,16 @@ export function WeekTimeGrid({
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const scrollTo = (8 - HOUR_START) * DEFAULT_TIME_GRID_HOUR_HEIGHT;
+    const scrollTo = (8 - gridStart) * DEFAULT_TIME_GRID_HOUR_HEIGHT;
     el.scrollTop = Math.max(0, scrollTo - 20);
-  }, []);
+  }, [gridStart]);
 
   useEffect(() => {
     const interval = setInterval(() => setMinuteTick((n) => n + 1), 60000);
     return () => clearInterval(interval);
   }, []);
 
-  const totalHours = HOUR_END - HOUR_START;
+  const totalHours = gridEnd - gridStart;
   const hasAllDayEvents = weekDates.some((d) => d.allDayEvents.length > 0);
 
   const MIN_DAY_COL = 52;
@@ -203,7 +202,7 @@ export function WeekTimeGrid({
           <div className="flex relative" style={{ height: totalHours * hourHeight }}>
             <div style={{ width: 48, minWidth: 48, flexShrink: 0 }} className="relative">
               {Array.from({ length: totalHours }, (_, i) => {
-                const hour = HOUR_START + i;
+                const hour = gridStart + i;
                 return (
                   <div
                     key={hour}
@@ -225,12 +224,12 @@ export function WeekTimeGrid({
                 className="flex-1 relative min-w-0"
                 style={{ borderLeft: isWindowsTheme ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(0,0,0,0.04)" }}
               >
-                {Array.from({ length: totalHours }, (_, hourOffset) => HOUR_START + hourOffset).map((hour) => (
+                {Array.from({ length: totalHours }, (_, hourOffset) => gridStart + hourOffset).map((hour) => (
                   <div
                     key={hour}
                     className="absolute left-0 right-0 border-t pointer-events-none"
                     style={{
-                      top: (hour - HOUR_START) * hourHeight,
+                      top: (hour - gridStart) * hourHeight,
                       height: hourHeight,
                       borderColor: isWindowsTheme ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.06)",
                     }}
@@ -244,8 +243,8 @@ export function WeekTimeGrid({
                     key={ev.id}
                     event={ev}
                     hourHeight={hourHeight}
-                    hourStart={HOUR_START}
-                    hourEnd={HOUR_END}
+                    hourStart={gridStart}
+                    hourEnd={gridEnd}
                     selectedEventId={selectedEventId}
                     isMacOSTheme={isMacOSTheme}
                     useGeneva={useGeneva}
@@ -261,7 +260,7 @@ export function WeekTimeGrid({
                 ))}
 
                 {day.isToday && (() => {
-                  const topPos = ((currentMinute - HOUR_START * 60) / 60) * hourHeight;
+                  const topPos = ((currentMinute - gridStart * 60) / 60) * hourHeight;
                   if (topPos < 0 || topPos > totalHours * hourHeight) return null;
                   return (
                     <div className="absolute left-0 right-0 pointer-events-none" style={{ top: topPos, zIndex: 5 }}>

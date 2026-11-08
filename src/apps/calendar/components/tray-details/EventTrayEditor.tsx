@@ -229,7 +229,7 @@ export function EventTrayEditor({
             }
           }}
           className={titleInputClass}
-          placeholder={t("apps.calendar.event.title")}
+          placeholder="Meet to…"
           aria-label={t("apps.calendar.event.title")}
         />
         <input
@@ -367,7 +367,7 @@ export function EventTrayEditor({
             {locations.length > 0 && (
               <TrayFieldRow label="Where" useGeneva={useGeneva}>
                 <select value={bLoc} onChange={(e) => setBLoc(Number(e.target.value))} className={fieldInputClass}>
-                  {locations.map((l, i) => <option key={i} value={i}>{l.label || l.type}</option>)}
+                  {locations.map((l, i) => <option key={i} value={i}>{l.label || ({ address: "In person", phone: "Phone", link: "Link" } as Record<string, string>)[l.type] || l.type}</option>)}
                 </select>
               </TrayFieldRow>
             )}

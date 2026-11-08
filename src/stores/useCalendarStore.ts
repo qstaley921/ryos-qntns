@@ -51,7 +51,7 @@ export interface TodoItem {
 export type CalendarView = "month" | "week" | "day";
 
 const DEFAULT_CALENDARS: CalendarGroup[] = [
-  { id: "home", name: "Home", color: "blue", visible: true },
+  { id: "home", name: "Personal", color: "blue", visible: true },
   { id: "work", name: "Work", color: "green", visible: true },
 ];
 
@@ -338,6 +338,12 @@ export const useCalendarStore = create<CalendarStoreState>()(
     },
     {
       name: STORAGE_KEYS.calendar,
+      version: 1,
+      // v1: the default calendar "Home" is now "Personal" (same id, same colour)
+      migrate: (persisted) => {
+        const p = persisted as Partial<CalendarStoreState>;
+        return { ...p, calendars: p.calendars?.map((c) => (c.id === "home" && c.name === "Home" ? { ...c, name: "Personal" } : c)) } as CalendarStoreState;
+      },
       storage: createIndexedDBPersistStorage({
         legacyNames: [LEGACY_STORAGE_KEYS.calendar],
       }),

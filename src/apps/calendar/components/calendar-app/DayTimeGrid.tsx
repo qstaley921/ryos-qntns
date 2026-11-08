@@ -7,13 +7,11 @@ import {
   useTimeScaleGestures,
 } from "../../hooks/useTimeScaleGestures";
 import { TimedEventBlock } from "../TimedEventBlock";
-import { Availability, type Bookable } from "./Availability";
+import { Availability, hoursOf, type Bookable } from "./Availability";
 import {
   EVENT_COLOR_LIGHT,
   EVENT_COLOR_MAP,
   getEventOpacity,
-  HOUR_END,
-  HOUR_START,
   TODAY_RED,
   TODAY_RED_XP,
 } from "./calendarAppConstants";
@@ -57,6 +55,7 @@ export function DayTimeGrid({
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
 }) {
   const useGeneva = isMacOSTheme || isSystem7Theme;
+  const [gridStart, gridEnd] = hoursOf(bookable);
   const scrollRef = useRef<HTMLDivElement>(null);
   useTimeScaleGestures(scrollRef, hourHeight, setHourHeight);
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
@@ -107,16 +106,16 @@ export function DayTimeGrid({
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const scrollTo = (8 - HOUR_START) * DEFAULT_TIME_GRID_HOUR_HEIGHT;
+    const scrollTo = (8 - gridStart) * DEFAULT_TIME_GRID_HOUR_HEIGHT;
     el.scrollTop = Math.max(0, scrollTo - 20);
-  }, []);
+  }, [gridStart]);
 
   useEffect(() => {
     const interval = setInterval(() => setMinuteTick((n) => n + 1), 60000);
     return () => clearInterval(interval);
   }, []);
 
-  const totalHours = HOUR_END - HOUR_START;
+  const totalHours = gridEnd - gridStart;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -144,7 +143,7 @@ export function DayTimeGrid({
         <div className="flex relative w-full" style={{ height: totalHours * hourHeight }}>
           <div style={{ width: 52, minWidth: 52, flexShrink: 0 }} className="relative">
             {Array.from({ length: totalHours }, (_, i) => {
-              const hour = HOUR_START + i;
+              const hour = gridStart + i;
               return (
                 <div key={hour} className={cn("absolute right-1 text-[10px] opacity-40 text-right", useGeneva && "font-geneva-12")} style={{ top: i * hourHeight - 6, width: 44 }}>
                   {hourLabels[hour]}
@@ -154,12 +153,12 @@ export function DayTimeGrid({
           </div>
 
           <div className="flex-1 relative min-w-0">
-            {Array.from({ length: totalHours }, (_, hourOffset) => HOUR_START + hourOffset).map((hour) => (
+            {Array.from({ length: totalHours }, (_, hourOffset) => gridStart + hourOffset).map((hour) => (
               <div
                 key={hour}
                 className="absolute left-0 right-0 border-t pointer-events-none"
                 style={{
-                  top: (hour - HOUR_START) * hourHeight,
+                  top: (hour - gridStart) * hourHeight,
                   height: hourHeight,
                   borderColor: isWindowsTheme ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.06)",
                 }}
@@ -173,8 +172,8 @@ export function DayTimeGrid({
                 key={ev.id}
                 event={ev}
                 hourHeight={hourHeight}
-                hourStart={HOUR_START}
-                hourEnd={HOUR_END}
+                hourStart={gridStart}
+                hourEnd={gridEnd}
                 selectedEventId={selectedEventId}
                 isMacOSTheme={isMacOSTheme}
                 useGeneva={useGeneva}
@@ -189,7 +188,7 @@ export function DayTimeGrid({
             ))}
 
             {isToday && (() => {
-              const topPos = ((currentMinute - HOUR_START * 60) / 60) * hourHeight;
+              const topPos = ((currentMinute - gridStart * 60) / 60) * hourHeight;
               if (topPos < 0 || topPos > totalHours * hourHeight) return null;
               return (
                 <div className="absolute left-0 right-0 pointer-events-none" style={{ top: topPos, zIndex: 5 }}>

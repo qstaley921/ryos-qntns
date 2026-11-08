@@ -89,10 +89,9 @@ export function useCalendarLogic() {
     deleteEvent,
     addCalendar,
     toggleCalendarVisibility,
-    setSelectedDate,
+    setSelectedDate: rawSetSelectedDate,
     setView,
-    navigateMonth,
-    navigateWeek,
+    navigateMonth: rawNavigateMonth,
     goToToday,
   } = useCalendarStore(
     useShallow((state) => ({
@@ -110,7 +109,6 @@ export function useCalendarLogic() {
       setSelectedDate: state.setSelectedDate,
       setView: state.setView,
       navigateMonth: state.navigateMonth,
-      navigateWeek: state.navigateWeek,
       goToToday: state.goToToday,
     }))
   );
@@ -204,6 +202,32 @@ export function useCalendarLogic() {
   const todayStr = useMemo(
     () => formatZonedDateString(new Date(), timeZone),
     [timeZone]
+  );
+
+  // Past weeks are closed: every way of moving the view goes through these three.
+  const [timeTravel, setTimeTravel] = useState(false);
+  const sundayOf = (d: string) => {
+    const [y, m, day] = d.split("-").map(Number);
+    return formatDate(new Date(y, m - 1, day - new Date(y, m - 1, day).getDay()));
+  };
+  const setSelectedDate = useCallback(
+    (date: string) => (sundayOf(date) < sundayOf(todayStr) ? setTimeTravel(true) : rawSetSelectedDate(date)),
+    [todayStr, rawSetSelectedDate]
+  );
+  const navigateWeek = useCallback(
+    (delta: number) => {
+      const [y, m, d] = selectedDate.split("-").map(Number);
+      setSelectedDate(formatDate(new Date(y, m - 1, d + delta * 7)));
+    },
+    [selectedDate, setSelectedDate]
+  );
+  const navigateMonth = useCallback(
+    (delta: number) => {
+      const [ty, tm] = todayStr.split("-").map(Number);
+      if (currentYear * 12 + currentMonth + delta < ty * 12 + tm - 1) setTimeTravel(true);
+      else rawNavigateMonth(delta);
+    },
+    [todayStr, currentYear, currentMonth, rawNavigateMonth]
   );
 
   // Locale-aware day names (Sun=0 .. Sat=6)
@@ -421,11 +445,11 @@ export function useCalendarLogic() {
   );
 
   const createTimedEvent = useCallback(
-    (date: string, startTime: string, endTime: string) => {
+    (date: string, startTime: string, endTime: string, title = t("apps.calendar.tray.newEventTitle")) => {
       setSelectedDate(date);
       const cal = calendars[0];
       const id = addEvent({
-        title: t("apps.calendar.tray.newEventTitle"),
+        title,
         date,
         startTime,
         endTime,
@@ -464,7 +488,8 @@ export function useCalendarLogic() {
       unsentSlotEvent.current = createTimedEvent(
         `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`,
         `${pad(s.getHours())}:${pad(s.getMinutes())}`,
-        e.getDate() === s.getDate() ? `${pad(e.getHours())}:${pad(e.getMinutes())}` : "23:59"
+        e.getDate() === s.getDate() ? `${pad(e.getHours())}:${pad(e.getMinutes())}` : "23:59",
+        "" // empty: the form's placeholder reads "Meet to..."
       );
     },
     [createTimedEvent, deleteEvent]
@@ -641,6 +666,8 @@ export function useCalendarLogic() {
     weekDates,
     weekLabel,
     navigateWeek,
+    timeTravel,
+    setTimeTravel,
 
     // Event state
     selectedEventId,

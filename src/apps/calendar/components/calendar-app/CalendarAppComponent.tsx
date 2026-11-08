@@ -23,6 +23,8 @@ import { MiniCalendar } from "./MiniCalendar";
 import { MonthGrid } from "./MonthGrid";
 import { useBookable } from "./Availability";
 import { WeekTimeGrid } from "./WeekTimeGrid";
+import { TimeTravelAlert } from "./TimeTravelAlert";
+import { fetchSlots } from "./booking";
 import { isKeyboardDeleteTargetEditable } from "./calendarAppUtils";
 import { usePersistHydrated } from "@/hooks/usePersistHydrated";
 
@@ -54,8 +56,8 @@ export function CalendarAppComponent({
     narrowDayNames, hourLabels, weekDates, weekLabel,
     selectedEventId, setSelectedEventId,
     calendars, toggleCalendarVisibility,
-    navigateMonth, navigateWeek, goToToday, setView, setSelectedDate,
-    handleDateClick, handleDateDoubleClick, handleNewEvent, handleNewEventAtSlot, handleEditSelectedEvent, handleDeleteSelectedEvent, handleUpdateEvent,
+    navigateMonth, navigateWeek, timeTravel, setTimeTravel, todayStr, goToToday, setView, setSelectedDate,
+    handleDateClick, handleDateDoubleClick, handleNewEventAtSlot, handleEditSelectedEvent, handleDeleteSelectedEvent, handleUpdateEvent,
     fileInputRef, handleImport, handleFileSelected, handleExport,
     undoCalendar, redoCalendar, canUndo, canRedo,
   } = logic;
@@ -94,8 +96,24 @@ export function CalendarAppComponent({
     }
   }, [selectedEventId, handleDeleteSelectedEvent]);
 
-  const onNewEvent = handleNewEvent;
   const bookable = useBookable(weekDates[0]?.date ?? "");
+
+  // + / File > New Event: the next free slot from now, this week or a later one (the view jumps there).
+  const [noneFree, setNoneFree] = useState(false);
+  const onNewEvent = useCallback(async () => {
+    setNoneFree(false);
+    const [y, m, d] = todayStr.split("-").map(Number);
+    const now = Date.now();
+    // shortcut: looks 12 weeks ahead, one /cal/slots call per week; widen if Quentin books further out
+    for (let i = 0; i < 12; i++) {
+      const w = new Date(y, m - 1, d - new Date(y, m - 1, d).getDay() + i * 7);
+      const week = `${w.getFullYear()}-${String(w.getMonth() + 1).padStart(2, "0")}-${String(w.getDate()).padStart(2, "0")}`;
+      const slots = week === weekDates[0]?.date && bookable.slots ? bookable.slots : await fetchSlots(week);
+      const next = (slots ?? []).filter((s) => Date.parse(s) > now).sort()[0];
+      if (next) return handleNewEventAtSlot(next, bookable.minutes);
+    }
+    setNoneFree(true);
+  }, [todayStr, weekDates, bookable.slots, bookable.minutes, handleNewEventAtSlot]);
 
   const onDateDoubleClick = useCallback(
     (date: string) => {
@@ -233,6 +251,7 @@ export function CalendarAppComponent({
       }}
       trailing={
         <>
+          <TimeTravelAlert open={timeTravel} onClose={() => setTimeTravel(false)} />
           <AppHelpAboutDialogs
             appId="calendar"
             helpItems={translatedHelpItems}
@@ -343,7 +362,7 @@ export function CalendarAppComponent({
                   boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.4)",
                 } : undefined}
               >
-                {effectiveView !== "month" && bookable.failed && (
+                {effectiveView !== "month" && (bookable.failed || noneFree) && (
                   <div className="shrink-0 border-b border-black/10 px-2 py-1 text-[11px]">Booking is unavailable right now</div>
                 )}
                 {effectiveView === "week" && (

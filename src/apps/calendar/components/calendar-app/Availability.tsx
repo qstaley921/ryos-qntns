@@ -20,10 +20,23 @@ export function useBookable(week: string): Bookable & { failed: boolean } {
   return { slots, minutes, failed };
 }
 
+/** Hours the grid shows: earliest free start (floored) to latest free end (ceiled) across the week; whole day with no slots. */
+export function hoursOf({ slots, minutes }: Bookable): [number, number] {
+  if (!slots?.length) return [HOUR_START, HOUR_END];
+  const t = slots.map((s) => Date.parse(s));
+  const mod = (ms: number) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes(); };
+  // shortcut: a booking that crosses midnight is clipped to the day, as dayRanges does
+  const lo = Math.floor(Math.min(...t.map(mod)) / 60);
+  const hi = Math.ceil(Math.min(24 * 60, Math.max(...t.map((x) => mod(x) + minutes))) / 60);
+  return [lo, Math.max(hi, lo + 1)];
+}
+
 /** One day's free [start, end) minute ranges from the slots, and the gaps between them (merged runs). */
-function dayRanges(date: string, { slots, minutes }: Bookable) {
+function dayRanges(date: string, b: Bookable) {
+  const { slots, minutes } = b;
   const d0 = new Date(`${date}T00:00:00`).getTime();
-  const lo = HOUR_START * 60, hi = HOUR_END * 60;
+  const [h0, h1] = hoursOf(b);
+  const lo = h0 * 60, hi = h1 * 60;
   const free = (slots ?? [])
     .map((s) => ({ s, a: Math.max(lo, (Date.parse(s) - d0) / 60000) }))
     .map(({ s, a }) => ({ s, a, b: Math.min(hi, (Date.parse(s) - d0) / 60000 + minutes) }))
@@ -45,7 +58,7 @@ export function Availability({ date, bookable, hourHeight, onSlot }: {
 }) {
   if (!bookable.slots) return null; // loading or failed: no blocks, nothing to click
   const { free, busy } = dayRanges(date, bookable);
-  const y = (m: number) => ((m - HOUR_START * 60) / 60) * hourHeight;
+  const y = (m: number) => ((m - hoursOf(bookable)[0] * 60) / 60) * hourHeight;
   return (
     <>
       {free.map((f) => (
