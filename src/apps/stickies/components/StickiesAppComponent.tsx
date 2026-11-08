@@ -9,9 +9,8 @@ import { useStickiesLogic } from "../hooks/useStickiesLogic";
 import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
 import { appMetadata } from "..";
 import { useAppStore } from "@/stores/useAppStore";
-import { useMenuShortcuts } from "@/hooks/useMenuShortcuts";
 import { requestCloudSyncDomainCheck } from "@/utils/cloudSyncEvents";
-import { useStickiesStore } from "@/stores/useStickiesStore";
+import { useStickiesStore, WELCOME_NOTE } from "@/stores/useStickiesStore";
 import { usePersistHydrated } from "@/hooks/usePersistHydrated";
 
 export function StickiesAppComponent({
@@ -34,12 +33,8 @@ export function StickiesAppComponent({
     isWindowsTheme,
     notes,
     selectedNoteId,
-    handleCreateNote,
-    handleDeleteNote,
-    handleChangeColor,
     handleNoteClick,
     updateNote,
-    clearAllNotes,
     bringToFront,
   } = useStickiesLogic();
 
@@ -73,30 +68,20 @@ export function StickiesAppComponent({
     };
   }, [instanceId, handleClose]);
 
-  // ⌘N New Note fires in the Electron shell (browser reserves ⌘N on the web).
-  useMenuShortcuts(instanceId, {
-    newFile: () => handleCreateNote(),
-  });
-
   const hasHydrated = usePersistHydrated(useStickiesStore.persist);
 
-  // Create a new note when app is opened and no notes exist
+  // §62a: read-only site — never an empty board; re-seed the welcome note.
   useEffect(() => {
     if (hasHydrated && isWindowOpen && notes.length === 0) {
-      handleCreateNote();
+      useStickiesStore.setState({ notes: [WELCOME_NOTE] });
     }
-  }, [hasHydrated, isWindowOpen, notes.length, handleCreateNote]);
+  }, [hasHydrated, isWindowOpen, notes.length]);
 
   const menuBar = (
     <StickiesMenuBar
       onClose={handleClose}
       onShowHelp={() => setIsHelpDialogOpen(true)}
       onShowAbout={() => setIsAboutDialogOpen(true)}
-      onNewNote={handleCreateNote}
-      onClearAll={clearAllNotes}
-      selectedNoteId={selectedNoteId}
-      onChangeColor={handleChangeColor}
-      onDeleteNote={handleDeleteNote}
     />
   );
 
@@ -152,7 +137,7 @@ export function StickiesAppComponent({
                 bringToFront(note.id);
               }}
               onUpdate={(updates) => updateNote(note.id, updates)}
-              onDelete={() => handleDeleteNote(note.id)}
+              onClose={handleClose}
               zIndex={getZIndexForNote(note.id)}
               isForeground={!!isForeground && note.id === selectedNoteId}
             />

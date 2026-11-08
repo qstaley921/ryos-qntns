@@ -23,7 +23,7 @@ interface StickyNoteProps {
   note: StickyNoteType;
   onSelect: () => void;
   onUpdate: (updates: Partial<Omit<StickyNoteType, "id" | "createdAt">>) => void;
-  onDelete: () => void;
+  onClose: () => void;
   zIndex: number;
   isForeground: boolean;
 }
@@ -65,7 +65,7 @@ export function StickyNote({
   note,
   onSelect,
   onUpdate,
-  onDelete,
+  onClose,
   zIndex,
   isForeground,
 }: StickyNoteProps) {
@@ -335,13 +335,6 @@ export function StickyNote({
   ]);
 
   // Handle content change
-  const handleContentChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onUpdate({ content: e.target.value });
-    },
-    [onUpdate]
-  );
-
   // When agent (or anything) updates position/size, animate there. During user drag/resize keep instant.
   const layoutTransition = {
     left: { duration: isDragging ? 0 : 0.2, ease: [0.33, 1, 0.68, 1] as const },
@@ -404,7 +397,7 @@ export function StickyNote({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              onClose();
             }}
             className="size-[9px] flex items-center justify-center"
             style={{ 
@@ -420,11 +413,11 @@ export function StickyNote({
       <textarea
         ref={textareaRef}
         value={note.content}
-        onChange={handleContentChange}
+        readOnly
         placeholder={t("apps.stickies.placeholder")}
         className={cn(
           "flex-1 px-2 pt-1 pb-2 resize-none outline-none bg-transparent font-geneva-12",
-          "placeholder:text-black/30 text-[13px]"
+          "placeholder:text-black/30 text-[12px]"
         )}
         style={{ 
           lineHeight: "1.5",

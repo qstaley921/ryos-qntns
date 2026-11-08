@@ -12,13 +12,8 @@ export const appMetadata = {
 export const helpItems = [
   {
     icon: "📝",
-    title: "Create a Note",
-    description: "File ▸ New Note (or ⌘N) drops a fresh sticky right onto your desktop",
-  },
-  {
-    icon: "🎨",
-    title: "Color Tags",
-    description: "Pick from yellow, pink, blue, green, purple, and more from the Note menu",
+    title: "A Note from QNTN",
+    description: "Stickies shows a note from QNTN. It is read-only: you can read it, not edit it",
   },
   {
     icon: "↔️",
@@ -26,18 +21,8 @@ export const helpItems = [
     description: "Drag the title bar to reposition; drag the corner to resize freely",
   },
   {
-    icon: "🤖",
-    title: "Ryo Can Edit",
-    description: "Ask Ryo in Chats to add, move, recolor, or rewrite stickies for you",
-  },
-  {
-    icon: "🧹",
-    title: "Clear All",
-    description: "File ▸ Clear All Notes wipes the bulletin board in one tidy sweep",
-  },
-  {
-    icon: "💾",
-    title: "Auto-Save",
-    description: "Notes save automatically and reappear in the same spot on next launch",
+    icon: "✖️",
+    title: "Close",
+    description: "Close the note with its box, or quit Stickies; open it again and the note is back",
   },
 ];
