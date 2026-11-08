@@ -14,6 +14,8 @@ import { useChatsStore } from "@/stores/useChatsStore";
 import { useCloudSyncStore } from "@/stores/useCloudSyncStore";
 import { useResizeObserverWithRef } from "@/hooks/useResizeObserver";
 import { AppDrawer } from "@/components/shared/AppDrawer";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useSound, Sounds } from "@/hooks/useSound";
 import { TrayDetails } from "../TrayDetails";
 import { BottomToolbar } from "./BottomToolbar";
@@ -78,6 +80,8 @@ export function CalendarAppComponent({
   );
   // Open the details tray whenever something is selected; close otherwise.
   const showTrayDrawer = !!selectedEvent;
+  // §17k: below AppDrawer's own 768px split the tray is an Aqua sheet, not a side panel.
+  const compactTray = useMediaQuery("(max-width: 767px)");
 
   const handleSelectEvent = useCallback(
     (id: string, options?: { toggle?: boolean }) => {
@@ -217,6 +221,21 @@ export function CalendarAppComponent({
     handleDeleteSelectedEvent,
   ]);
 
+  // One content component in both shells (§17k); onClose only in the sheet.
+  const tray = (onClose?: () => void) => (
+    <TrayDetails
+      selectedEvent={selectedEvent}
+      calendars={calendars}
+      isMacOSTheme={isMacOSTheme}
+      isSystem7Theme={isSystem7Theme}
+      isWindowsTheme={isWindowsTheme}
+      onUpdateEvent={handleUpdateEvent}
+      onDeleteEvent={handleDeleteEventFromTray}
+      week={weekDates[0]?.date ?? ""}
+      onClose={onClose}
+    />
+  );
+
   return (
     <AppWindowShell
       isWindowOpen={isWindowOpen}
@@ -234,23 +253,24 @@ export function CalendarAppComponent({
         onNavigateNext,
         onNavigatePrevious,
         windowConstraints: { minWidth: 300, minHeight: 380 },
-        drawer: (
+        drawer: compactTray ? undefined : (
           <AppDrawer isOpen={showTrayDrawer}>
-            <TrayDetails
-              selectedEvent={selectedEvent}
-              calendars={calendars}
-              isMacOSTheme={isMacOSTheme}
-              isSystem7Theme={isSystem7Theme}
-              isWindowsTheme={isWindowsTheme}
-              onUpdateEvent={handleUpdateEvent}
-              onDeleteEvent={handleDeleteEventFromTray}
-              week={weekDates[0]?.date ?? ""}
-            />
+            {tray()}
           </AppDrawer>
         ),
       }}
       trailing={
         <>
+          {compactTray && (
+            <Dialog open={showTrayDrawer} onOpenChange={(o) => !o && setSelectedEventId(null)}>
+              <DialogContent className="flex flex-col gap-0 max-w-[400px] max-h-[calc(100dvh-32px)]">
+                <DialogTitle className="sr-only">{selectedEvent?.title || "Event"}</DialogTitle>
+                <DialogDescription className="sr-only">Event details</DialogDescription>
+                <DialogHeader>{selectedEvent?.title || "Event"}</DialogHeader>
+                {tray(() => setSelectedEventId(null))}
+              </DialogContent>
+            </Dialog>
+          )}
           <TimeTravelAlert open={timeTravel} onClose={() => setTimeTravel(false)} />
           <AppHelpAboutDialogs
             appId="calendar"

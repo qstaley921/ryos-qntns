@@ -1,5 +1,8 @@
 import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { AppDrawer } from "@/components/shared/AppDrawer";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { GhostDoc } from "@/lib/ghost";
 import type { PostLinks } from "@/lib/ghost/postLinks";
 
@@ -39,8 +42,9 @@ export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; on
   // Ghost's internal tags are the #-tags, slug "hash-…"; only public ones are shown.
   const tags = (doc.tags ?? []).filter((t) => !t.slug.startsWith("hash-"));
   const share = SHARE.filter(([k]) => links[k]);
-  return (
-    <AppDrawer isOpen={isOpen} onClose={onClose} title="Info" data-textedit-info-drawer="">
+  // §17k: below AppDrawer's own 768px split, Info is an Aqua sheet instead of the side drawer.
+  const compact = useMediaQuery("(max-width: 767px)");
+  const rows = (
       <dl className="flex min-h-0 flex-1 flex-col overflow-y-auto py-1 select-text">
         <Row label="Title">{doc.title || "-"}</Row>
         <Row label="Published">{date(doc.published_at) ?? "-"}</Row>
@@ -79,6 +83,23 @@ export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; on
           </Row>
         )}
       </dl>
+  );
+  if (!compact) return (
+    <AppDrawer isOpen={isOpen} onClose={onClose} title="Info" data-textedit-info-drawer="">
+      {rows}
     </AppDrawer>
+  );
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex flex-col gap-0 max-w-[400px] max-h-[calc(100dvh-32px)]" data-textedit-info-drawer="">
+        <DialogTitle className="sr-only">Info</DialogTitle>
+        <DialogDescription className="sr-only">This post's details</DialogDescription>
+        <DialogHeader>Info</DialogHeader>
+        {rows}
+        <DialogFooter className="shrink-0 px-4 py-3 sm:justify-end">
+          <Button variant="retro" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

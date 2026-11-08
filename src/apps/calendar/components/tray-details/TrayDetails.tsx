@@ -12,7 +12,8 @@ export function TrayDetails({
   onUpdateEvent,
   onDeleteEvent,
   week,
-}: TrayDetailsProps) {
+  onClose,
+}: TrayDetailsProps & { onClose?: () => void }) {
   const { t, i18n } = useTranslation();
   const useGeneva = isMacOSTheme || isSystem7Theme;
 
@@ -32,6 +33,7 @@ export function TrayDetails({
           onUpdate={onUpdateEvent}
           onDelete={onDeleteEvent}
           week={week}
+          onClose={onClose}
         />
       </div>
     );

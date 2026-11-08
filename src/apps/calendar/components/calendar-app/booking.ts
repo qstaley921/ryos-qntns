@@ -2,7 +2,8 @@ export const WORKER = "https://qntns-reads.qstaley921.workers.dev";
 export const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 export const BOOKED_TITLE = "Booked with Quentin";
 
-export type BookLocation = { type: string; label: string };
+/** `input` (§17l): the booker types a value for this location, sent as `locationValue`. */
+export type BookLocation = { type: string; label: string; input?: "address" | "phone" | "text" };
 
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 export const parseGuests = (g: string) => g.split(/[,\s;]+/).filter(Boolean);
@@ -13,7 +14,7 @@ export function bookingValid(name: string, email: string, guests: string[]) {
 }
 
 /** The one POST /cal/book. Resolves the HTTP status; 0 on a network failure. */
-export async function postBook(f: { name: string; email: string; start: string; guests: string[]; location?: number }) {
+export async function postBook(f: { name: string; email: string; start: string; guests: string[]; location?: number; locationValue?: string }) {
   try {
     const r = await fetch(`${WORKER}/cal/book`, {
       method: "POST",
@@ -22,6 +23,7 @@ export async function postBook(f: { name: string; email: string; start: string; 
         name: f.name.trim(), email: f.email.trim(), start: f.start, timeZone: tz,
         ...(f.guests.length && { guests: f.guests }),
         ...(f.location !== undefined && { location: f.location }),
+        ...(f.locationValue !== undefined && { locationValue: f.locationValue.trim() }),
       }),
     });
     return r.status;

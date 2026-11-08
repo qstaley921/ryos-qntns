@@ -24,8 +24,10 @@ export function EventTrayEditor({
   onUpdate,
   onDelete,
   week,
+  onClose,
 }: TrayThemeProps & {
   week: string;
+  onClose?: () => void; // §17k: set in the pop-up shell, adds a Close button
   event: CalendarEvent;
   calendars: CalendarGroup[];
   locale: string;
@@ -47,6 +49,7 @@ export function EventTrayEditor({
   const [bEmail, setBEmail] = useState("");
   const [bGuests, setBGuests] = useState("");
   const [bLoc, setBLoc] = useState(0);
+  const [bLocValue, setBLocValue] = useState("");
   const [locations, setLocations] = useState<BookLocation[]>([]);
   const [slots, setSlots] = useState<string[]>([]);
   const [sendState, setSendState] = useState<"idle" | "sending" | "done" | "failed">("idle");
@@ -60,11 +63,12 @@ export function EventTrayEditor({
   const startMs = event.startTime ? new Date(`${event.date}T${event.startTime}`).getTime() : NaN;
   const slot = slots.find((x) => new Date(x).getTime() === startMs);
   const guestList = parseGuests(bGuests);
-  const canSend = !!slot && bookingValid(bName, bEmail, guestList) && sendState !== "sending";
+  const locInput = locations[bLoc]?.input; // §17l: the booker types this location's value
+  const canSend = !!slot && bookingValid(bName, bEmail, guestList) && (!locInput || !!bLocValue.trim()) && sendState !== "sending";
   const send = async () => {
     if (!slot) return;
     setSendState("sending");
-    const status = await postBook({ name: bName, email: bEmail, start: slot, guests: guestList, location: locations.length ? bLoc : undefined });
+    const status = await postBook({ name: bName, email: bEmail, start: slot, guests: guestList, location: locations.length ? bLoc : undefined, locationValue: locInput ? bLocValue : undefined });
     if (status === 409) getSlots(week).then(setSlots); // slot just taken: refresh the week
     if (status < 200 || status >= 300) return setSendState("failed");
     setSendState("done");
@@ -190,15 +194,12 @@ export function EventTrayEditor({
     useGeneva ? "font-geneva-12 border-black/25" : "border-black/20"
   );
 
-  // NOTE: keep the scroller's own `pb-*` modest — Mobile Safari clips
-  // padding-bottom on overflow:auto containers when scrolled to the end.
-  // Real bottom breathing room is added below as a sibling spacer that
-  // lives inside the scroll content (reliably honored across browsers).
+  // §17m: a column — the fields scroll, the footer (status + buttons) stays pinned.
   const panelShell = cn(
-    "flex-1 flex flex-col min-h-0 overflow-y-auto",
-    "bg-white pl-2.5 pr-2.5 pt-2 pb-2",
+    "flex-1 flex flex-col min-h-0 bg-white",
     !isMacOSTheme && "rounded-sm border border-black/10"
   );
+  const statusClass = cn("text-[11px] pl-[60px]", useGeneva && "font-geneva-12");
 
   const deleteButtonClass = cn(
     "flex-1 min-w-0 justify-center px-3 py-2 h-auto text-[12px] leading-normal",
@@ -208,6 +209,7 @@ export function EventTrayEditor({
 
   return (
     <div className={panelShell}>
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-2 pb-2">
       {/* Title + location (iCal header block) */}
       <div
         className={cn(
@@ -349,11 +351,7 @@ export function EventTrayEditor({
         </TrayFieldRow>
 
         {/* Notes — section label + scrollable area */}
-        {booked ? (
-          <div className={cn("mt-1 pt-1.5 border-t border-black/15 text-[11px]", useGeneva && "font-geneva-12")}>
-            Booked. Check your email for the invite.
-          </div>
-        ) : (
+        {!booked && (
           <div className={cn("mt-1 pt-1.5 border-t border-black/15 flex flex-col gap-1", isMacOSTheme && "border-black/12")}>
             <TrayFieldRow label="Name" useGeneva={useGeneva}>
               <input value={bName} onChange={(e) => setBName(e.target.value)} onKeyDown={(e) => e.stopPropagation()} className={fieldInputClass} />
@@ -366,13 +364,16 @@ export function EventTrayEditor({
             </TrayFieldRow>
             {locations.length > 0 && (
               <TrayFieldRow label="Where" useGeneva={useGeneva}>
-                <select value={bLoc} onChange={(e) => setBLoc(Number(e.target.value))} className={fieldInputClass}>
+                <select value={bLoc} onChange={(e) => { setBLoc(Number(e.target.value)); setBLocValue(""); }} className={fieldInputClass}>
                   {locations.map((l, i) => <option key={i} value={i}>{l.label || ({ address: "In person", phone: "Phone", link: "Link" } as Record<string, string>)[l.type] || l.type}</option>)}
                 </select>
               </TrayFieldRow>
             )}
-            {!slot && <span className={cn("text-[11px] text-black/50 pl-[60px]", useGeneva && "font-geneva-12")}>Pick a free time</span>}
-            {sendState === "failed" && <span className={cn("text-[11px] text-red-600 pl-[60px]", useGeneva && "font-geneva-12")}>Couldn't send. Try again.</span>}
+            {locInput && (
+              <TrayFieldRow label={({ address: "Address", phone: "Phone" } as Record<string, string>)[locInput] ?? "Details"} useGeneva={useGeneva}>
+                <input type={locInput === "phone" ? "tel" : "text"} value={bLocValue} maxLength={200} onChange={(e) => setBLocValue(e.target.value)} onKeyDown={(e) => e.stopPropagation()} className={fieldInputClass} />
+              </TrayFieldRow>
+            )}
           </div>
         )}
 
@@ -403,12 +404,18 @@ export function EventTrayEditor({
           />
         </div>
 
-        <div
-          className={cn(
-            "shrink-0 w-full min-w-0 mt-1 pt-2 border-t border-black/15",
-            isMacOSTheme && "border-black/12"
+      </div>
+      </div>
+
+      <div className={cn("shrink-0 flex flex-col gap-2 px-3 py-2 border-t border-black/15", isMacOSTheme && "border-black/12")}>
+          {booked ? (
+            <span className={statusClass}>Booked. Check your email for the invite.</span>
+          ) : (
+            <>
+              {!slot && <span className={cn(statusClass, "text-black/50")}>Pick a free time</span>}
+              {sendState === "failed" && <span className={cn(statusClass, "text-red-600")}>Couldn't send. Try again.</span>}
+            </>
           )}
-        >
           <div className="flex gap-2">
           {!booked && (
             <Button
@@ -433,13 +440,18 @@ export function EventTrayEditor({
           >
             {t("apps.calendar.event.delete")}
           </Button>
+          {onClose && (
+            <Button
+              type="button"
+              variant={isMacOSTheme ? "aqua" : "retro"}
+              size="sm"
+              onClick={onClose}
+              className={cn("flex-1 min-w-0 justify-center px-3 py-2 h-auto text-[12px] leading-normal", useGeneva && "font-geneva-12")}
+            >
+              Close
+            </Button>
+          )}
           </div>
-        </div>
-
-        {/* Trailing spacer: ensures the delete button keeps breathing room
-            above the scroller's bottom edge in browsers (Mobile Safari)
-            that don't honor `padding-bottom` on overflow containers. */}
-        <div aria-hidden className="shrink-0 h-4" />
       </div>
     </div>
   );
