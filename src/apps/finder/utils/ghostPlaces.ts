@@ -4,7 +4,7 @@ import { getCounts } from "@/apps/paint/wall/qntns/counts.js";
 import { listDocs, listHomeContent, type GhostDoc, type GhostList } from "@/lib/ghost";
 import type { ExtendedDisplayFileItem } from "./fileSystemHelpers";
 
-// Virtual Finder places over Ghost posts: /Poems, /Recents (day folders), /Tag-<slug>.
+// Virtual Finder places over Ghost posts: /Poems, /Tag-<slug>. Recents lives only in Apple > Recent Items.
 // Not in the files store, so nothing here is writable or synced.
 export const POEMS_PATH = "/Poems";
 export const RECENTS_PATH = "/Recents";
@@ -134,13 +134,12 @@ export const isGhostPlace = (path: string): boolean =>
   path.startsWith(RECENTS_PATH + "/") ||
   path.startsWith(TAG_PREFIX);
 
-/** Sidebar places: Poems, Recents, then a folder per other public tag with a non-home-content post. */
+/** Sidebar places: Poems, then a folder per other public tag with a non-home-content post. No Recents (Apple > Recent Items). */
 export function ghostPlaces(l: GhostList): { name: string; path: string; icon: string }[] {
   const used = new Set(posts(l).flatMap((d) => d.tags.map((t) => t.slug)));
   const icon = "/icons/default/directory.png";
   return [
     { name: "Poems", path: POEMS_PATH, icon },
-    { name: "Recents", path: RECENTS_PATH, icon },
     ...l.tags
       .filter((t) => t.slug !== POEMS_TAG && isFolderTag(t) && used.has(t.slug))
       .map((t) => ({ name: t.name, path: TAG_PREFIX + t.slug, icon })),
