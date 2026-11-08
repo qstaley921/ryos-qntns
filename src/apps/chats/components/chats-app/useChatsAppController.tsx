@@ -379,7 +379,7 @@ export function useChatsAppController({
     handleCopyTelegramCode,
     handleDisconnectTelegramLink,
     handleSaveTelegramHeartbeatInstructions,
-  } = useTelegramLink({ username, isAuthenticated });
+  } = useTelegramLink({ username, isAuthenticated: false }) // §29a: members have no ryOS account;
 
   const handleShowHelp = useCallback(() => {
     setIsHelpDialogOpen(true);

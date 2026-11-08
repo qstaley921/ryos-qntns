@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +19,11 @@ import {
   ThemedTabsTrigger,
   ThemedTabsContent,
 } from "@/components/shared/ThemedTabs";
-import { ResetPasswordDialog } from "@/components/dialogs/ResetPasswordDialog";
-import { RecoveryEmailDialog } from "@/components/dialogs/RecoveryEmailDialog";
 
+// Sign in is the subscribe (CHECKLIST-37 §29): both tabs take one email and
+// Ghost mails a magic link. The props are ryOS's own so every caller still
+// compiles; the "username" fields carry the email, the password props are
+// unused (Ghost has no passwords, so no reset or recovery email either).
 interface LoginDialogProps {
   /* Common */
   isOpen: boolean;
@@ -52,58 +54,33 @@ export function LoginDialog({
   isOpen,
   onOpenChange,
   initialTab = "login",
-  /* Login props */
   usernameInput,
   onUsernameInputChange,
-  passwordInput,
-  onPasswordInputChange,
   onLoginSubmit,
   isLoginLoading,
   loginError,
-  /* Sign-up props */
   newUsername,
   onNewUsernameChange,
-  newPassword,
-  onNewPasswordChange,
   onSignUpSubmit,
   isSignUpLoading,
   signUpError,
 }: LoginDialogProps) {
   const [activeTab, setActiveTab] = useState<"login" | "signup">(initialTab);
-  const [isResetOpen, setIsResetOpen] = useState(false);
-  // Optional recovery email captured on the sign-up tab.
-  const [signupEmail, setSignupEmail] = useState("");
-  // Post-sign-up email verification flow.
-  const [isVerifyEmailOpen, setIsVerifyEmailOpen] = useState(false);
-  const [verifyEmail, setVerifyEmail] = useState("");
-  // Setting the recovery email requires the account password; reuse the one
-  // just entered on the sign-up tab so the user isn't asked again.
-  const signupPasswordRef = useRef("");
-  const [verifyEmailPassword, setVerifyEmailPassword] = useState("");
   const { isWindowsTheme, isMacOSTheme } = useThemeFlags();
   const { t } = useTranslation();
   const dialogTitle = t("common.auth.dialogTitle");
 
   // Reset to the initial tab whenever the dialog is reopened
   useEffect(() => {
-    if (isOpen) {
-      setActiveTab(initialTab);
-      setSignupEmail("");
-    }
+    if (isOpen) setActiveTab(initialTab);
   }, [isOpen, initialTab]);
 
-  /* Handlers */
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (activeTab === "login") {
-      if (!isLoginLoading) {
-        await onLoginSubmit();
-      }
-    } else {
-      if (!isSignUpLoading) {
-        signupPasswordRef.current = newPassword;
-        await onSignUpSubmit();
-      }
+      if (!isLoginLoading) await onLoginSubmit();
+    } else if (!isSignUpLoading) {
+      await onSignUpSubmit();
     }
   };
 
@@ -118,161 +95,42 @@ export function LoginDialog({
       }
     : undefined;
 
-  const renderLoginForm = () => (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <Label
-          className={cn("text-neutral-700", themeFont)}
-          style={themeFontStyle}
-        >
-          {t("common.auth.username")}
-        </Label>
-        <Input
-          autoFocus={activeTab === "login"}
-          value={usernameInput}
-          onChange={(e) => onUsernameInputChange(e.target.value)}
-          className={cn("shadow-none h-8", themeFont)}
-          style={themeFontStyle}
-          disabled={isLoginLoading}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label
-          className={cn("text-neutral-700", themeFont)}
-          style={themeFontStyle}
-        >
-          {t("common.auth.password")}
-        </Label>
-        <Input
-          type="password"
-          value={passwordInput}
-          onChange={(e) => onPasswordInputChange(e.target.value)}
-          className={cn("shadow-none h-8", themeFont)}
-          style={themeFontStyle}
-          disabled={isLoginLoading}
-        />
-      </div>
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setIsResetOpen(true)}
-          className={cn(
-            "text-neutral-500 underline underline-offset-2 hover:text-neutral-700",
-            themeFont
-          )}
-          style={themeFontStyle}
-          disabled={isLoginLoading}
-        >
-          {t("common.auth.forgotPassword")}
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderSignUpForm = () => (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <Label
-          className={cn("text-neutral-700", themeFont)}
-          style={themeFontStyle}
-        >
-          {t("common.auth.username")}
-        </Label>
-        <Input
-          autoFocus={activeTab === "signup"}
-          value={newUsername}
-          onChange={(e) => onNewUsernameChange(e.target.value)}
-          className={cn("shadow-none h-8", themeFont)}
-          style={themeFontStyle}
-          disabled={isSignUpLoading}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label
-          className={cn("text-neutral-700", themeFont)}
-          style={themeFontStyle}
-        >
-          {t("common.auth.password")}
-        </Label>
-        <Input
-          type="password"
-          value={newPassword}
-          onChange={(e) => onNewPasswordChange(e.target.value)}
-          className={cn("shadow-none h-8", themeFont)}
-          style={themeFontStyle}
-          disabled={isSignUpLoading}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label
-          className={cn("text-neutral-700", themeFont)}
-          style={themeFontStyle}
-        >
-          {t("common.auth.recoveryEmailOptional")}
-        </Label>
-        <Input
-          type="email"
-          value={signupEmail}
-          onChange={(e) => setSignupEmail(e.target.value)}
-          className={cn("shadow-none h-8", themeFont)}
-          style={themeFontStyle}
-          disabled={isSignUpLoading}
-          autoComplete="email"
-        />
-      </div>
+  const emailField = (
+    value: string,
+    onChange: (v: string) => void,
+    focus: boolean,
+    disabled: boolean
+  ) => (
+    <div className="space-y-2">
+      <Label className={cn("text-neutral-700", themeFont)} style={themeFontStyle}>
+        Email
+      </Label>
+      <Input
+        type="email"
+        autoComplete="email"
+        autoFocus={focus}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn("shadow-none h-8", themeFont)}
+        style={themeFontStyle}
+        disabled={disabled}
+      />
     </div>
   );
 
   const isActionLoading =
     activeTab === "login" ? isLoginLoading : isSignUpLoading;
   const activeError = activeTab === "login" ? loginError : signUpError;
+  const activeEmail = activeTab === "login" ? usernameInput : newUsername;
 
-  // Automatically close the dialog when an action completes successfully
-  const prevLoginLoading = React.useRef(isLoginLoading);
-  const prevSignUpLoading = React.useRef(isSignUpLoading);
-
-  React.useEffect(() => {
-    // Detect transition from loading -> not loading with no errors
-    const loginFinishedSuccessfully =
-      prevLoginLoading.current &&
-      !isLoginLoading &&
-      !loginError &&
-      activeTab === "login";
-
-    const signUpFinishedSuccessfully =
-      prevSignUpLoading.current &&
-      !isSignUpLoading &&
-      !signUpError &&
-      activeTab === "signup";
-
-    // After a successful sign-up with an optional recovery email, continue into
-    // the email verification flow. This must run regardless of `isOpen` because
-    // the parent flips the login dialog closed as soon as sign-up succeeds.
-    if (signUpFinishedSuccessfully && signupEmail.trim()) {
-      setVerifyEmail(signupEmail.trim());
-      setVerifyEmailPassword(signupPasswordRef.current);
-      setIsVerifyEmailOpen(true);
-    }
-    if (signUpFinishedSuccessfully || loginFinishedSuccessfully) {
-      signupPasswordRef.current = "";
-    }
-
-    if (isOpen && (loginFinishedSuccessfully || signUpFinishedSuccessfully)) {
+  // Close when an action finishes without an error.
+  const prevLoading = React.useRef(isActionLoading);
+  useEffect(() => {
+    if (isOpen && prevLoading.current && !isActionLoading && !activeError) {
       onOpenChange(false);
     }
-
-    prevLoginLoading.current = isLoginLoading;
-    prevSignUpLoading.current = isSignUpLoading;
-  }, [
-    isOpen,
-    isLoginLoading,
-    isSignUpLoading,
-    loginError,
-    signUpError,
-    activeTab,
-    onOpenChange,
-    signupEmail,
-  ]);
+    prevLoading.current = isActionLoading;
+  }, [isOpen, isActionLoading, activeError, onOpenChange]);
 
   const dialogContent = (
     <div className="pt-3 pb-6 px-6">
@@ -291,14 +149,16 @@ export function LoginDialog({
             </ThemedTabsTrigger>
           </ThemedTabsList>
 
-          {/* Sign Up */}
           <ThemedTabsContent value="signup">
-            <div className="p-4">{renderSignUpForm()}</div>
+            <div className="p-4">
+              {emailField(newUsername, onNewUsernameChange, activeTab === "signup", isSignUpLoading)}
+            </div>
           </ThemedTabsContent>
 
-          {/* Login */}
           <ThemedTabsContent value="login">
-            <div className="p-4">{renderLoginForm()}</div>
+            <div className="p-4">
+              {emailField(usernameInput, onUsernameInputChange, activeTab === "login", isLoginLoading)}
+            </div>
           </ThemedTabsContent>
         </Tabs>
 
@@ -315,12 +175,7 @@ export function LoginDialog({
           <Button
             type="submit"
             variant="retro"
-            disabled={
-              isActionLoading ||
-              (activeTab === "login"
-                ? !usernameInput.trim() || !passwordInput.trim()
-                : !newUsername.trim())
-            }
+            disabled={isActionLoading || !activeEmail.trim()}
             className={cn("w-full sm:w-auto h-7", themeFont)}
             style={themeFontStyle}
           >
@@ -337,8 +192,15 @@ export function LoginDialog({
     </div>
   );
 
+  const srDescription = (
+    <DialogDescription className="sr-only">
+      {activeTab === "login"
+        ? t("common.auth.loginDescription")
+        : t("common.auth.signupDescription")}
+    </DialogDescription>
+  );
+
   return (
-    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn("max-w-[400px]", isWindowsTheme && "p-0 overflow-hidden")}
@@ -349,23 +211,14 @@ export function LoginDialog({
           <>
             {/* The themed titlebar is decorative; expose an accessible name/description for screen readers. */}
             <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
-            <DialogDescription className="sr-only">
-              {activeTab === "login"
-                ? t("common.auth.loginDescription")
-                : t("common.auth.signupDescription")}
-            </DialogDescription>
+            {srDescription}
             <DialogHeader>{dialogTitle}</DialogHeader>
             <div className="window-body">{dialogContent}</div>
           </>
         ) : isMacOSTheme ? (
           <>
-            {/* The themed titlebar is decorative; expose an accessible name/description for screen readers. */}
             <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
-            <DialogDescription className="sr-only">
-              {activeTab === "login"
-                ? t("common.auth.loginDescription")
-                : t("common.auth.signupDescription")}
-            </DialogDescription>
+            {srDescription}
             <DialogHeader>{dialogTitle}</DialogHeader>
             {dialogContent}
           </>
@@ -375,36 +228,12 @@ export function LoginDialog({
               <DialogTitle className="font-normal text-[16px]">
                 {dialogTitle}
               </DialogTitle>
-              <DialogDescription className="sr-only">
-                {activeTab === "login"
-                  ? t("common.auth.loginDescription")
-                  : t("common.auth.signupDescription")}
-              </DialogDescription>
+              {srDescription}
             </DialogHeader>
             {dialogContent}
           </>
         )}
       </DialogContent>
     </Dialog>
-      <ResetPasswordDialog
-        isOpen={isResetOpen}
-        onOpenChange={setIsResetOpen}
-        defaultIdentifier={usernameInput}
-        onSuccess={() => onOpenChange(false)}
-      />
-      <RecoveryEmailDialog
-        isOpen={isVerifyEmailOpen}
-        onOpenChange={(open) => {
-          setIsVerifyEmailOpen(open);
-          if (!open) setVerifyEmailPassword("");
-        }}
-        initialEmail={verifyEmail}
-        initialPassword={verifyEmailPassword}
-        autoSubmit
-        hideRemove
-        title={t("common.auth.verifyEmailTitle")}
-        description={t("common.auth.verifyEmailDescription")}
-      />
-    </>
   );
 }

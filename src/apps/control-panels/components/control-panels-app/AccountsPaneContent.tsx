@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { PaperPlaneRight } from "@phosphor-icons/react";
 import { ThemedIcon } from "@/components/shared/ThemedIcon";
 import type { AIModel } from "@/types/aiModels";
 import type { AIModelInfo } from "@/types/aiModels";
@@ -12,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getTelegramLinkedAccountLabel } from "@/hooks/useTelegramLink";
 import type { LanguageCode } from "@/stores/useLanguageStore";
 import type { RealtimeConnectionState } from "@/lib/pusherClient";
 import type { Contact } from "@/utils/contacts";
@@ -32,9 +30,7 @@ import {
   getTtsVoiceLabel,
   OPENAI_TTS_VOICES,
 } from "./ttsVoiceOptions";
-import { RecoveryEmailDialog } from "@/components/dialogs/RecoveryEmailDialog";
 import type { EmailStatusResponse } from "@/shared/contracts/auth";
-import { SecurityPaneContent } from "./SecurityPaneContent";
 import { useControlPanelsTabClasses } from "./useControlPanelsTabClasses";
 import type { ControlPanelPaneId } from "./controlPanelsCategories";
 
@@ -82,7 +78,7 @@ export type AccountsPaneContentProps = {
   onNavigateToPane?: (paneId: ControlPanelPaneId) => void;
 };
 
-type AccountsPaneTab = "accounts" | "security" | "debug";
+type AccountsPaneTab = "accounts" | "debug";
 
 export function AccountsPaneContent({
   t,
@@ -97,18 +93,7 @@ export function AccountsPaneContent({
   isAdmin,
   promptSetUsername,
   promptLogin,
-  telegramLinkedAccount,
-  openTelegramDialog,
-  isTelegramStatusLoading,
-  recoveryEmailStatus,
-  isEmailStatusLoading,
-  refreshRecoveryEmailStatus,
   logout,
-  handleLogoutAllDevices,
-  isLoggingOutAllDevices,
-  setPasswordInput,
-  setPasswordError,
-  setIsPasswordDialogOpen,
   setDebugMode,
   showResizers,
   setShowResizers,
@@ -124,63 +109,14 @@ export function AccountsPaneContent({
   handleShowBootScreen,
   handleTriggerAppCrashTest,
   handleTriggerDesktopCrashTest,
-  onNavigateToPane,
 }: AccountsPaneContentProps) {
   const [accountsTab, setAccountsTab] = useState<AccountsPaneTab>("accounts");
-  const [isRecoveryEmailOpen, setIsRecoveryEmailOpen] = useState(false);
   const { barClassName, triggerClassName, triggerStyle } =
     useControlPanelsTabClasses();
   const selectedSystemFont =
     SYSTEM_FONT_OPTIONS.find((option) => option.id === systemFont) ??
     SYSTEM_FONT_OPTIONS[0];
 
-  const openRecoveryEmailDialog = async () => {
-    await refreshRecoveryEmailStatus();
-    setIsRecoveryEmailOpen(true);
-  };
-
-  const handleRecoveryEmailOpenChange = (open: boolean) => {
-    setIsRecoveryEmailOpen(open);
-    if (!open) {
-      void refreshRecoveryEmailStatus();
-    }
-  };
-
-  const emailSubtitle = (() => {
-    if (!username) {
-      return t("apps.control-panels.email.linkForRecovery");
-    }
-    if (isEmailStatusLoading && !recoveryEmailStatus) {
-      return t("apps.control-panels.email.checking");
-    }
-    if (recoveryEmailStatus && !recoveryEmailStatus.emailConfigured) {
-      return t("apps.control-panels.email.notAvailable");
-    }
-    if (recoveryEmailStatus?.hasEmail && recoveryEmailStatus.email) {
-      return recoveryEmailStatus.emailVerified
-        ? t("apps.control-panels.email.verifiedAs", {
-            email: recoveryEmailStatus.email,
-          })
-        : t("apps.control-panels.email.unverifiedAs", {
-            email: recoveryEmailStatus.email,
-          });
-    }
-    return t("apps.control-panels.email.linkForRecovery");
-  })();
-
-  const emailActionLabel = (() => {
-    if (recoveryEmailStatus?.hasEmail) {
-      return recoveryEmailStatus.emailVerified
-        ? t("apps.control-panels.email.manage")
-        : t("apps.control-panels.email.verify");
-    }
-    return t("apps.control-panels.email.link");
-  })();
-
-  const isEmailActionDisabled =
-    !username ||
-    isEmailStatusLoading ||
-    (recoveryEmailStatus !== null && !recoveryEmailStatus.emailConfigured);
 
   return (
     <div className="control-panels-pref-form control-panels-pref-form-tabbed h-full overflow-y-auto">
@@ -213,17 +149,6 @@ export function AccountsPaneContent({
           >
             {t("apps.control-panels.accountsTabs.accounts")}
           </button>
-          <button
-            type="button"
-            role="tab"
-            className={triggerClassName}
-            style={triggerStyle}
-            data-state={accountsTab === "security" ? "active" : "inactive"}
-            aria-selected={accountsTab === "security"}
-            onClick={() => setAccountsTab("security")}
-          >
-            {t("apps.control-panels.accountsTabs.security")}
-          </button>
           {isAdmin && (
             <button
               type="button"
@@ -245,140 +170,29 @@ export function AccountsPaneContent({
             hidden={accountsTab !== "accounts"}
             aria-hidden={accountsTab !== "accounts"}
           >
-            <div className="control-panels-pref-form-section">
-              <div
-                className={cn(
-                  "flex items-center justify-between gap-3",
-                  !username && "opacity-50"
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <ThemedIcon
-                    name="mail.png"
-                    alt=""
-                    className={cn(controlPanelItemIconShell, "object-contain")}
-                  />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] font-geneva-12 font-medium">
-                      {t("apps.control-panels.email.title")}
-                    </span>
-                    <span className="text-[11px] text-neutral-600 font-geneva-12 truncate">
-                      {emailSubtitle}
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  variant="retro"
-                  onClick={() => void openRecoveryEmailDialog()}
-                  disabled={isEmailActionDisabled}
-                  className="h-7"
-                >
-                  {emailActionLabel}
-                </Button>
-              </div>
-
-              <div
-                className={cn(
-                  "flex items-center justify-between gap-3",
-                  !username && "opacity-50"
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={cn(
-                      controlPanelItemIconShell,
-                      "rounded-full bg-[#229ED9] text-white flex items-center justify-center scale-90"
-                    )}
-                    aria-hidden="true"
-                  >
-                    <PaperPlaneRight
-                      size={16}
-                      weight="fill"
-                      className="-rotate-[32deg] translate-x-[1px] -translate-y-[1px]"
+            {/* Ghost member account (CHECKLIST-37 §29): sign in and create
+                account live in the header above; signed in, this is sign out.
+                ryOS's recovery email, Telegram and .Mac rows need its account
+                server, so they are gone. */}
+            {username && (
+              <div className="control-panels-pref-form-section">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ThemedIcon
+                      name="mail.png"
+                      alt=""
+                      className={cn(controlPanelItemIconShell, "object-contain")}
                     />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] font-geneva-12 font-medium">
-                      {t("apps.control-panels.telegram.title")}
-                    </span>
-                    <span className="text-[11px] text-neutral-600 font-geneva-12">
-                      {username && telegramLinkedAccount
-                        ? t("apps.control-panels.telegram.linkedAs", {
-                            account: getTelegramLinkedAccountLabel(telegramLinkedAccount),
-                          })
-                        : t("apps.control-panels.telegram.description")}
+                    <span className="text-[13px] font-geneva-12 font-medium truncate">
+                      {username}
                     </span>
                   </div>
+                  <Button variant="retro" onClick={logout} className="h-7">
+                    {t("common.auth.logOut")}
+                  </Button>
                 </div>
-                <Button
-                  variant="retro"
-                  onClick={openTelegramDialog}
-                  disabled={!username || isTelegramStatusLoading}
-                  className="h-7"
-                >
-                  {telegramLinkedAccount
-                    ? t("apps.control-panels.telegram.manage")
-                    : t("apps.control-panels.telegram.link")}
-                </Button>
               </div>
-
-              <div
-                className={cn(
-                  "flex items-center justify-between gap-3",
-                  !username && "opacity-50"
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <ThemedIcon
-                    name="cloud-sync.png"
-                    alt=""
-                    className={cn(controlPanelItemIconShell, "object-contain")}
-                  />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] font-geneva-12 font-medium">
-                      {t("apps.control-panels.panes.dotMac")}
-                    </span>
-                    <span className="text-[11px] text-neutral-600 font-geneva-12">
-                      {t("apps.control-panels.cloudSync.accountDescription")}
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  variant="retro"
-                  onClick={() => onNavigateToPane?.("dot-mac")}
-                  disabled={!username || !onNavigateToPane}
-                  className="h-7"
-                >
-                  {t("apps.control-panels.setup")}
-                </Button>
-              </div>
-            </div>
-          </div>
-          <div
-            role="tabpanel"
-            className="control-panels-pref-tab-panel"
-            hidden={accountsTab !== "security"}
-            aria-hidden={accountsTab !== "security"}
-          >
-            <SecurityPaneContent
-              t={t}
-              username={username}
-              myContact={myContact}
-              accountAvatarLabel={accountAvatarLabel}
-              accountAvatarInitials={accountAvatarInitials}
-              realtimeStatus={realtimeStatus}
-              accountJoinedAt={accountJoinedAt}
-              locale={locale}
-              promptSetUsername={promptSetUsername}
-              promptLogin={promptLogin}
-              logout={logout}
-              handleLogoutAllDevices={handleLogoutAllDevices}
-              isLoggingOutAllDevices={isLoggingOutAllDevices}
-              setPasswordInput={setPasswordInput}
-              setPasswordError={setPasswordError}
-              setIsPasswordDialogOpen={setIsPasswordDialogOpen}
-              showProfileHeader={false}
-            />
+            )}
           </div>
           {isAdmin && (
             <div
@@ -608,10 +422,6 @@ export function AccountsPaneContent({
           )}
         </div>
       </div>
-      <RecoveryEmailDialog
-        isOpen={isRecoveryEmailOpen}
-        onOpenChange={handleRecoveryEmailOpenChange}
-      />
     </div>
   );
 }

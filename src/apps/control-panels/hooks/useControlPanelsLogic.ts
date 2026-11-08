@@ -30,7 +30,6 @@ import { requestSetChatSpeechEnabled } from "@/utils/chatSpeechAuth";
 import { toast } from "sonner";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useThemeStore } from "@/stores/useThemeStore";
-import { getApiUrl } from "@/utils/platform";
 import { getTranslatedAppName } from "@/utils/i18n";
 import { normalizeControlPanelClassicTabId } from "@/apps/control-panels/components/control-panels-app/controlPanelsCategories";
 import { saveBlobToDevice } from "@/utils/nativeFileDialogs";
@@ -38,11 +37,11 @@ import { getTabStyles } from "@/utils/tabStyles";
 import { useLanguageStore } from "@/stores/useLanguageStore";
 import { useTimezoneStore } from "@/stores/useTimezoneStore";
 import type { ControlPanelsInitialData } from "@/apps/base/types";
-import { abortableFetch } from "@/utils/abortableFetch";
 import { triggerRuntimeCrashTest } from "@/utils/errorReporting";
 import { SETTINGS_ANALYTICS, track } from "@/utils/analytics";
 import { useCloudSyncStore } from "@/stores/useCloudSyncStore";
 import { useShallow } from "zustand/react/shallow";
+import { signOut } from "@/lib/ghost/members";
 import { useTelegramLink } from "@/hooks/useTelegramLink";
 import { useRecoveryEmail } from "@/hooks/useRecoveryEmail";
 import { useAccountJoinDate } from "@/hooks/useAccountJoinDate";
@@ -543,7 +542,7 @@ export function useControlPanelsLogic({
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Log out all devices state
-  const [isLoggingOutAllDevices, setIsLoggingOutAllDevices] = useState(false);
+  const [isLoggingOutAllDevices] = useState(false);
 
   // Password status is now automatically checked by the store when username/token changes
 
@@ -577,55 +576,9 @@ export function useControlPanelsLogic({
     setIsSettingPassword(false);
   };
 
+  // Ghost has one session per browser: sign out is the only "all devices" there is.
   const handleLogoutAllDevices = async () => {
-    setIsLoggingOutAllDevices(true);
-
-    try {
-      // Ensure we have auth info from the auth hook
-      if (!isAuthenticated || !username) {
-        toast.error(t("apps.control-panels.logoutAll.authErrorTitle"), {
-          description: t("apps.control-panels.logoutAll.authErrorDescription"),
-        });
-        return;
-      }
-
-      const response = await abortableFetch(getApiUrl("/api/auth/logout-all"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 15000,
-        throwOnHttpError: false,
-        retry: { maxAttempts: 1, initialDelayMs: 250 },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(t("apps.control-panels.logoutAll.successTitle"), {
-          description:
-            data.message ||
-            t("apps.control-panels.logoutAll.successDescription"),
-        });
-
-        // Immediately clear auth via store logout (bypass confirmation)
-        confirmLogout();
-
-        // No full page reload needed – UI will update via store reset
-      } else {
-        toast.error(t("apps.control-panels.logoutAll.failedTitle"), {
-          description:
-            data.error || t("apps.control-panels.logoutAll.failedDescription"),
-        });
-      }
-    } catch (error) {
-      console.error("Error logging out all devices:", error);
-      toast.error(t("apps.control-panels.logoutAll.networkErrorTitle"), {
-        description: t("apps.control-panels.logoutAll.networkErrorDescription"),
-      });
-    } finally {
-      setIsLoggingOutAllDevices(false);
-    }
+    await signOut();
   };
 
   const {
@@ -642,7 +595,7 @@ export function useControlPanelsLogic({
     handleCopyTelegramCode,
     handleDisconnectTelegramLink,
     handleSaveTelegramHeartbeatInstructions,
-  } = useTelegramLink({ username, isAuthenticated });
+  } = useTelegramLink({ username, isAuthenticated: false }) // no ryOS account server for members (§29a);
 
   const {
     recoveryEmailStatus,

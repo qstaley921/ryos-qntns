@@ -1,48 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
-import { getEmailStatus } from "@/api/auth";
 import type { EmailStatusResponse } from "@/shared/contracts/auth";
 
-interface UseRecoveryEmailOptions {
+// Inert (CHECKLIST-37 §29): a Ghost member's email is the account, so there is
+// no recovery email and no ryOS account server to ask. Shape kept for callers.
+const refreshRecoveryEmailStatus = async (): Promise<EmailStatusResponse | null> => null;
+
+export function useRecoveryEmail(_opts: {
   username?: string | null;
   isAuthenticated?: boolean;
-}
-
-export function useRecoveryEmail({
-  username,
-  isAuthenticated,
-}: UseRecoveryEmailOptions) {
-  const [recoveryEmailStatus, setRecoveryEmailStatus] =
-    useState<EmailStatusResponse | null>(null);
-  const [isEmailStatusLoading, setIsEmailStatusLoading] = useState(false);
-
-  const refreshRecoveryEmailStatus =
-    useCallback(async (): Promise<EmailStatusResponse | null> => {
-      if (!username || !isAuthenticated) {
-        setRecoveryEmailStatus(null);
-        setIsEmailStatusLoading(false);
-        return null;
-      }
-
-      setIsEmailStatusLoading(true);
-      try {
-        const result = await getEmailStatus();
-        setRecoveryEmailStatus(result);
-        return result;
-      } catch (error) {
-        console.error("[RecoveryEmail] Failed to fetch email status:", error);
-        return null;
-      } finally {
-        setIsEmailStatusLoading(false);
-      }
-    }, [username, isAuthenticated]);
-
-  useEffect(() => {
-    void refreshRecoveryEmailStatus();
-  }, [refreshRecoveryEmailStatus]);
-
+}) {
   return {
-    recoveryEmailStatus,
-    isEmailStatusLoading,
+    recoveryEmailStatus: null as EmailStatusResponse | null,
+    isEmailStatusLoading: false,
     refreshRecoveryEmailStatus,
   };
 }

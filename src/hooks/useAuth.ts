@@ -1,33 +1,27 @@
+// Sign in is the subscribe (CHECKLIST-37 §29): the ryOS dialogs in front of a
+// Ghost member, by magic link. No ryOS account server is called. The exported
+// names are ryOS's own so every caller still compiles; the password and token
+// ones are inert (Ghost has neither).
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { APP_ANALYTICS } from "@/utils/analytics";
-import { track } from "@/utils/analytics";
-import { useChatsStoreShallow } from "@/stores/useChatsStore";
-import { loginWithPassword, verifyAuthToken } from "@/api/auth";
+import { useMember, sendMagicLink, signOut } from "@/lib/ghost/members";
+
+const FAIL = "Couldn't send. Try again.";
+const sent = (email: string) =>
+  toast.success("Check your email", {
+    description: `We sent a sign-in link to ${email.trim()}.`,
+  });
 
 export function useAuth() {
-  const {
-    username,
-    isAuthenticated,
-    setAuthenticated,
-    setUsername,
-    createUser,
-    logout,
-    setPassword: storeSetPassword,
-  } = useChatsStoreShallow((state) => ({
-    username: state.username,
-    isAuthenticated: state.isAuthenticated,
-    setAuthenticated: state.setAuthenticated,
-    setUsername: state.setUsername,
-    createUser: state.createUser,
-    logout: state.logout,
-    setPassword: state.setPassword,
-  }));
+  const member = useMember();
+  const username = member ? member.email : null;
+  const isAuthenticated = !!member;
 
   const [isUsernameDialogOpen, setIsUsernameDialogOpen] = useState(false);
   const [usernameDialogInitialTab, setUsernameDialogInitialTab] = useState<
     "login" | "signup"
   >("signup");
+  // Create-account email (ryOS's "new username" field).
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [isSettingUsername, setIsSettingUsername] = useState(false);
@@ -36,6 +30,7 @@ export function useAuth() {
   const [isVerifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [verifyTokenInput, setVerifyTokenInput] = useState("");
   const [verifyPasswordInput, setVerifyPasswordInput] = useState("");
+  // Sign-in email (ryOS's "username" field).
   const [verifyUsernameInput, setVerifyUsernameInput] = useState("");
   const [isVerifyingToken, setIsVerifyingToken] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -45,7 +40,6 @@ export function useAuth() {
 
   const openUsernameDialog = useCallback((tab: "login" | "signup") => {
     setNewUsername("");
-    setNewPassword("");
     setUsernameError(null);
     setUsernameDialogInitialTab(tab);
     setIsUsernameDialogOpen(true);
@@ -59,153 +53,55 @@ export function useAuth() {
     openUsernameDialog("login");
   }, [openUsernameDialog]);
 
+  // Create account: a Ghost member on the signup newsletters (= subscribe).
   const submitUsernameDialog = useCallback(async () => {
     setIsSettingUsername(true);
     setUsernameError(null);
-
-    const trimmedUsername = newUsername.trim();
-    if (!trimmedUsername) {
-      setUsernameError("Username cannot be empty.");
-      setIsSettingUsername(false);
-      return;
-    }
-
-    if (username && username !== trimmedUsername) {
-      await logout();
-    }
-
-    if (!newPassword.trim()) {
-      setUsernameError("Password is required.");
-      setIsSettingUsername(false);
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setUsernameError("Password must be at least 8 characters.");
-      setIsSettingUsername(false);
-      return;
-    }
-
-    const result = await createUser(trimmedUsername, newPassword);
-
-    if (result.ok) {
+    try {
+      await sendMagicLink(newUsername, "signup");
+      sent(newUsername);
       setIsUsernameDialogOpen(false);
       setNewUsername("");
-      setNewPassword("");
-      toast.success("Logged In", {
-        description: `Welcome, ${trimmedUsername}!`,
-      });
-    } else {
-      setUsernameError(result.error || "Failed to set username");
+    } catch (err) {
+      setUsernameError(err instanceof Error ? err.message : FAIL);
+    } finally {
+      setIsSettingUsername(false);
     }
-
-    setIsSettingUsername(false);
-  }, [newUsername, newPassword, createUser, username, logout]);
+  }, [newUsername]);
 
   const promptVerifyToken = useCallback(() => {
-    setVerifyTokenInput("");
-    setVerifyPasswordInput("");
-    setVerifyUsernameInput(username || "");
+    setVerifyUsernameInput("");
     setVerifyError(null);
     setVerifyDialogOpen(true);
-  }, [username]);
+  }, []);
 
+  // Sign in. ryOS's signature is kept; its password/token argument is ignored.
   const handleVerifyTokenSubmit = useCallback(
-    async (input: string, isPassword: boolean = false) => {
-      if (!input.trim()) {
-        setVerifyError(isPassword ? "Password required" : "Token required");
-        return;
-      }
-
+    async (_input?: string, _isPassword?: boolean) => {
       setIsVerifyingToken(true);
       setVerifyError(null);
-
       try {
-        if (isPassword) {
-          const targetUsername = verifyUsernameInput.trim() || username || "";
-
-          if (username && username !== targetUsername) {
-            await logout();
-          }
-
-          const result = await loginWithPassword({
-            username: targetUsername,
-            password: input.trim(),
-          });
-          if (result.username) {
-            setUsername(result.username);
-            setAuthenticated(true);
-            track(APP_ANALYTICS.USER_LOGIN_PASSWORD, {
-              username: result.username,
-            });
-            toast.success("Success", {
-              description: "Logged in successfully with password",
-            });
-            setVerifyDialogOpen(false);
-            setVerifyPasswordInput("");
-            setIsUsernameDialogOpen(false);
-          }
-        } else {
-          if (username || isAuthenticated) {
-            await logout();
-          }
-
-          const result = await verifyAuthToken({
-            username: verifyUsernameInput.trim() || "",
-            token: input.trim(),
-          });
-
-          if (result.valid && result.username) {
-            setUsername(result.username);
-            setAuthenticated(true);
-            track(APP_ANALYTICS.USER_LOGIN_TOKEN, {
-              username: result.username,
-            });
-            toast.success("Success", {
-              description: "Token verified and set successfully",
-            });
-            setVerifyDialogOpen(false);
-            setVerifyTokenInput("");
-            setIsUsernameDialogOpen(false);
-          }
-        }
+        await sendMagicLink(verifyUsernameInput, "signin");
+        sent(verifyUsernameInput);
+        setVerifyDialogOpen(false);
+        setIsUsernameDialogOpen(false);
       } catch (err) {
-        console.error("[useAuth] Error verifying:", err);
-        const message =
-          err instanceof Error ? err.message : "Network error while verifying";
-        setVerifyError(message);
+        setVerifyError(err instanceof Error ? err.message : FAIL);
       } finally {
         setIsVerifyingToken(false);
       }
     },
-    [setAuthenticated, setUsername, username, verifyUsernameInput, isAuthenticated, logout]
+    [verifyUsernameInput]
   );
 
+  // Ghost has no passwords.
   const setPassword = useCallback(
-    async (password: string, currentPassword: string) => {
-      return storeSetPassword(password, currentPassword);
-    },
-    [storeSetPassword]
+    async (_password: string, _currentPassword: string) => ({
+      ok: false as const,
+      error: "This account signs in by email link; it has no password.",
+    }),
+    []
   );
-
-  const handleLogout = useCallback(async () => {
-    setIsUsernameDialogOpen(false);
-    setVerifyDialogOpen(false);
-    setIsLogoutConfirmDialogOpen(false);
-    setNewUsername("");
-    setNewPassword("");
-    setVerifyTokenInput("");
-    setVerifyPasswordInput("");
-    setVerifyUsernameInput("");
-    setUsernameError(null);
-    setVerifyError(null);
-
-    await logout();
-
-    toast.success("Logged Out", {
-      description: "You have been successfully logged out.",
-    });
-  }, [logout]);
 
   const promptLogout = useCallback(async () => {
     setIsLogoutConfirmDialogOpen(true);
@@ -213,8 +109,8 @@ export function useAuth() {
 
   const confirmLogout = useCallback(() => {
     setIsLogoutConfirmDialogOpen(false);
-    handleLogout();
-  }, [handleLogout]);
+    void signOut();
+  }, []);
 
   return {
     username,
