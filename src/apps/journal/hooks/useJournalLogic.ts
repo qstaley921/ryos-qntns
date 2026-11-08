@@ -4,6 +4,7 @@ import { useAppHelpAboutDialogs } from "@/hooks/useAppHelpAboutDialogs";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useTranslatedHelpItems } from "@/hooks/useTranslatedHelpItems";
 import { useJournalStore } from "@/stores/useJournalStore";
+import { reduceJournal } from "../logic";
 import { helpItems } from "../metadata";
 
 export function useJournalLogic() {
@@ -40,6 +41,12 @@ export function useJournalLogic() {
     }))
   );
   const dialogs = useAppHelpAboutDialogs();
+  // §22j: the store lives outside the app folder, so Tidy Up runs the reducer here.
+  const tidyUp = () =>
+    useJournalStore.setState((state) => {
+      const next = reduceJournal(state.journal, { type: "tidyUp" });
+      return next === state.journal ? state : { journal: next };
+    });
 
   return {
     t,
@@ -53,7 +60,7 @@ export function useJournalLogic() {
     sidebarWidth,
     notice,
     filter,
-    api,
+    api: { ...api, tidyUp },
   };
 }
 

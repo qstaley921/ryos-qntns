@@ -87,6 +87,13 @@ export function JournalMenuBar({
               { type: "separator" },
               {
                 type: "action",
+                label: "Tidy Up",
+                onClick: () => l.api.tidyUp(),
+                disabled:
+                  l.journal.view !== "freeform" || Object.keys(l.journal.positions).length === 0,
+              },
+              {
+                type: "action",
                 label: "Go to Latest Day",
                 onClick: () => {
                   l.api.selectDay(defaultDayId());

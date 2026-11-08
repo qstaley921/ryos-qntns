@@ -57,7 +57,10 @@ export interface JournalState {
   fragmentDays: Record<string, string>;
   /** The card the trash button and context menu act on. */
   selectedCardId: string | null;
+  /** Dragged card spots, x in % of the canvas frame width, y in % of its height (may pass 100). */
   positions: Record<string, FragmentPosition>;
+  /** 1 once positions saved before the grid (§22j) were dropped. */
+  gridLayout: number;
   selectedDayId: string;
   /** Custom page titles. Absent means the date, or the page number when there is no date. */
   pageTitles: Record<string, string>;
@@ -115,4 +118,5 @@ export type JournalAction =
   | { type: "selectCanvasPage"; id: string }
   | { type: "addCanvasPage"; id: string }
   | { type: "setPageTitle"; id: string; title: string }
+  | { type: "tidyUp" }
   | { type: "reset" };

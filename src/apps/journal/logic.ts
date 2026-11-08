@@ -61,6 +61,7 @@ export function createInitialJournalState(): JournalState {
     fragmentDays: {},
     selectedCardId: null,
     positions: {},
+    gridLayout: 1,
     selectedDayId: defaultDayId(),
     pageTitles: {},
     startedDayIds: [],
@@ -261,19 +262,23 @@ function cloneToggles(
   };
 }
 
+/** A long grid runs past the frame's height, so y may exceed 100%. */
+const MAX_Y_PERCENT = 1000;
+
 export function normalizeJournalState(value: unknown): JournalState {
   const initial = createInitialJournalState();
   if (!value || typeof value !== "object") return initial;
   const raw = value as Partial<JournalState> & { view?: string };
   const positions: JournalState["positions"] = {};
-  if (raw.positions && typeof raw.positions === "object") {
+  // §22j: spots saved before the grid were the piled-up defaults. Drop them once.
+  if (raw.gridLayout === 1 && raw.positions && typeof raw.positions === "object") {
     for (const [id, position] of Object.entries(raw.positions)) {
       if (!position || typeof position.x !== "number" || typeof position.y !== "number") {
         continue;
       }
       positions[id] = {
         x: clamp(position.x, 0, 100),
-        y: clamp(position.y, 0, 100),
+        y: clamp(position.y, 0, MAX_Y_PERCENT),
       };
     }
   }
@@ -310,6 +315,7 @@ export function normalizeJournalState(value: unknown): JournalState {
     fragmentDays,
     selectedCardId,
     positions,
+    gridLayout: 1,
     selectedDayId: DAY_ID.test(raw.selectedDayId ?? "")
       ? raw.selectedDayId!
       : initial.selectedDayId,
@@ -571,7 +577,7 @@ export function reduceJournal(state: JournalState, action: JournalAction): Journ
     }
     case "moveFragment": {
       const x = clamp(action.position.x, 0, 100);
-      const y = clamp(action.position.y, 0, 100);
+      const y = clamp(action.position.y, 0, MAX_Y_PERCENT);
       const current = state.positions[action.id];
       if (current && current.x === x && current.y === y) return state;
       return {
@@ -706,6 +712,8 @@ export function reduceJournal(state: JournalState, action: JournalAction): Journ
       if ((state.pageTitles[action.id] ?? "") === (pageTitles[action.id] ?? "")) return state;
       return { ...state, pageTitles };
     }
+    case "tidyUp":
+      return Object.keys(state.positions).length === 0 ? state : { ...state, positions: {} };
     case "reset":
       return createInitialJournalState();
     default:

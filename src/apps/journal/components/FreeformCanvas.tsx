@@ -43,6 +43,48 @@ function cardWidth(kind: CanvasCard["kind"]): number {
   return CANVAS_CARD_WIDTH[kind];
 }
 
+/**
+ * §22j grid. Every value is a multiple of 4.
+ *   Cell 220 × 148: the widest card (text, 220) by the tallest (photo 196 × 3/4 = 147;
+ *     text 2 border + 8 pad + 6 lines × 19.25 + 20 date ≈ 146), rounded up to 148.
+ *   Columns: floor((1068 − 2·40 + 36) / (220 + 36)) = floor(1024 / 256) = 4.
+ *   Width: 40 + 4·220 + 3·36 + 40 = 1068, the frame exactly, so the grid is centred.
+ *   Rows: pitch 192 = six 32px ruled lines (journal.css), so 148 card + 44 gap;
+ *     the first row starts on the first line, 32 down.
+ *   A 2° tilt grows a card's box ≈ 5 px sideways and ≈ 8 px down; the 36 / 44 gaps absorb it.
+ * Cards sit top-left in their cell, newest day first, undated pages after.
+ */
+const GRID_EDGE_X = 40;
+const GRID_EDGE_Y = 32;
+const GRID_CELL_W = 220;
+const GRID_CELL_H = 148;
+const GRID_COL_PITCH = 256;
+const GRID_ROW_PITCH = 192;
+const GRID_COLUMNS = Math.floor(
+  (CANVAS_LAYOUT_WIDTH - 2 * GRID_EDGE_X + (GRID_COL_PITCH - GRID_CELL_W)) / GRID_COL_PITCH
+);
+
+function gridPositions(cards: CanvasCard[]): Record<string, FragmentPosition> {
+  const dated = (id: string) => (isJournalDayId(id) ? id : "");
+  const order = cards
+    .map((card, index) => ({ card, index }))
+    .sort(
+      (a, b) =>
+        dated(b.card.pageId).localeCompare(dated(a.card.pageId)) || a.index - b.index
+    );
+  const out: Record<string, FragmentPosition> = {};
+  order.forEach(({ card }, slot) => {
+    out[card.id] = {
+      x: ((GRID_EDGE_X + (slot % GRID_COLUMNS) * GRID_COL_PITCH) / CANVAS_LAYOUT_WIDTH) * 100,
+      y:
+        ((GRID_EDGE_Y + Math.floor(slot / GRID_COLUMNS) * GRID_ROW_PITCH) /
+          CANVAS_LAYOUT_HEIGHT) *
+        100,
+    };
+  });
+  return out;
+}
+
 function CanvasNote({ text, placeholder }: { text: string; placeholder?: boolean }) {
   const ref = useRef<HTMLParagraphElement>(null);
   const [clipped, setClipped] = useState(false);
@@ -161,9 +203,21 @@ export function FreeformCanvas({
     })),
   ];
 
+  const grid = gridPositions(cards);
+
   function positionFor(card: CanvasCard): FragmentPosition {
-    return livePositions[card.id] ?? positions[card.id] ?? { x: card.x, y: card.y };
+    return livePositions[card.id] ?? positions[card.id] ?? grid[card.id] ?? { x: card.x, y: card.y };
   }
+
+  // The frame grows to hold the lowest card plus one edge, so a long grid scrolls.
+  const canvasHeight = cards.reduce(
+    (height, card) =>
+      Math.max(
+        height,
+        (positionFor(card).y / 100) * CANVAS_LAYOUT_HEIGHT + GRID_CELL_H + GRID_EDGE_Y
+      ),
+    CANVAS_LAYOUT_HEIGHT
+  );
 
   function textFor(card: CanvasCard): string {
     const saved = texts[card.id];
@@ -214,7 +268,6 @@ export function FreeformCanvas({
     } else if (pendingClickRef.current?.id === fragment.id) {
       clearPendingTimer();
     }
-    const bounds = canvasRef.current.getBoundingClientRect();
     const current = positionFor(fragment);
     dragRef.current = {
       id: fragment.id,
@@ -223,8 +276,8 @@ export function FreeformCanvas({
       originY: event.clientY,
       startX: current.x,
       startY: current.y,
-      width: bounds.width || 1,
-      height: bounds.height || 1,
+      width: CANVAS_LAYOUT_WIDTH,
+      height: CANVAS_LAYOUT_HEIGHT,
       latest: current,
     };
     const target = event.currentTarget;
@@ -244,7 +297,11 @@ export function FreeformCanvas({
     const maxX = fragment ? 100 - (cardWidth(fragment.kind) / CANVAS_LAYOUT_WIDTH) * 100 : 80;
     drag.latest = {
       x: clamp(drag.startX + ((event.clientX - drag.originX) / drag.width) * 100, 0, maxX),
-      y: clamp(drag.startY + ((event.clientY - drag.originY) / drag.height) * 100, 0, 88),
+      y: clamp(
+        drag.startY + ((event.clientY - drag.originY) / drag.height) * 100,
+        0,
+        ((canvasHeight - GRID_CELL_H) / CANVAS_LAYOUT_HEIGHT) * 100
+      ),
     };
     setLivePositions((current) => ({ ...current, [drag.id]: drag.latest }));
   }
@@ -311,7 +368,7 @@ export function FreeformCanvas({
         <div
           ref={canvasRef}
           className="relative"
-          style={{ width: CANVAS_LAYOUT_WIDTH, height: CANVAS_LAYOUT_HEIGHT }}
+          style={{ width: CANVAS_LAYOUT_WIDTH, height: canvasHeight }}
         >
         {cards.map((fragment) => {
           const position = positionFor(fragment);
@@ -345,7 +402,7 @@ export function FreeformCanvas({
               )}
               style={{
                 left: `${position.x}%`,
-                top: `${position.y}%`,
+                top: (position.y / 100) * CANVAS_LAYOUT_HEIGHT,
                 width: cardWidth(fragment.kind),
                 transform: `rotate(${fragment.rotate}deg)`,
                 borderRadius: 8,
