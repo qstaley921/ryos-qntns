@@ -14,7 +14,7 @@ export function DeepLinkHost() {
 
   useEffect(() => {
     const slug = location.pathname.split("/").filter(Boolean)[0];
-    if (!slug) return;
+    if (!slug || slug.includes(".")) return; // Storybook serves iframe.html; no Ghost slug has a dot
     if (slug === "graffiti") {
       launchApp("paint", { initialData: { ghost: { slug: new URLSearchParams(location.search).get("wall") ?? "" } } });
       return;
