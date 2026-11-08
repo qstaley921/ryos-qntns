@@ -29,7 +29,7 @@ const DEFAULT_PINNED_ITEMS: DockItem[] = [
   { type: "app", id: "calendar" },
 ];
 
-const DOCK_STORE_VERSION = 3;
+const DOCK_STORE_VERSION = 4;
 const APP_ID_SET = new Set<string>(appIds);
 
 /**
@@ -83,7 +83,7 @@ export const useDockStore = create<DockStoreState>()(
   persist(
     (set, get) => ({
       pinnedItems: DEFAULT_PINNED_ITEMS,
-      scale: 0.5, // Default scale: half ryOS stock (1)
+      scale: 1, // Default scale: ryOS stock (1), §78 (supersedes §44's half size)
       hiding: false, // Default: dock always visible
       magnification: true, // Default: magnification enabled
 
@@ -185,17 +185,18 @@ export const useDockStore = create<DockStoreState>()(
       },
 
       reset: () => {
-        set({ pinnedItems: DEFAULT_PINNED_ITEMS, scale: 0.5, hiding: false, magnification: true });
+        set({ pinnedItems: DEFAULT_PINNED_ITEMS, scale: 1, hiding: false, magnification: true });
       },
     }),
     {
       name: STORAGE_KEYS.dock,
       version: DOCK_STORE_VERSION,
       storage: createJSONStorage(() => localStorage),
-      // v2: reset old pins to the six-door default; v3: stock scale 1 -> 0.5
+      // v2: reset old pins to the six-door default; v3 (§44) made stock 1 -> 0.5;
+      // v4 (§78): that half size 0.5 -> stock 1. Any other hand-set scale is kept.
       migrate: (state) => {
         const s = state as DockStoreState;
-        return { ...s, pinnedItems: DEFAULT_PINNED_ITEMS, scale: s.scale === 1 ? 0.5 : s.scale };
+        return { ...s, pinnedItems: DEFAULT_PINNED_ITEMS, scale: s.scale === 0.5 ? 1 : s.scale };
       },
     }
   )
