@@ -27,15 +27,12 @@ import { helpItems } from "../metadata";
 import { useBookCover } from "../utils/useBookCover";
 import type {
   BookBookmark,
-  BookHighlight,
   BookProgress,
-  BooksHighlightColor,
 } from "@/stores/useBooksStore";
 import type { BooksInitialData } from "@/apps/base/types";
 
 const BOOKS_PATH = "/Books";
 
-const EMPTY_HIGHLIGHTS: BookHighlight[] = [];
 const EMPTY_BOOKMARKS: BookBookmark[] = [];
 
 /**
@@ -131,11 +128,7 @@ export function useBooksLogic({
   const moveBookToTop = useBooksStore((s) => s.moveBookToTop);
   const moveBookToBottom = useBooksStore((s) => s.moveBookToBottom);
   const removeBook = useBooksStore((s) => s.removeBook);
-  const highlightsByPath = useBooksStore((s) => s.highlightsByPath);
   const bookmarksByPath = useBooksStore((s) => s.bookmarksByPath);
-  const addHighlightAction = useBooksStore((s) => s.addHighlight);
-  const setHighlightColorAction = useBooksStore((s) => s.setHighlightColor);
-  const removeHighlightAction = useBooksStore((s) => s.removeHighlight);
   const addBookmarkAction = useBooksStore((s) => s.addBookmark);
   const removeBookmarkAction = useBooksStore((s) => s.removeBookmark);
 
@@ -277,34 +270,10 @@ export function useBooksLogic({
   activeBookPathRef.current = activeBookPath;
   const recentlyDroppedRef = useRef<{ path: string; at: number } | null>(null);
 
-  // Annotations for the active book, with actions pre-bound to its path.
-  const activeBookHighlights = activeBookPath
-    ? highlightsByPath[activeBookPath] ?? EMPTY_HIGHLIGHTS
-    : EMPTY_HIGHLIGHTS;
+  // Bookmarks for the active book, with actions pre-bound to its path.
   const activeBookBookmarks = activeBookPath
     ? bookmarksByPath[activeBookPath] ?? EMPTY_BOOKMARKS
     : EMPTY_BOOKMARKS;
-  const addHighlight = useCallback(
-    (highlight: BookHighlight) => {
-      const path = activeBookPathRef.current;
-      if (path) addHighlightAction(path, highlight);
-    },
-    [addHighlightAction]
-  );
-  const setHighlightColor = useCallback(
-    (id: string, color: BooksHighlightColor) => {
-      const path = activeBookPathRef.current;
-      if (path) setHighlightColorAction(path, id, color);
-    },
-    [setHighlightColorAction]
-  );
-  const removeHighlight = useCallback(
-    (id: string) => {
-      const path = activeBookPathRef.current;
-      if (path) removeHighlightAction(path, id);
-    },
-    [removeHighlightAction]
-  );
   const addBookmark = useCallback(
     (bookmark: BookBookmark) => {
       const path = activeBookPathRef.current;
@@ -596,11 +565,7 @@ export function useBooksLogic({
     setShelfView,
     progressByPath,
     saveProgress,
-    activeBookHighlights,
     activeBookBookmarks,
-    addHighlight,
-    setHighlightColor,
-    removeHighlight,
     addBookmark,
     removeBookmark,
     handleImport,

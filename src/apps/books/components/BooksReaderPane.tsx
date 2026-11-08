@@ -29,7 +29,6 @@ import {
   SpeakerHigh,
   Stop,
   TextAa,
-  Trash,
   X,
 } from "@phosphor-icons/react";
 import ePub, {
@@ -43,13 +42,9 @@ import { cn } from "@/lib/utils";
 import { useResizeObserverWithRef } from "@/hooks/useResizeObserver";
 import { readBookBlobContent } from "@/services/vfs/FileContentRepository";
 import {
-  BOOKS_HIGHLIGHT_COLORS,
-  BOOKS_HIGHLIGHT_COLOR_HEX,
   clampBooksGutter,
   normalizeBooksSpeechRate,
   type BookBookmark,
-  type BookHighlight,
-  type BooksHighlightColor,
   type BooksReaderSettings,
 } from "@/stores/useBooksStore";
 import { useDisplaySettingsStore } from "@/stores/useDisplaySettingsStore";
@@ -90,8 +85,6 @@ import {
 } from "../utils/booksSpeech";
 import { useBooksSpeech } from "../hooks/useBooksSpeech";
 import {
-  BOOKS_HIGHLIGHT_CLASS,
-  BOOKS_HIGHLIGHT_UNDER_TEXT_CSS,
   BOOKS_SELECTION_CONTENT_CSS,
   useBooksAnnotations,
 } from "../hooks/useBooksAnnotations";
@@ -165,11 +158,6 @@ interface BooksReaderPaneProps {
   onHideCustomize?: () => void;
   /** Keeps the read-aloud toolbar expanded while Customize is open. */
   isCustomizeOpen?: boolean;
-  /** Saved text highlights for this book. */
-  highlights: BookHighlight[];
-  onAddHighlight: (highlight: BookHighlight) => void;
-  onSetHighlightColor: (id: string, color: BooksHighlightColor) => void;
-  onRemoveHighlight: (id: string) => void;
   /** Saved page bookmarks for this book. */
   bookmarks: BookBookmark[];
   onAddBookmark: (bookmark: BookBookmark) => void;
@@ -248,14 +236,10 @@ const SPEECH_OVERLAY_BUTTON_CLASS =
 const SPEECH_BAR_COLLAPSED = { width: 72, height: 5 } as const;
 const SPEECH_BAR_EXPANDED = { width: 130, height: 36 } as const;
 // Selection toolbar (shown in place of the read-aloud controls while a passage
-// is selected): 5 color dots + divider + copy + ask-ryo (+ remove once the
-// passage is a saved highlight). The bar opens at the narrow width while the
-// selection is still live, then widens once the highlight is saved. Content is
-// centered at these fixed widths, so width = content (195px / 225px) + 4px
-// slack per side — matching the ~10px visual inset the 4px vertical padding
-// + 6px in-button space give the top edge.
-const SELECTION_BAR_WIDTH = 203;
-const SELECTION_BAR_WIDTH_WITH_REMOVE = 233;
+// is selected): copy + ask-ryo. Content is centered at this fixed width, so
+// width = content (2 x 28px + 2px gap = 58px) + 5px slack per side, rounded to
+// the 4px grid.
+const SELECTION_BAR_WIDTH = 68;
 
 // Bar rows stagger their controls in reading order when a row enters or the
 // selection/speech rows swap; exits fade as one so the swap stays snappy.
@@ -512,10 +496,6 @@ export const BooksReaderPane = forwardRef<
     onShowCustomize,
     onHideCustomize,
     isCustomizeOpen = false,
-    highlights,
-    onAddHighlight,
-    onSetHighlightColor,
-    onRemoveHighlight,
     bookmarks,
     onAddBookmark,
     onRemoveBookmark,
@@ -1290,19 +1270,6 @@ export const BooksReaderPane = forwardRef<
                   );
                 }
 
-                try {
-                  contents.addStylesheetCss(
-                    BOOKS_HIGHLIGHT_UNDER_TEXT_CSS,
-                    "ryos-books-highlights"
-                  );
-                } catch {
-                  appendDebugEvent(
-                    "epubjs:contentHook:highlightCss:failed",
-                    undefined,
-                    "warn"
-                  );
-                }
-
                 // Keep passages selectable (iOS long-press + publisher CSS).
                 try {
                   contents.addStylesheetCss(
@@ -1909,26 +1876,11 @@ export const BooksReaderPane = forwardRef<
   });
   speechRelocatedRef.current = handleSpeechRelocated;
 
-  // Text selection + highlight annotations. A settled selection is committed
-  // in the last-used highlight color after a short pause, and the selection
-  // toolbar replaces the read-aloud controls in the bottom pill while that
-  // passage is active.
+  // Text selection: the selection toolbar replaces the read-aloud controls in
+  // the bottom pill while a passage is active.
   const getRendition = useCallback(() => renditionRef.current, []);
-  const {
-    activeSelection,
-    applyHighlightColor,
-    removeActiveHighlight,
-    copyActiveSelection,
-    clearActiveSelection,
-  } = useBooksAnnotations({
-    getRendition,
-    isReady,
-    isDarkPage: palette.isDark,
-    highlights,
-    onAddHighlight,
-    onSetHighlightColor,
-    onRemoveHighlight,
-  });
+  const { activeSelection, copyActiveSelection, clearActiveSelection } =
+    useBooksAnnotations({ getRendition, isReady });
 
   // Edge-hover chevrons (desktop only): hovering a page-turn gutter fades in
   // a directional hint. Mobile/touch never hovers, so the media query gates
@@ -2037,31 +1989,9 @@ export const BooksReaderPane = forwardRef<
         if (!host || !frame) return;
         const hostRect = host.getBoundingClientRect();
         const frameRect = frame.getBoundingClientRect();
-        // Highlight marks live in a pointer-transparent SVG overlay in the
-        // parent document (marks-pane proxies iframe clicks onto them), so a
-        // click on a highlight reaches this handler with the underlying text
-        // as its target. Hit-test the individual mark rects in parent
-        // coordinates so tapping a highlight opens its toolbar (markClicked)
-        // instead of turning the page.
-        const pointXInPage = frameRect.left + event.clientX;
-        const pointYInPage = frameRect.top + event.clientY;
-        const isOverHighlightMark = Array.from(
-          frame.ownerDocument.querySelectorAll(
-            `.${BOOKS_HIGHLIGHT_CLASS} rect`
-          )
-        ).some((mark) => {
-          const rect = mark.getBoundingClientRect();
-          return (
-            pointXInPage >= rect.left &&
-            pointXInPage <= rect.right &&
-            pointYInPage >= rect.top &&
-            pointYInPage <= rect.bottom
-          );
-        });
         const isInteractiveTarget =
-          isOverHighlightMark ||
           target?.closest(
-            `a, button, input, textarea, select, [role="button"], .${BOOKS_HIGHLIGHT_CLASS}`
+            'a, button, input, textarea, select, [role="button"]'
           ) !== null ||
           target?.namespaceURI === "http://www.w3.org/2000/svg";
         const clientXInHost = frameRect.left + event.clientX - hostRect.left;
@@ -2546,7 +2476,7 @@ export const BooksReaderPane = forwardRef<
   }, [isReady, revealSpeechBarTemporarily]);
   const speechBarOpen = isCustomizeOpen || speechBarVisibilityOpen;
   // Active text selection swaps the bottom pill to the selection toolbar
-  // (highlight colors / copy / ask Ryo) and keeps it open.
+  // (copy / ask Ryo) and keeps it open.
   const selectionBarActive = !!activeSelection;
   const askRyoActive = !!askRyo;
   const barOpen = askRyoActive || selectionBarActive || speechBarOpen;
@@ -2799,10 +2729,7 @@ export const BooksReaderPane = forwardRef<
                     }
                 : selectionBarActive
                   ? {
-                      width:
-                        activeSelection?.kind === "highlight"
-                          ? SELECTION_BAR_WIDTH_WITH_REMOVE
-                          : SELECTION_BAR_WIDTH,
+                      width: SELECTION_BAR_WIDTH,
                       height: SPEECH_BAR_EXPANDED.height,
                     }
                   : speechBarOpen
@@ -2990,43 +2917,6 @@ export const BooksReaderPane = forwardRef<
                   animate="visible"
                   exit="exit"
                 >
-                  {/* Highlight color swatches */}
-                  {BOOKS_HIGHLIGHT_COLORS.map((color) => {
-                    const isActiveColor = activeSelection?.color === color;
-                    return (
-                      <motion.button
-                        key={color}
-                        type="button"
-                        variants={BAR_ITEM_VARIANTS}
-                        aria-label={t(`apps.books.selection.color.${color}`)}
-                        title={t(`apps.books.selection.color.${color}`)}
-                        onClick={() => applyHighlightColor(color)}
-                        className={cn(
-                          "group flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors",
-                          isAquaGlass ? null : "hover:bg-white/20"
-                        )}
-                        tabIndex={0}
-                      >
-                        <span
-                          className={cn(
-                            "h-4 w-4 rounded-full transition-transform group-hover:scale-110",
-                            isActiveColor &&
-                              "ring-2 ring-white ring-offset-1 ring-offset-black/40"
-                          )}
-                          style={{
-                            backgroundColor: BOOKS_HIGHLIGHT_COLOR_HEX[color],
-                          }}
-                        />
-                      </motion.button>
-                    );
-                  })}
-                  {/* currentColor keeps the divider matched to the icon color
-                      on both light and dark overlay palettes. */}
-                  <motion.span
-                    aria-hidden
-                    variants={BAR_ITEM_VARIANTS}
-                    className="mx-0.5 h-4 w-px shrink-0 bg-current/20"
-                  />
                   <motion.button
                     type="button"
                     variants={BAR_ITEM_VARIANTS}
@@ -3063,19 +2953,6 @@ export const BooksReaderPane = forwardRef<
                   >
                     <ChatCircleDots weight="bold" size={16} />
                   </motion.button>
-                  {activeSelection?.kind === "highlight" && (
-                    <motion.button
-                      type="button"
-                      variants={BAR_ITEM_VARIANTS}
-                      aria-label={t("apps.books.selection.removeHighlight")}
-                      title={t("apps.books.selection.removeHighlight")}
-                      onClick={removeActiveHighlight}
-                      className={speechOverlayButtonClass}
-                      tabIndex={0}
-                    >
-                      <Trash weight="bold" size={16} />
-                    </motion.button>
-                  )}
                 </motion.div>
               ) : (
                 <motion.div

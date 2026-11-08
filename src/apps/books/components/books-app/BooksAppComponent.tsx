@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { BookmarkSimple, Highlighter, SquaresFour } from "@phosphor-icons/react";
+import { BookmarkSimple, SquaresFour } from "@phosphor-icons/react";
 import type {
   AppProps,
   BooksInitialData,
@@ -22,7 +22,6 @@ import {
 } from "../BooksReaderPane";
 import { BookCloseZoom } from "../BookCloseZoom";
 import { BooksCustomizePanel } from "../BooksCustomizePanel";
-import { BooksHighlightsDrawer } from "../BooksHighlightsDrawer";
 import {
   StoreCallout,
   useQntnsShelf,
@@ -73,11 +72,7 @@ export function BooksAppComponent({
     setShelfView,
     progressByPath,
     saveProgress,
-    activeBookHighlights,
     activeBookBookmarks,
-    addHighlight,
-    setHighlightColor,
-    removeHighlight,
     addBookmark,
     removeBookmark,
     handleImport,
@@ -125,7 +120,6 @@ export function BooksAppComponent({
       new Map([...qntnsShelf.sale].map(([path, s]) => [path, s.owned ? "Purchased" : s.price])),
     [qntnsShelf.sale]
   );
-  const [highlightsOpen, setHighlightsOpen] = useState(false);
   // Narrow windows (mobile / small desktop windows) get a bottom-sheet
   // Customize panel instead of the floating top-right card.
   const [isCompactPanel, setIsCompactPanel] = useState(false);
@@ -151,7 +145,6 @@ export function BooksAppComponent({
   useEffect(() => {
     if (viewMode !== "reader") {
       setBookLanguage(null);
-      setHighlightsOpen(false);
     }
   }, [viewMode]);
 
@@ -241,34 +234,6 @@ export function BooksAppComponent({
   // macOS X notitlebar uses a dark glass titlebar: light icon + shadow.
   // Classic/Windows themes use a dark icon with no shadow.
   const isDarkTitlebar = isMacOSTheme;
-  const highlightsTitleBarButton = isReading ? (
-    <button
-      type="button"
-      aria-label={t("apps.books.highlights.title")}
-      title={t("apps.books.highlights.title")}
-      aria-pressed={highlightsOpen}
-      onClick={(e) => {
-        e.stopPropagation();
-        setHighlightsOpen((open) => !open);
-      }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      className={`shrink-0 w-5 h-5 min-h-5 max-h-5 flex items-center justify-center transition-colors cursor-pointer ${
-        highlightsOpen
-          ? "text-amber-400 hover:text-amber-300"
-          : isDarkTitlebar
-            ? "text-white/80 hover:text-white"
-            : "text-neutral-600 hover:text-neutral-800"
-      }`}
-      style={{
-        filter: isDarkTitlebar
-          ? "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6))"
-          : undefined,
-      }}
-    >
-      <Highlighter size={14} weight={highlightsOpen ? "fill" : "bold"} />
-    </button>
-  ) : null;
   const bookmarkTitleBarButton = isReading ? (
     <button
       type="button"
@@ -360,22 +325,10 @@ export function BooksAppComponent({
         onNavigatePrevious,
         titleBarRightContent: (
           <div className="flex items-center gap-1">
-            {highlightsTitleBarButton}
             {bookmarkTitleBarButton}
             {shelfButton}
           </div>
         ),
-        drawer: isReading ? (
-          <BooksHighlightsDrawer
-            isOpen={highlightsOpen}
-            highlights={activeBookHighlights}
-            onClose={() => setHighlightsOpen(false)}
-            onSelect={(highlight) => {
-              readerRef.current?.goToCfi(highlight.cfiRange);
-              setHighlightsOpen(false);
-            }}
-          />
-        ) : null,
       }}
       leading={
         <input
@@ -425,10 +378,6 @@ export function BooksAppComponent({
             onShowCustomize={() => setIsCustomizeOpen(true)}
             onHideCustomize={() => setIsCustomizeOpen(false)}
             isCustomizeOpen={isCustomizeOpen}
-            highlights={activeBookHighlights}
-            onAddHighlight={addHighlight}
-            onSetHighlightColor={setHighlightColor}
-            onRemoveHighlight={removeHighlight}
             bookmarks={activeBookBookmarks}
             onAddBookmark={addBookmark}
             onRemoveBookmark={removeBookmark}
