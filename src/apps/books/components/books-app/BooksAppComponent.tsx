@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { BookmarkSimple, SquaresFour } from "@phosphor-icons/react";
-import type {
-  AppProps,
-  BooksInitialData,
-  ChatsInitialData,
-} from "@/apps/base/types";
-import { useLaunchApp } from "@/hooks/useLaunchApp";
+import type { AppProps, BooksInitialData } from "@/apps/base/types";
 import { useResizeObserverWithRef } from "@/hooks/useResizeObserver";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
 import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
@@ -57,7 +52,6 @@ export function BooksAppComponent({
     viewMode,
     activeBook,
     activeBookTitle,
-    activeBookAuthor,
     openOriginRect,
     closingBook,
     openBook,
@@ -155,49 +149,6 @@ export function BooksAppComponent({
   const handleBookmarkStateChange = useCallback(
     (bookmarked: boolean) => setIsCurrentPageBookmarked(bookmarked),
     []
-  );
-
-  const launchApp = useLaunchApp();
-  // "Continue in Chats" from the Ask Ryo bubble: open Chats with the passage
-  // quoted alongside the book's metadata (title / author / chapter).
-  const handleAskRyo = useCallback(
-    (passage: string) => {
-      const title = activeBookTitle || activeBook?.name || null;
-      const chapter =
-        readerNavigationState.currentChapterIndex >= 0
-          ? readerNavigationState.chapters[
-              readerNavigationState.currentChapterIndex
-            ]?.label
-          : undefined;
-      const source = [
-        title,
-        activeBookAuthor ? `by ${activeBookAuthor}` : null,
-        chapter ? `(${chapter})` : null,
-      ]
-        .filter(Boolean)
-        .join(" ");
-      const message = [
-        `“${passage}”`,
-        source ? `— ${source}` : null,
-        t("apps.books.selection.askRyoQuestion"),
-      ]
-        .filter(Boolean)
-        .join("\n\n");
-      launchApp("chats", {
-        initialData: {
-          prefillMessage: message,
-          prefillRequestId: `books-ask-ryo-${Date.now()}`,
-        } satisfies ChatsInitialData,
-      });
-    },
-    [
-      activeBook,
-      activeBookAuthor,
-      activeBookTitle,
-      launchApp,
-      readerNavigationState,
-      t,
-    ]
   );
 
   const menuBar = (
@@ -406,7 +357,6 @@ export function BooksAppComponent({
             onAddBookmark={addBookmark}
             onRemoveBookmark={removeBookmark}
             onBookmarkStateChange={handleBookmarkStateChange}
-            onAskRyo={handleAskRyo}
             onBackToShelf={closeBook}
           />
         ) : (

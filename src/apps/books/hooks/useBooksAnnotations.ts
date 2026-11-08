@@ -21,7 +21,7 @@ html, body, body * {
  * races the selection event that preceded it. */
 const SELECTION_CLEAR_DEBOUNCE_MS = 300;
 
-/** The passage the selection toolbar (copy / ask Ryo) is acting on. */
+/** The passage the selection toolbar (copy) is acting on. */
 export interface BooksActiveSelection {
   cfiRange: string;
   text: string;

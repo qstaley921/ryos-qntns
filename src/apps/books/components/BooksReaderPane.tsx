@@ -19,14 +19,12 @@ import { toast } from "sonner";
 import {
   CaretLeft,
   CaretRight,
-  ChatCircleDots,
   Check,
   Copy,
   FastForward,
   Pause,
   Play,
   Rewind,
-  SpeakerHigh,
   Stop,
   TextAa,
   X,
@@ -99,8 +97,6 @@ import {
   useBooksSpeechBarVisibility,
 } from "../hooks/useBooksSpeechBarVisibility";
 import {
-  createSpeechUtterance,
-  getBrowserSpeechSynthesis,
   ryOSLocaleToSpeechLanguage,
 } from "@/utils/browserSpeech";
 import { useBookCover } from "../utils/useBookCover";
@@ -110,11 +106,7 @@ import type {
   BookOriginRect,
 } from "../hooks/useBooksLogic";
 import { createClientLogger, summarizeForLog } from "@/utils/logger";
-import { abortableFetch } from "@/utils/abortableFetch";
-import { getApiUrl } from "@/utils/platform";
 import { Sounds, useSound } from "@/hooks/useSound";
-import { useChatSynth } from "@/hooks/useChatSynth";
-import { useTerminalSounds } from "@/hooks/useTerminalSounds";
 import {
   BOOKS_EDGE_TAP_RATIO,
   resolveBooksEdgeTapDirection,
@@ -164,8 +156,6 @@ interface BooksReaderPaneProps {
   onRemoveBookmark: (cfi: string) => void;
   /** Whether the current page holds a bookmark (drives the menu label). */
   onBookmarkStateChange?: (isBookmarked: boolean) => void;
-  /** Continue the Ask Ryo conversation in Chats with the passage quoted. */
-  onAskRyo: (passage: string) => void;
   /** Leave the reader and return to the bookshelf (error-screen CTA). */
   onBackToShelf: () => void;
 }
@@ -236,10 +226,9 @@ const SPEECH_OVERLAY_BUTTON_CLASS =
 const SPEECH_BAR_COLLAPSED = { width: 72, height: 5 } as const;
 const SPEECH_BAR_EXPANDED = { width: 130, height: 36 } as const;
 // Selection toolbar (shown in place of the read-aloud controls while a passage
-// is selected): copy + ask-ryo. Content is centered at this fixed width, so
-// width = content (2 x 28px + 2px gap = 58px) + 5px slack per side, rounded to
-// the 4px grid.
-const SELECTION_BAR_WIDTH = 68;
+// is selected): copy only. Content is centered at this fixed width, so
+// width = content (1 x 28px) + 6px padding per side = 40px (4px grid).
+const SELECTION_BAR_WIDTH = 40;
 
 // Bar rows stagger their controls in reading order when a row enters or the
 // selection/speech rows swap; exits fade as one so the swap stays snappy.
@@ -277,79 +266,6 @@ const BAR_ITEM_VARIANTS: Variants = {
     transition: { type: "spring", stiffness: 640, damping: 32 },
   },
 };
-
-// Simulated stream for the Ask Ryo bubble: the endpoint returns the full
-// reply at once, so the text fades in chunk by chunk instead. CJK replies
-// have no spaces, so long tokens are re-chunked to keep the stream visible.
-const ASK_REPLY_CHUNK_STAGGER_S = 0.035;
-const ASK_REPLY_MAX_DELAY_S = 2.2;
-const ASK_REPLY_MAX_CHUNK_CHARS = 4;
-
-function splitAskReplyChunks(text: string): string[] {
-  const chunks: string[] = [];
-  for (const token of text.split(/(\s+)/)) {
-    if (!token) continue;
-    if (/^\s+$/.test(token) || token.length <= ASK_REPLY_MAX_CHUNK_CHARS * 3) {
-      chunks.push(token);
-      continue;
-    }
-    for (let i = 0; i < token.length; i += ASK_REPLY_MAX_CHUNK_CHARS) {
-      chunks.push(token.slice(i, i + ASK_REPLY_MAX_CHUNK_CHARS));
-    }
-  }
-  return chunks;
-}
-
-function AskRyoReply({
-  text,
-  trailing,
-}: {
-  text: string;
-  trailing: ReactNode;
-}) {
-  const chunks = useMemo(() => splitAskReplyChunks(text), [text]);
-  let visibleIndex = 0;
-  let lastDelay = 0;
-  const spans = chunks.map((chunk, index) => {
-    if (/^\s+$/.test(chunk)) {
-      return <span key={index}>{chunk}</span>;
-    }
-    const delay = Math.min(
-      visibleIndex * ASK_REPLY_CHUNK_STAGGER_S,
-      ASK_REPLY_MAX_DELAY_S
-    );
-    visibleIndex += 1;
-    lastDelay = delay;
-    return (
-      <motion.span
-        key={index}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.35, ease: "easeOut", delay }}
-      >
-        {chunk}
-      </motion.span>
-    );
-  });
-  return (
-    /* px-0.5 + the pill's px-1.5 = 8px per side, matching the two py-1 rings */
-    <>
-      <div className="max-h-40 select-text overflow-y-auto px-0.5 pt-1 text-[12px] leading-relaxed whitespace-pre-wrap">
-        {spans}
-      </div>
-      {/* Actions fade in after the last chunk, pinned below the scroller so
-          long replies never bury them. */}
-      <motion.div
-        className="mt-1 flex shrink-0 items-center justify-end gap-1 px-0.5 pb-1"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, ease: "easeOut", delay: lastDelay + 0.15 }}
-      >
-        {trailing}
-      </motion.div>
-    </>
-  );
-}
 
 /** Animated icon swap for bar buttons (copy → check, customize → close):
  * the outgoing glyph blurs/shrinks away while the incoming one sharpens in. */
@@ -500,7 +416,6 @@ export const BooksReaderPane = forwardRef<
     onAddBookmark,
     onRemoveBookmark,
     onBookmarkStateChange,
-    onAskRyo,
     onBackToShelf,
   },
   ref
@@ -511,10 +426,6 @@ export const BooksReaderPane = forwardRef<
   const renditionRef = useRef<Rendition | null>(null);
   const bookLanguageRef = useRef<string | null>(null);
   const [bookLanguage, setBookLanguage] = useState<string | null>(null);
-  const bookMetadataRef = useRef<{
-    title: string | null;
-    creator: string | null;
-  }>({ title: null, creator: null });
   const publisherPageDirectionRef = useRef<"ltr" | "rtl">("ltr");
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -1059,11 +970,6 @@ export const BooksReaderPane = forwardRef<
               creator?: string;
             };
           };
-        };
-        // Title/author feed the Ask Ryo prompt so the model knows the source.
-        bookMetadataRef.current = {
-          title: readyBook.package?.metadata?.title?.trim() || null,
-          creator: readyBook.package?.metadata?.creator?.trim() || null,
         };
         // Normalize legacy tags ("jpn", "zho", …) so downstream consumers
         // (layout gates, font stacks, TTS, lang attributes) all agree.
@@ -1879,7 +1785,7 @@ export const BooksReaderPane = forwardRef<
   // Text selection: the selection toolbar replaces the read-aloud controls in
   // the bottom pill while a passage is active.
   const getRendition = useCallback(() => renditionRef.current, []);
-  const { activeSelection, copyActiveSelection, clearActiveSelection } =
+  const { activeSelection, copyActiveSelection } =
     useBooksAnnotations({ getRendition, isReady });
 
   // Edge-hover chevrons (desktop only): hovering a page-turn gutter fades in
@@ -2149,248 +2055,8 @@ export const BooksReaderPane = forwardRef<
     }, 1200);
   }, [copyActiveSelection, t]);
 
-  // Ask Ryo, inline: pressing the chat button auto-sends the passage and the
-  // pill enlarges into a response bubble (thinking dots → reply text) instead
-  // of bouncing the user out to the Chats app.
-  const [askRyo, setAskRyo] = useState<{
-    status: "thinking" | "done" | "error";
-    passage: string;
-    reply?: string;
-    /** Pill width while the bubble is open (fits the window at ask time). */
-    bubbleWidth: number;
-  } | null>(null);
-  const askRyoAbortRef = useRef<AbortController | null>(null);
-  useEffect(
-    () => () => {
-      askRyoAbortRef.current?.abort();
-    },
-    []
-  );
-
-  // UI sounds: toolbar buttons click; Ask Ryo keeps it to simple pings —
-  // a soft synth pulse while thinking, a single ding when the reply lands,
-  // and the typing synth during the reveal.
+  // UI sounds: toolbar buttons click.
   const { play: playClickSound } = useSound(Sounds.BUTTON_CLICK, 0.3);
-  const { playNote } = useChatSynth();
-  const { playErrorSound, playDingSound, playThinkingSound } =
-    useTerminalSounds();
-  // Gentle thinking pulse: hushed echoing notes while waiting (the dedicated
-  // thinking synth self-initializes, so it is always audible).
-  useEffect(() => {
-    if (askRyo?.status !== "thinking") return;
-    void playThinkingSound();
-    const pulse = window.setInterval(() => void playThinkingSound(), 1600);
-    return () => window.clearInterval(pulse);
-  }, [askRyo?.status, playThinkingSound]);
-  // Typing-synth notes paced with the reply's simulated stream.
-  useEffect(() => {
-    if (askRyo?.status !== "done" || !askRyo.reply) return;
-    const chunkCount = splitAskReplyChunks(askRyo.reply).filter(
-      (chunk) => !/^\s+$/.test(chunk)
-    ).length;
-    const revealMs =
-      Math.min(
-        chunkCount * ASK_REPLY_CHUNK_STAGGER_S,
-        ASK_REPLY_MAX_DELAY_S
-      ) *
-        1000 +
-      350;
-    const noteInterval = window.setInterval(() => playNote(), 110);
-    const stopTimer = window.setTimeout(
-      () => window.clearInterval(noteInterval),
-      revealMs
-    );
-    return () => {
-      window.clearInterval(noteInterval);
-      window.clearTimeout(stopTimer);
-    };
-  }, [askRyo, playNote]);
-
-  // Speak the reply with browser TTS (non-AI), same voice/rate settings as
-  // the book read-aloud. Toggle: press again to stop.
-  const [isSpeakingAskReply, setIsSpeakingAskReply] = useState(false);
-  const askSpeechStartedRef = useRef(false);
-  const stopAskReplySpeech = useCallback(() => {
-    if (!askSpeechStartedRef.current) return;
-    askSpeechStartedRef.current = false;
-    setIsSpeakingAskReply(false);
-    try {
-      getBrowserSpeechSynthesis()?.cancel();
-    } catch {
-      // ignore
-    }
-  }, []);
-  useEffect(() => () => stopAskReplySpeech(), [stopAskReplySpeech]);
-  const handleToggleAskReplySpeech = useCallback(() => {
-    if (isSpeakingAskReply) {
-      stopAskReplySpeech();
-      return;
-    }
-    const reply = askRyo?.reply;
-    const synth = getBrowserSpeechSynthesis();
-    if (!reply || !synth) return;
-    // The reply follows the question's language (book language falling back
-    // to the UI locale), so reuse the read-aloud language + voice resolution.
-    const lang = getSpeechLanguage();
-    const utterance = createSpeechUtterance(reply, {
-      lang,
-      rate: normalizeBooksSpeechRate(speechRateRef.current),
-      voices: synth.getVoices(),
-    });
-    utterance.onend = () => {
-      askSpeechStartedRef.current = false;
-      setIsSpeakingAskReply(false);
-    };
-    utterance.onerror = () => {
-      askSpeechStartedRef.current = false;
-      setIsSpeakingAskReply(false);
-    };
-    // Page read-aloud shares the engine; stop it before speaking the reply.
-    stopSpeaking();
-    try {
-      synth.cancel();
-      synth.speak(utterance);
-      askSpeechStartedRef.current = true;
-      setIsSpeakingAskReply(true);
-    } catch {
-      askSpeechStartedRef.current = false;
-      setIsSpeakingAskReply(false);
-    }
-  }, [
-    askRyo,
-    getSpeechLanguage,
-    isSpeakingAskReply,
-    stopAskReplySpeech,
-    stopSpeaking,
-  ]);
-
-  const dismissAskRyo = useCallback(() => {
-    askRyoAbortRef.current?.abort();
-    askRyoAbortRef.current = null;
-    setAskRyo(null);
-    setShowAskCopyCheck(false);
-    stopAskReplySpeech();
-  }, [stopAskReplySpeech]);
-
-  const handleContinueInChats = useCallback(() => {
-    const passage = askRyo?.passage;
-    if (!passage) return;
-    dismissAskRyo();
-    onAskRyo(passage);
-  }, [askRyo, dismissAskRyo, onAskRyo]);
-
-  // Copy-the-reply feedback mirrors the selection toolbar's copy → check swap.
-  const [showAskCopyCheck, setShowAskCopyCheck] = useState(false);
-  const askCopyCheckTimerRef = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (askCopyCheckTimerRef.current !== null) {
-        window.clearTimeout(askCopyCheckTimerRef.current);
-      }
-    },
-    []
-  );
-  const handleCopyAskReply = useCallback(async () => {
-    const reply = askRyo?.reply;
-    if (!reply) return;
-    try {
-      await navigator.clipboard.writeText(reply);
-    } catch {
-      toast.error(t("apps.books.selection.copyFailed"));
-      return;
-    }
-    setShowAskCopyCheck(true);
-    if (askCopyCheckTimerRef.current !== null) {
-      window.clearTimeout(askCopyCheckTimerRef.current);
-    }
-    askCopyCheckTimerRef.current = window.setTimeout(() => {
-      askCopyCheckTimerRef.current = null;
-      setShowAskCopyCheck(false);
-    }, 1200);
-  }, [askRyo, t]);
-
-  const handleAskRyo = useCallback(async () => {
-    const passage = activeSelection?.text;
-    if (!passage) return;
-    clearActiveSelection();
-
-    const meta = bookMetadataRef.current;
-    const navigation = navigationStateRef.current;
-    const chapter =
-      navigation.currentChapterIndex >= 0
-        ? navigation.chapters[navigation.currentChapterIndex]?.label
-        : undefined;
-    const source = [
-      meta.title || entry.name,
-      meta.creator ? `by ${meta.creator}` : null,
-      chapter ? `(${chapter})` : null,
-    ]
-      .filter(Boolean)
-      .join(" ");
-    const prompt = [
-      `“${passage}”`,
-      source ? `— ${source}` : null,
-      t("apps.books.selection.askRyoQuestion"),
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-
-    const hostWidth = viewportRef.current?.clientWidth ?? 360;
-    const bubbleWidth = Math.max(
-      SELECTION_BAR_WIDTH,
-      Math.min(340, hostWidth - 32)
-    );
-
-    askRyoAbortRef.current?.abort();
-    stopAskReplySpeech();
-    const controller = new AbortController();
-    askRyoAbortRef.current = controller;
-    setAskRyo({ status: "thinking", passage, bubbleWidth });
-
-    try {
-      const response = await abortableFetch(getApiUrl("/api/applet-ai"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          context:
-            "You are Ryo, a thoughtful reading companion inside the ryOS Books app. The user selected a passage from the book they are reading. Answer about the passage concisely in 2-4 short sentences, in the same language as the question.",
-        }),
-        signal: controller.signal,
-        timeout: 30000,
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        reply?: string;
-      } | null;
-      const reply = payload?.reply?.trim();
-      if (askRyoAbortRef.current !== controller) return;
-      if (!response.ok || !reply) {
-        setAskRyo({ status: "error", passage, bubbleWidth });
-        playErrorSound();
-        return;
-      }
-      setAskRyo({ status: "done", passage, reply, bubbleWidth });
-      void playDingSound();
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      if (askRyoAbortRef.current !== controller) return;
-      setAskRyo({ status: "error", passage, bubbleWidth });
-      playErrorSound();
-    } finally {
-      if (askRyoAbortRef.current === controller) {
-        askRyoAbortRef.current = null;
-      }
-    }
-  }, [
-    activeSelection,
-    clearActiveSelection,
-    entry.name,
-    playDingSound,
-    playErrorSound,
-    stopAskReplySpeech,
-    t,
-  ]);
-
 
   // Bookmark for the visible page: a saved CFI counts as "on this page" when
   // it falls between the page's start and end CFIs.
@@ -2476,10 +2142,9 @@ export const BooksReaderPane = forwardRef<
   }, [isReady, revealSpeechBarTemporarily]);
   const speechBarOpen = isCustomizeOpen || speechBarVisibilityOpen;
   // Active text selection swaps the bottom pill to the selection toolbar
-  // (copy / ask Ryo) and keeps it open.
+  // (copy) and keeps it open.
   const selectionBarActive = !!activeSelection;
-  const askRyoActive = !!askRyo;
-  const barOpen = askRyoActive || selectionBarActive || speechBarOpen;
+  const barOpen = selectionBarActive || speechBarOpen;
   // Bar visibility from the previous render: when a row swap happens while
   // the pill was still collapsed, the outgoing row exits instantly (see
   // BAR_ROW_VARIANTS) so its controls never flash mid-expansion.
@@ -2686,24 +2351,17 @@ export const BooksReaderPane = forwardRef<
           <motion.div
             role={barOpen ? "toolbar" : "button"}
             aria-label={
-              askRyoActive
-                ? t("apps.books.selection.askRyo")
-                : selectionBarActive
-                  ? t("apps.books.selection.controls", {
-                      defaultValue: "Selection controls",
-                    })
-                  : t("apps.books.speech.controls", {
-                      defaultValue: "Read-aloud controls",
-                    })
+              selectionBarActive
+                ? t("apps.books.selection.controls", {
+                    defaultValue: "Selection controls",
+                  })
+                : t("apps.books.speech.controls", {
+                    defaultValue: "Read-aloud controls",
+                  })
             }
             aria-expanded={barOpen ? undefined : false}
             className={cn(
-              "books-speech-overlay flex items-center justify-center overflow-hidden",
-              // The reply bubble squares off; the control pill (including the
-              // compact thinking state) stays a capsule.
-              askRyoActive && askRyo.status !== "thinking"
-                ? "rounded-[18px]"
-                : "rounded-full",
+              "books-speech-overlay flex items-center justify-center overflow-hidden rounded-full",
               barOpen ? "gap-0.5 px-1.5 py-1" : "cursor-pointer",
               isAquaGlass
                 ? null
@@ -2716,31 +2374,20 @@ export const BooksReaderPane = forwardRef<
             )}
             initial={false}
             animate={
-              askRyoActive
-                ? askRyo.status === "thinking"
+              selectionBarActive
+                ? {
+                    width: SELECTION_BAR_WIDTH,
+                    height: SPEECH_BAR_EXPANDED.height,
+                  }
+                : speechBarOpen
                   ? {
-                      // Stay compact while thinking; only the reply widens it.
-                      width: 64,
+                      width: SPEECH_BAR_EXPANDED.width,
                       height: SPEECH_BAR_EXPANDED.height,
                     }
                   : {
-                      width: askRyo.bubbleWidth,
-                      height: "auto",
+                      width: SPEECH_BAR_COLLAPSED.width,
+                      height: SPEECH_BAR_COLLAPSED.height,
                     }
-                : selectionBarActive
-                  ? {
-                      width: SELECTION_BAR_WIDTH,
-                      height: SPEECH_BAR_EXPANDED.height,
-                    }
-                  : speechBarOpen
-                    ? {
-                        width: SPEECH_BAR_EXPANDED.width,
-                        height: SPEECH_BAR_EXPANDED.height,
-                      }
-                    : {
-                        width: SPEECH_BAR_COLLAPSED.width,
-                        height: SPEECH_BAR_COLLAPSED.height,
-                      }
             }
             transition={{
               type: "spring",
@@ -2753,7 +2400,7 @@ export const BooksReaderPane = forwardRef<
               revealSpeechBarTemporarily();
             }}
             // One capture-phase handler clicks for every toolbar button
-            // (speech, selection colors, copy, ask, done) without wiring each.
+            // (speech, copy) without wiring each.
             onClickCapture={(event) => {
               const target = event.target as Element | null;
               if (target?.closest?.("button:not(:disabled)")) {
@@ -2781,134 +2428,7 @@ export const BooksReaderPane = forwardRef<
                 initial={false}
                 custom={barWasOpen}
               >
-              {askRyoActive ? (
-                <motion.div
-                  key="ask"
-                  className="flex flex-col"
-                  style={
-                    askRyo.status === "thinking"
-                      ? undefined
-                      : { width: askRyo.bubbleWidth - 28 }
-                  }
-                  variants={BAR_ROW_VARIANTS}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  {askRyo.status === "thinking" ? (
-                    <div
-                      className="flex h-7 items-center justify-center gap-1"
-                      aria-label={t("apps.books.selection.askRyo")}
-                      aria-busy
-                    >
-                      {[0, 1, 2].map((dot) => (
-                        <motion.span
-                          key={dot}
-                          className="h-1.5 w-1.5 rounded-full bg-current"
-                          animate={{ opacity: [0.25, 0.9, 0.25] }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                            delay: dot * 0.18,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <AskRyoReply
-                      text={
-                        askRyo.status === "error"
-                          ? t("apps.books.selection.askRyoFailed")
-                          : (askRyo.reply ?? "")
-                      }
-                      trailing={
-                        <>
-                          {askRyo.status === "done" && (
-                            <button
-                              type="button"
-                              aria-label={
-                                isSpeakingAskReply
-                                  ? t("apps.books.speech.stop")
-                                  : t("apps.books.menu.startSpeaking")
-                              }
-                              title={
-                                isSpeakingAskReply
-                                  ? t("apps.books.speech.stop")
-                                  : t("apps.books.menu.startSpeaking")
-                              }
-                              onClick={handleToggleAskReplySpeech}
-                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-current/15 transition-colors hover:bg-current/25"
-                              tabIndex={0}
-                            >
-                              <BarIconSwap
-                                iconKey={
-                                  isSpeakingAskReply ? "stop" : "speak"
-                                }
-                              >
-                                {isSpeakingAskReply ? (
-                                  <Stop weight="fill" size={14} />
-                                ) : (
-                                  <SpeakerHigh weight="bold" size={14} />
-                                )}
-                              </BarIconSwap>
-                            </button>
-                          )}
-                          {askRyo.status === "done" && (
-                            <button
-                              type="button"
-                              aria-label={
-                                showAskCopyCheck
-                                  ? t("apps.books.selection.copied")
-                                  : t("apps.books.selection.copy")
-                              }
-                              title={
-                                showAskCopyCheck
-                                  ? t("apps.books.selection.copied")
-                                  : t("apps.books.selection.copy")
-                              }
-                              onClick={handleCopyAskReply}
-                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-current/15 transition-colors hover:bg-current/25"
-                              tabIndex={0}
-                            >
-                              <BarIconSwap
-                                iconKey={showAskCopyCheck ? "check" : "copy"}
-                              >
-                                {showAskCopyCheck ? (
-                                  <Check weight="bold" size={14} />
-                                ) : (
-                                  <Copy weight="bold" size={14} />
-                                )}
-                              </BarIconSwap>
-                            </button>
-                          )}
-                          {askRyo.status === "done" && (
-                            <button
-                              type="button"
-                              aria-label={t("apps.books.selection.askRyo")}
-                              title={t("apps.books.selection.askRyo")}
-                              onClick={handleContinueInChats}
-                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-current/15 transition-colors hover:bg-current/25"
-                              tabIndex={0}
-                            >
-                              <ChatCircleDots weight="bold" size={14} />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            aria-label={t("common.dialog.done")}
-                            onClick={dismissAskRyo}
-                            className="inline-flex h-6 shrink-0 items-center justify-center rounded-full bg-current/15 px-2.5 !text-[12px] leading-none transition-colors hover:bg-current/25"
-                            tabIndex={0}
-                          >
-                            {t("common.dialog.done")}
-                          </button>
-                        </>
-                      }
-                    />
-                  )}
-                </motion.div>
-              ) : selectionBarActive ? (
+              {selectionBarActive ? (
                 <motion.div
                   key="selection"
                   className="flex items-center gap-0.5"
@@ -2941,17 +2461,6 @@ export const BooksReaderPane = forwardRef<
                         <Copy weight="bold" size={16} />
                       )}
                     </BarIconSwap>
-                  </motion.button>
-                  <motion.button
-                    type="button"
-                    variants={BAR_ITEM_VARIANTS}
-                    aria-label={t("apps.books.selection.askRyo")}
-                    title={t("apps.books.selection.askRyo")}
-                    onClick={handleAskRyo}
-                    className={speechOverlayButtonClass}
-                    tabIndex={0}
-                  >
-                    <ChatCircleDots weight="bold" size={16} />
                   </motion.button>
                 </motion.div>
               ) : (
