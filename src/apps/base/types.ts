@@ -123,6 +123,8 @@ export interface VideosInitialData {
 
 export interface BooksInitialData {
   path?: string;
+  /** Story seed (§14j): open on Library with this book slug owned; `phrase` is saved as its phrase. */
+  own?: { slug: string; phrase?: string };
 }
 
 export interface StuffInitialData {

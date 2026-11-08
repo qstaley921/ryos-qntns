@@ -43,7 +43,7 @@ export function BooksAppComponent({
 }: AppProps<BooksInitialData>) {
   // qntns.com books stand on the shelf with the EPUBs and open in their own
   // reader, as EPUBs built in memory (CHECKLIST-36 §14, §14b, §14f).
-  const qntnsShelf = useQntnsShelf();
+  const qntnsShelf = useQntnsShelf(initialData?.own);
   const {
     t,
     translatedHelpItems,
@@ -96,7 +96,7 @@ export function BooksAppComponent({
   const readerRef = useRef<BooksReaderPaneHandle>(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   // Store | Library (CHECKLIST-36 §14d); Store first, each time Books opens.
-  const [shelfMode, setShelfMode] = useState<BooksShelfMode>("store");
+  const [shelfMode, setShelfMode] = useState<BooksShelfMode>(initialData?.own ? "library" : "store");
   const [callout, setCallout] = useState<{
     sale: ForSale;
     anchor: BookOriginRect;

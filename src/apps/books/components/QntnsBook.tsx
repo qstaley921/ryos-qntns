@@ -24,7 +24,7 @@ export type ForSale = { book: GhostBook; price: string; draft: string; owned: bo
  *  with no saved phrase stands in Store; owned and free ones in Library
  *  (§14d). Owning is the site's own saved phrase, so a book unlocked on
  *  qntns.com is owned here too; a stale one is dropped when it is refused. */
-export function useQntnsShelf() {
+export function useQntnsShelf(own?: { slug: string; phrase?: string }) {
   const [books, setBooks] = useState<GhostBook[]>([]);
   // Bumped when a phrase is saved or dropped here, so owned is read again.
   const [ownedTick, setOwnedTick] = useState(0);
@@ -55,7 +55,9 @@ export function useQntnsShelf() {
       if (price && buy && draft) {
         // §14i: a bought book stays in Store (ribbon "Purchased", Buy again)
         // and sits in Library once.
-        const owned = !!savedPhrase(draft);
+        // Story seed (§14j): the given phrase is saved as a Restore would.
+        if (own?.phrase && b.slug === own.slug) rememberPhrase(draft, own.phrase);
+        const owned = !!savedPhrase(draft) || b.slug === own?.slug;
         sale.set(path, { book: b, price, draft, owned });
         store.push(entry);
         if (owned) library.push(entry);
