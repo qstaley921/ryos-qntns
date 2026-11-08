@@ -12,12 +12,14 @@ import { getTranslatedAppName } from "@/utils/i18n";
 import { ScrollableMenuWrapper } from "./ScrollableMenuWrapper";
 import { FinderAppMenu } from "./FinderAppMenu";
 import { DefaultMenuItems } from "./DefaultMenuItems";
+import { FallbackAppMenus } from "./FallbackAppMenus";
 import { Clock } from "./MenuBarClock";
 import { VolumeControl } from "./VolumeControl";
 import { OfflineIndicator } from "./OfflineIndicator";
 import { CloudSyncIndicator } from "./CloudSyncIndicator";
 import { ExposeButton } from "./ExposeButton";
 import { SpotlightMenuBarButton } from "./SpotlightMenuBarButton";
+import { FundMenuBarButton } from "../fund/FundMenuBarButton";
 import { useDesktopFullscreen } from "./useDesktopFullscreen";
 import { shouldShowDesktopDragDebugZone } from "./desktopDragDebug";
 import { getMenubarWindowChromeLayout } from "./menubarWindowChrome";
@@ -201,7 +203,7 @@ export function MacTopMenuBar({ children }: MacTopMenuBarProps) {
             />
           )}
           {isMacOSTheme && !hasActiveApp && <FinderAppMenu />}
-          {hasActiveApp ? children : <DefaultMenuItems />}
+          {hasActiveApp ? (children ?? <FallbackAppMenus />) : <DefaultMenuItems />}
         </Menubar>
       </ScrollableMenuWrapper>
       {showWindowDragRegion && (
@@ -231,6 +233,7 @@ export function MacTopMenuBar({ children }: MacTopMenuBarProps) {
             <ExposeButton />
             <VolumeControl />
             <Clock enableCalendarOpen />
+            <FundMenuBarButton />
           </>
         )}
         <SpotlightMenuBarButton />

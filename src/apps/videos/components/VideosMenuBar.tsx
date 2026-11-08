@@ -11,6 +11,7 @@ import {
   AppMenuBarMenus,
   type MenuDescriptor,
 } from "@/components/shared/menubar/AppMenuBarMenus";
+import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
 import { MediaControlsMenu } from "@/components/shared/menubar/MediaControlsMenu";
 import { LibraryTrackBrowser } from "@/components/shared/menubar/LibraryTrackBrowser";
 import { MENUBAR_SEPARATOR_CLASS } from "@/components/shared/menubar/menubarStyles";
@@ -42,9 +43,6 @@ interface VideosMenuBarProps {
   onTogglePlay: () => void;
   onNext: () => void;
   onPrevious: () => void;
-  onAddVideo: () => void;
-  onOpenVideo: () => void;
-  onResetPlaylist: () => void;
   isLoopAll: boolean;
   isLoopCurrent: boolean;
   isPlaying: boolean;
@@ -67,9 +65,6 @@ export function VideosMenuBar({
   onTogglePlay,
   onNext,
   onPrevious,
-  onAddVideo,
-  onOpenVideo,
-  onResetPlaylist,
   isLoopAll,
   isLoopCurrent,
   isPlaying,
@@ -115,17 +110,18 @@ export function VideosMenuBar({
     {
       label: t("common.menu.file"),
       items: [
-        {
-          type: "action",
-          label: t("apps.videos.menu.openVideo"),
-          onClick: onOpenVideo,
-        },
-        {
-          type: "action",
-          label: t("apps.videos.menu.shareVideo"),
-          onClick: onShareVideo,
-          disabled: videos.length === 0,
-        },
+        ...fileSubmenus({
+          t,
+          shareItems: [
+            {
+              type: "action",
+              label: t("apps.videos.menu.shareVideo"),
+              onClick: onShareVideo,
+              disabled: videos.length === 0,
+            },
+          ],
+          onShareApp: () => setIsShareDialogOpen(true),
+        }),
         { type: "separator" },
         {
           type: "action",
@@ -191,13 +187,6 @@ export function VideosMenuBar({
           {t("apps.videos.menu.library")}
         </MenubarTrigger>
         <MenubarContent align="start" sideOffset={1} className="px-0 max-w-[180px] sm:max-w-[220px]">
-          <MenubarItem
-            onClick={onAddVideo}
-            className="text-md h-6 px-3"
-          >
-            {t("apps.videos.menu.addToLibrary")}
-          </MenubarItem>
-          
           {videos.length > 0 && (
             <>
               <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
@@ -223,12 +212,6 @@ export function VideosMenuBar({
             className="text-md h-6 px-3"
           >
             {t("apps.videos.menu.clearLibrary")}
-          </MenubarItem>
-          <MenubarItem
-            onClick={onResetPlaylist}
-            className="text-md h-6 px-3"
-          >
-            {t("apps.videos.menu.resetLibrary")}
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>

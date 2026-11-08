@@ -1,5 +1,6 @@
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { AppMenuBarMenus } from "@/components/shared/menubar/AppMenuBarMenus";
+import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 import { useTranslation } from "react-i18next";
 
@@ -42,6 +43,8 @@ export function ControlPanelsMenuBar({
           {
             label: t("common.menu.file"),
             items: [
+              ...fileSubmenus({ t, onShareApp: () => setIsShareDialogOpen(true) }),
+              { type: "separator" },
               {
                 type: "action",
                 label: t("common.menu.close"),

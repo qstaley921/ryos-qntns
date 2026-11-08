@@ -3,8 +3,7 @@ import { Switch } from "@/components/ui/switch";
 import { ControlPanelsPrefFormRow } from "./ControlPanelsPrefFormRow";
 
 // "Reading" group (CHECKLIST-35 §58): the site settings from the theme's
-// settings-menu.js besides sound (dropped, Q16). Reading history is a link;
-// Subscribe mirrors the theme's row: GET/PUT /members/api/member, signed in
+// settings-menu.js besides sound (dropped, Q16). Subscribe mirrors the theme's row: GET/PUT /members/api/member, signed in
 // only. A failed call leaves the switch where it was, silently.
 const MEMBER_API = "/members/api/member";
 
@@ -48,16 +47,6 @@ export function ReadingGroup({ signedIn }: { signedIn: boolean }) {
   return (
     <div className="control-panels-pref-form-section">
       <div className="text-[13px] font-geneva-12 font-medium mb-2">Reading</div>
-      <ControlPanelsPrefFormRow label="Reading history" description="Posts you have read">
-        <a
-          href="/history/"
-          target="_blank"
-          rel="noreferrer"
-          className="text-[12px] font-geneva-12 underline"
-        >
-          Open
-        </a>
-      </ControlPanelsPrefFormRow>
       {signedIn && (
         <ControlPanelsPrefFormRow label="Subscribe" description="Email me new posts">
           <Switch
