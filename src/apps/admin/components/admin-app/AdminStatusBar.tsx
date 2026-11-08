@@ -73,7 +73,7 @@ export function AdminStatusBar({
   const locale = i18n.resolvedLanguage || i18n.language || "en";
 
   return (
-    <div className="os-status-bar os-status-bar-text flex items-center justify-between px-2 py-1 text-[10px] font-geneva-12">
+    <div data-bottom-row className="os-status-bar os-status-bar-text flex items-center justify-between px-2 py-1 text-[10px] font-geneva-12">
       <span>
         {activeSection === "dashboard"
           ? formatDashboardRange(dashboardRangeDays, locale)

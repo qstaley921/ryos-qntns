@@ -40,6 +40,7 @@ export function BottomToolbar({
 
   return (
     <div
+      data-bottom-row
       className={cn(
         "py-1.5 border-t flex items-center gap-2",
         // macOS: on desktop, match bottom padding to the horizontal padding so

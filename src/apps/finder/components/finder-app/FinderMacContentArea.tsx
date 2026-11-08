@@ -104,6 +104,7 @@ export function FinderMacContentArea({
         </FinderPanel>
       </div>
       <div
+        data-bottom-row
         className="os-status-bar os-status-bar-text flex items-center justify-center px-2 pt-1 pb-0 text-[10px] font-geneva-12 bg-transparent border-t border-black/10"
         style={{
           textShadow: "0 1px 0 rgba(255,255,255,0.5)",

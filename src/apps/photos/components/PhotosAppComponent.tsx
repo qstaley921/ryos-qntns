@@ -202,7 +202,7 @@ export function PhotosAppComponent({
         {/* Bottom bar: Play (slideshow albums) and Order Postcard (any open album, §70).
             §13i: split at the source list's 192px (w-48) edge, so the sidebar button sits 16px into the content
             column (the grid's own p-4 inset); hidden sidebar = no spacer, the button at the window's left + 16. */}
-        <div className="flex h-12 shrink-0 border-t border-black/10 bg-os-panel-bg text-xs text-os-text-secondary">
+        <div data-bottom-row className="flex h-12 shrink-0 border-t border-black/10 bg-os-panel-bg text-xs text-os-text-secondary">
           {!hideSide && <div className="w-48 shrink-0 border-r border-black/10" />}
           <div className="flex min-w-0 flex-1 items-center justify-between gap-2 px-4">
           <div className="flex items-center gap-2">

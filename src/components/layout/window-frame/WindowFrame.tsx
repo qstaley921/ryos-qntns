@@ -432,7 +432,7 @@ export function WindowFrame({
                 transformOrigin: "center",
               }}
             >
-              <div className="relative size-full">
+              <div className="group/window relative size-full">
                 <WindowFrameDrawerContext.Provider value={drawerContextValue}>
                   {drawer}
                 </WindowFrameDrawerContext.Provider>
@@ -472,8 +472,8 @@ export function WindowFrame({
                       isMacOSTheme &&
                       "window-material-notitlebar",
                     isGlassRegular && "window-material-glass",
-                    // §66: Tiger's slim bottom bar, the bottom resize strip's grab zone (brushed metal already has mb-[8px])
-                    isMacOSTheme && !isNoTitlebar && !isBrushedMetal && "pb-2"
+                    // §66: Tiger's slim bottom bar, the bottom resize strip's grab zone (brushed metal already has mb-[8px]); §66a: a window with a [data-bottom-row] (status / command row) drops it, the row is the grab edge
+                    isMacOSTheme && !isNoTitlebar && !isBrushedMetal && "pb-2 has-[[data-bottom-row]]:pb-0"
                   )}
                   style={{
                     ...(!isWindowsTheme

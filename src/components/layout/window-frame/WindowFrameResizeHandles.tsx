@@ -66,7 +66,7 @@ export function WindowFrameResizeHandles({
           resizeType?.includes("s")
             ? "bottom-[-100px] h-[200px]"
             : isMacOSTheme
-            ? "bottom-0 h-4" // §66: 8px outside + the 8px bottom bar WindowFrame adds; stops at the content box
+            ? "bottom-0 h-4 group-has-[[data-bottom-row]]/window:h-2" // §66: 8px outside + the 8px bottom bar WindowFrame adds; §66a: no bar when a [data-bottom-row] exists, so outside only (8px)
             : isMobile
             ? "bottom-0 h-6"
             : "bottom-1 h-2"
