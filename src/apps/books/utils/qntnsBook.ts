@@ -91,6 +91,22 @@ export async function unlock(book: string, draft: string, phrase: string): Promi
   }
 }
 
+// The Worker's own EPUB (§14p): Blob on 200, null on anything else (401 included;
+// unlock's path judges the phrase, so nothing is forgotten here).
+export async function fetchEpub(book: string, phrase: string): Promise<Blob | null> {
+  try {
+    const r = await fetch(`${WORKER}/lock/epub`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ book, phrase }),
+      signal: AbortSignal.timeout(10000),
+    });
+    return r.status === 200 ? await r.blob() : null;
+  } catch {
+    return null;
+  }
+}
+
 export type Suggestion = { line1?: string; city?: string; state?: string; zip?: string };
 
 // [] on any failure: no list, never an error.

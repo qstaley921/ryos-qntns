@@ -7,6 +7,7 @@ import { strToU8, zipSync } from "fflate";
 import type { GhostBook } from "@/lib/ghost";
 import {
   clean,
+  fetchEpub,
   fetchFree,
   forgetPhrase,
   parseBook,
@@ -65,6 +66,11 @@ const isTocMarker = (n: Node) => n instanceof Element && n.tagName === "P" && n.
 export async function buildQntnsEpub(book: GhostBook): Promise<Blob> {
   const parsed = parseBook(book);
   const title = bookTitle(book);
+  const saved = parsed.draft ? savedPhrase(parsed.draft) : null;
+  if (saved) {
+    const epub = await fetchEpub(book.slug, saved);
+    if (epub) return epub.type ? epub : new Blob([epub], { type: "application/epub+zip" });
+  }
   let html = parsed.head + parsed.tail;
   let locked = false;
   if (parsed.draft) {
