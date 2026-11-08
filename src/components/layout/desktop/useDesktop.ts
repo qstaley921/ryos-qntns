@@ -10,7 +10,6 @@ import {
 import type { DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import type { SortType } from "@/apps/finder/components/FinderMenuBar";
 import { usePointerLongPress } from "@/hooks/usePointerLongPress";
-import { isFolderTag } from "@/apps/finder/utils/ghostPlaces";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useFilesStore, type FileSystemItem } from "@/stores/useFilesStore";
 import { useShallow } from "zustand/react/shallow";
@@ -45,12 +44,10 @@ import {
 } from "./desktopShortcutUtils";
 import {
   useGhostList,
-  ghostPlaces,
-  RECENTS_PATH,
 } from "@/apps/finder/utils/ghostPlaces";
 import { useShortViewport } from "./desktopConstants";
 import type { DesktopFolder } from "./DesktopIconGrid";
-import { listHomeContent } from "@/lib/ghost";
+import { useContentFolders } from "./useContentFolders";
 import type {
   DesktopProps,
   DesktopItemId,
@@ -313,34 +310,8 @@ export function useDesktop({
   );
 
   const ghost = useGhostList();
-  // Ids of #home-content posts (quotes, rules, notes: Journal only, no folder).
-  // The baked list hides internal tags, so one read-only Content API call.
-  const [homeIds, setHomeIds] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    let live = true;
-    listHomeContent().then((r) => live && setHomeIds(new Set(r.map((p) => p.id))));
-    return () => {
-      live = false;
-    };
-  }, []);
-  // One folder per public tag with >=1 non-home-content post, most posts first.
   const shortViewport = useShortViewport();
-  const baseFolders = useMemo<DesktopFolder[]>(() => {
-    const posts = ghost.docs.filter((d) => d.type === "post" && !homeIds.has(d.id));
-    const count = (slug: string) =>
-      posts.filter((d) => d.tags.some((t) => t.slug === slug)).length;
-    return ghostPlaces(ghost)
-      .filter((p) => p.path !== RECENTS_PATH)
-      .filter((p) => !p.name.startsWith("#") && !p.path.startsWith("/Tag-hash-"))
-      .filter((p) => isFolderTag({ name: p.name, slug: p.path.slice(5) }))
-      .map((p) => ({
-        ...p,
-        n: count(p.path.startsWith("/Tag-") ? p.path.slice(5) : "poems"),
-      }))
-      .filter((p) => p.n > 0)
-      .sort((a, b) => b.n - a.n)
-      .map(({ name, path, icon }) => ({ name, path, icon }));
-  }, [ghost, homeIds]);
+  const baseFolders = useContentFolders(ghost);
   // §49: dock is hidden on a short viewport, so Applications sits on the desktop (after HD, before content folders).
   // §49a: on a short viewport the content folders are dropped too; only Applications stays.
   const folders = useMemo<DesktopFolder[]>(

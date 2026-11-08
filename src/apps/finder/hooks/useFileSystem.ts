@@ -15,6 +15,7 @@ import { useFilesStore, FileSystemItem, ensureFileContentLoaded } from "@/stores
 import { useTextEditStore } from "@/stores/useTextEditStore";
 import { useAppStore, type LaunchOriginRect } from "@/stores/useAppStore";
 import { useFinderStore } from "@/stores/useFinderStore";
+import { useContentFolders } from "@/components/layout/desktop/useContentFolders";
 import { useGhostList, useGhostExtras, markGhostRead, listGhostPath } from "../utils/ghostPlaces";
 import { useFilesStoreShallow } from "@/stores/useFilesStore";
 import { useIpodStoreShallow } from "@/stores/useIpodStore";
@@ -183,6 +184,8 @@ export interface UseFileSystemOptions {
   instanceId?: string;
 }
 
+const ROOT_HIDDEN = new Set(["/Trash", "/Music", "/Downloads", "/Images", "/Documents"]);
+
 export function useFileSystem(
   initialPath: string = "/",
   options: UseFileSystemOptions = {}
@@ -338,6 +341,7 @@ export function useFileSystem(
   const launchApp = useLaunchApp();
   const ghostList = useGhostList();
   const ghostExtras = useGhostExtras(ghostList);
+  const contentFolders = useContentFolders(ghostList);
   const reads = useFinderStore((s) => s.reads);
   const markRead = useFinderStore((s) => s.markRead);
   const {
@@ -578,8 +582,9 @@ export function useFileSystem(
       else {
         const itemsMetadata = getItemsInPath(currentPath).filter(
           (item) =>
-            // Trash stays in the dock, not on the disk (CHECKLIST-35 §76)
-            !(currentPath === "/" && item.path === "/Trash") &&
+            // Trash stays in the dock, not on the disk (CHECKLIST-35 §76);
+            // the stock content folders give way to the site's (§76a)
+            !(currentPath === "/" && ROOT_HIDDEN.has(item.path)) &&
             (currentPath !== "/Desktop" ||
               !item.hiddenOnThemes?.includes(currentTheme))
         );
@@ -607,6 +612,17 @@ export function useFileSystem(
           appId: item.appId,
           modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : undefined,
         }));
+        if (currentPath === "/") {
+          displayFiles.push(
+            ...contentFolders.map((f) => ({
+              name: f.name,
+              path: f.path,
+              isDirectory: true,
+              icon: f.icon,
+              type: "directory-virtual",
+            }))
+          );
+        }
 
         // --- START EDIT: Fetch content URLs for image files (any writable path) ---
         const resolvesToImagesStore = (item: FileSystemItem) =>
@@ -721,6 +737,7 @@ export function useFileSystem(
     internetExplorerFavorites,
     isAdmin,
     ghostList,
+    contentFolders,
     reads,
     ghostExtras,
   ]);
