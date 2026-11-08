@@ -1,0 +1,1253 @@
+/* QNTNs postcard popover.
+   ==========================================================================
+   The share button's replacement. See assets/js/qntns/postcard.js for what the
+   thing is; this file is only how it sits on the page.
+
+   THE CARD ITSELF IS NOT STYLED HERE. The front is a <canvas> and every mark on
+   it is drawn in JavaScript, so the only thing this file says about it is how
+   big the element is. The one number the two share is the 2:3 aspect ratio, and
+   it is stated in both places because a canvas that is not 2:3 does not fail —
+   it silently letterboxes the card. */
+
+/* --postcard-w IS THE ONE SIZE THIS FILE DECIDES, and it is declared exactly
+   once, here, so the toolbar, the card and the action row cannot drift apart.
+   Everything below reads it by inheritance.
+
+   THE SCROLL TRACK IS PAID FOR OUT OF THE CARD'S WIDTH, and this is the
+   arithmetic. CHECKLIST-v7 §8.
+
+       track    16                     4 x 4 — the nub is a square of the same 16
+       gap       8                     4 x 2
+                                      ----
+       shift    24                     4 x 6, taken out of the card's WIDTH
+       card    440 - 24 = 416          4 x 104   (was 440)
+       height  416 x 1.5 = 624         4 x 156   (was 660)
+                                      ----
+       total   16 + 8 + 416 = 440      IDENTICAL to the footprint before it
+
+   416 is 104 x 4. At 2:3 that makes the card 624 tall, and the whole panel is
+   624 + 32 toolbar + 32 actions + two 16px gaps = 720, which is 36 SHORTER than
+   the 756 it used to be, so every viewport that fitted still fits and nothing
+   here makes anything bigger. Below that the min() takes over and the card
+   tracks the viewport: the second term keeps it inside a narrow screen, the
+   third keeps a 2:3 card inside a short one. 160 is the chrome the third term
+   has to leave room for — toolbar 32 + actions 32 + gaps 32 + padding 32, plus
+   32 of slack so the shadow is never against the edge.
+
+   ONLY THE SECOND TERM LOSES THE 24. The track costs WIDTH and not height, so
+   the height-driven third term is left exactly as it was — that is the part of
+   this that is easy to get wrong. It is also why NO @media RULE IS NEEDED and
+   the track is never hidden: at a 390px phone the second term goes from
+   calc(100vw - 32px) = 358 to calc(100vw - 32px - 24px) = 334, and 334 + 24 is
+   358 again, so the total is identical at every width in all three branches.
+   BASE-4 EXEMPTION, NAMED WHERE IT IS TAKEN: 358 and 334 are viewport-derived
+   and land off the grid — the arithmetic of a proportion nobody authored, the
+   same class of value as --postcard-edge. The four numbers a person DID choose,
+   416, 24, 16 and 8, are all multiples of 4.
+
+   THE 416 CEILING IS GONE, AND IT WAS DELETED RATHER THAN RAISED. CHECKLIST-v7
+   §9.4 asked the card to grow on a big screen the way it already shrinks on a
+   small one, and the only thing stopping it was the first term. The question
+   was whether the remaining two bound it on their own, and they do: a 2:3 card
+   is HEIGHT-limited on every landscape screen, so the third term is the one
+   that binds. Worked, at three real viewports:
+
+       390 x 844    width  390 - 32 - 24 = 334   height (844-160)*2/3 = 456  -> 334
+       1440 x 900   width  1440 - 32 - 24 = 1384 height (900-160)*2/3 = 493  -> 493
+       2560 x 1440  width  2560 - 32 - 24 = 2504 height (1440-160)*2/3 = 853 -> 853
+
+   So the card is 853 on a 1440-tall monitor and 334 on a phone, off ONE
+   expression, and there is no new maximum to keep on the grid because no new
+   number was chosen — a term was removed, not replaced. The base-4 exemption
+   the second and third terms already take covers the whole value now: every
+   width the card can take is viewport-derived and lands where the viewport puts
+   it. The four numbers a PERSON picked are 24, 16, 8 and the 160 of chrome, and
+   all four are multiples of 4.
+
+   THE FOOTPRINT IDENTITY SURVIVES AT EVERY WIDTH, which is what makes deleting
+   the ceiling safe. The panel's padding-left is a fixed 24 and the width term
+   subtracts a fixed 24; neither is a function of the card, so card + 24 is
+   still exactly what the card alone would have been, on a 390 phone and on a
+   2560 monitor alike. The track and its gap stay the ruled 16 and 8 at every
+   size and do NOT scale: it is editing furniture sized for a fingertip, and a
+   fingertip does not grow with the monitor. CHECKLIST-v7 §9.4,
+   DECISIONS-LOG.md #37. Exhibited in QNTNs/Postcard > Scaling.
+
+   THE COST OF THE SHRINK IS RESOLUTION AND NOT LAYOUT. The card is rasterised
+   at 416 rather than 440 — 416/440 = 0.945, so every drawn thing, the QR
+   especially, has 5.5% fewer pixels. The trim-unit geometry is untouched and
+   not one number in the drawing code moves. Whether the loss is acceptable is
+   a look, and the look is the user's. The reason it may never be answered with
+   a transform is stated on the stage's width rule below. */
+.qntns-postcard {
+    --postcard-w: min(calc(100vw - var(--space-32) - 24px), calc((100vh - 160px) * 2 / 3));
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    /* The second half of the back-navigation fix, and it is a belt beside the
+       braces in postcard.js. preventDefault stops the horizontal deltas the
+       card's own wheel handler sees; this stops any that reach the popover by
+       some other route from being spent as an overscroll, which is what the
+       browser reads as a back gesture. */
+    overscroll-behavior: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-16);
+}
+
+.qntns-postcard[hidden] {
+    display: none;
+}
+
+/* THE SAME SCRIM AS THE FOOTNOTE POPOVER AND THE COMMENTS DRAWER — ink at 0.45,
+   not black, and not opaque. The post is still there and still legible, and
+   this is over it rather than instead of it. The value is repeated rather than
+   tokenised for the reason footnotes.css already gives: drawer.css owns the
+   original, and a shared token would imply the three are required to move
+   together, which nobody has decided. */
+.qntns-postcard__scrim {
+    position: absolute;
+    inset: 0;
+    /* THE TINT IS IN THE COLOUR, NOT IN `opacity`, AND THAT IS WHAT MAKES THE
+       BLUR WORK AT ALL.
+
+       This was `background: var(--color-ink); opacity: 0.45` — the same two
+       lines footnotes.css and drawer.css use, and correct for them because
+       neither one blurs. Adding backdrop-filter to it produced NO VISIBLE BLUR:
+       an element with opacity < 1 is composited as a group, so the browser
+       blends the filtered backdrop at 45% over the UNFILTERED backdrop behind
+       it. 45% of a blurred image plus 55% of a sharp one reads as sharp.
+
+       color-mix puts the same 45% of ink into the paint instead, the element
+       stays fully opaque, and the blur is composited once at full strength.
+       The tint is unchanged; only the mechanism moved. color-mix is already
+       relied on elsewhere in this file and in content.css.
+
+       8px, settled by looking at it. 32 was the first number tried and it read
+       as frosted glass — the article stopped being a page behind the card and
+       became texture. 8 still separates the two planes without pretending the
+       post is not there, which is the same claim the 45% tint makes.
+       Footnotes and the drawer tint the page; the postcard REPLACES it — the
+       card is a whole object being handled, and the article behind it should
+       stop competing for the eye rather than merely dim.
+
+       Unsupported means no blur and a plain 45% ink scrim, which is exactly
+       what the other two do — so the failure is the old design rather than a
+       broken one. */
+    background: color-mix(in srgb, var(--color-ink) 45%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    cursor: pointer;
+}
+
+/* z-index 100, one step above the drawer's 90 in drawer.css. The postcard can
+   be opened from a post that already has the comments drawer on screen, and
+   when both are up the postcard is the thing being acted on. */
+.qntns-postcard__panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    align-items: center;
+
+    /* THE PANEL IS A LAYOUT, NOT A SURFACE, AND MAY NOT SWALLOW A TAP.
+       It paints nothing — the card, the toolbar and the buttons paint, and the
+       rest of this box is the scrim showing through. But it sat above the scrim
+       and took every press that landed on it, so tapping visible scrim INSIDE
+       the panel's bounds did nothing. The actions row is the obvious case: it
+       is width: 100% with justify-content: flex-end, so the empty half to the
+       LEFT of the share buttons is still the row's own box. The toolbar's gaps
+       are the same bug with less space to notice it in.
+       pointer-events: none makes the empty parts stop being a hit target at
+       all, so a press there reaches the scrim underneath and dismisses, which
+       is what a reader means by tapping the background. The real controls take
+       it back below — nothing that paints is affected. */
+    pointer-events: none;
+}
+
+/* The parts that ARE content and must keep taking presses. Direct children of
+   the two rows rather than the rows themselves: a group is exactly as wide as
+   its buttons, so its box holds no visible scrim, while the ROW is as wide as
+   the card and mostly does. The stage is the card itself and is content
+   throughout. */
+.qntns-postcard__toolbar > *,
+.qntns-postcard__actions > *,
+.qntns-postcard__stage {
+    pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   The toolbar
+   ------------------------------------------------------------------------ */
+
+/* Three groups on one line: the line-window arrows, the side toggle, the line
+   count. The toggle is centred and the two groups are pushed to the edges, so
+   the toggle stays on the card's centreline whatever the arrows are doing.
+   The row is exactly as wide as the card below it. */
+.qntns-postcard__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    width: 100%;
+    max-width: var(--postcard-w);
+}
+
+.qntns-postcard__group {
+    display: flex;
+    gap: var(--space-4);
+}
+
+/* ---------------------------------------------------------------------------
+   Controls
+   ------------------------------------------------------------------------ */
+
+/* THE THEME HAS NO SHARED BUTTON CLASS. There is no .qntns-button; every
+   component declares its own, and this one is no exception. What is shared is
+   the vocabulary — beige-dark fill, the 1px ink hairline, the 4px solid shadow,
+   and the 32px height every control in this theme settles on. Matching that by
+   hand is the cost of not having a component, and it is deliberate: see the
+   same note in fund.css. */
+.qntns-postcard__square,
+.qntns-postcard__tab,
+.qntns-postcard__mail {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    border: var(--border-card);
+    background: var(--color-beige-dark);
+    color: var(--color-ink);
+    font-family: inherit;
+    font-size: var(--type-step--1);
+    font-weight: 700;
+    border-radius: var(--radius-control);
+    cursor: pointer;
+}
+
+/* Square, so width equals the height rather than being typed again. */
+.qntns-postcard__square {
+    width: 32px;
+    padding: 0;
+    box-shadow: var(--shadow-hard);
+}
+
+/* A dead control says so by going pale, and stops casting the shadow — the
+   shadow is what makes the others read as pressable, so removing it is the
+   affordance being withdrawn rather than a decoration being switched off.
+   That reading holds for the raised squares in the action row; the toolbar's
+   navy ones have no shadow to withdraw and are handled separately below. */
+.qntns-postcard__square:disabled {
+    opacity: 0.35;
+    box-shadow: none;
+    cursor: default;
+}
+
+/* THE TOOLBAR SQUARES ARE SOLID NAVY, NOT RAISED BEIGE. The four of them — the
+   two line-window arrows and the two line-count steps — are the same class of
+   control as the footer's subscribe button, so they take that button's
+   treatment verbatim: ink fill, card-coloured mark, the same hairline and the
+   same control radius, and no shadow, because a filled button is already the
+   figure against the beige and lifting it as well would make it the loudest
+   thing on a panel whose subject is the card. The glyphs need no help: every
+   icon icon-set.js emits is fill="none" stroke="currentColor", so setting
+   color here is the whole of what turns them beige.
+
+   SCOPED BY ANCESTOR ON PURPOSE. The share and download squares in the action
+   row keep the raised beige treatment, and the difference between the two sets
+   is where they sit, not what they are called. Selecting on the toolbar means
+   no modifier class has to be added in postcard.js for this to hold, so the
+   markup and this file stay independent of each other. */
+.qntns-postcard__toolbar .qntns-postcard__square {
+    background: var(--color-ink);
+    color: var(--color-card);
+    box-shadow: none;
+}
+
+/* With no shadow to take away, paleness is the entire dead state — and it has
+   to be stated here rather than left to the rule above, because that rule's
+   box-shadow: none is a no-op on a button that never cast one. 0.35 is the
+   same value, so a blocked arrow reads as dead by exactly as much as a disabled
+   action-row square does.
+
+   [aria-disabled="true"], NOT :disabled, and that is a behaviour decision, not
+   a styling one: a `disabled` button dispatches no click event at all, so a
+   press on one cannot be answered and a control at its limit would simply do
+   nothing. These refuse out loud instead. pagination.css argues this at length
+   and fund.css follows it; the postcard is the third and deliberately the same.
+   The guard that actually stops the press is step() in postcard.js. */
+.qntns-postcard__toolbar .qntns-postcard__square[aria-disabled="true"] {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* THESE FOUR ARE HELD, NOT JUST PRESSED, and a long press is exactly the
+   gesture a touch device reads as "select this" or "show me a menu about
+   this". Left alone, holding the chevron to run the window down a poem raises
+   a selection handle or an iOS callout over the button being held.
+
+   touch-action: manipulation is the other half — it drops the 300ms wait for a
+   possible double-tap, so the first step of a hold lands when the finger does
+   rather than a third of a second later. */
+.qntns-postcard__toolbar .qntns-postcard__square {
+    -webkit-touch-callout: none;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+/* THE SAME REFUSAL AS A FACE-DOWN CARD AND A PAGINATION STEP AT ITS BOUND.
+   qntns-refuse is defined once in card-group.css and shared rather than copied,
+   so the theme's refusals cannot drift into four different shakes. The error
+   sound is played from postcard.js, because a shake alone is missed by anyone
+   not looking directly at the button they just pressed. */
+.qntns-postcard__square.is-refused,
+.qntns-postcard__mail.is-refused {
+    animation: qntns-refuse var(--duration-refuse, 420ms) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* The sound still plays: the refusal is delivered, just not moved. */
+    .qntns-postcard__square.is-refused,
+    .qntns-postcard__mail.is-refused { animation: none; }
+}
+
+/* The two tabs share one hairline rather than each drawing their own, which is
+   what makes them read as one control with two halves instead of two buttons
+   that happen to touch.
+
+   THE NAVY IS THE TRACK AND IT LIVES HERE, not on the tabs. The tabs used to
+   paint their own fills and the selection was a background swapping from navy
+   to beige; it is now a single beige block that SLIDES between the two halves,
+   and a block that slides has to be one object rather than two backgrounds
+   taking it in turns. overflow: hidden is what keeps it inside the hairline at
+   the ends of its travel. */
+.qntns-postcard__toggle {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    border: var(--border-card);
+    background: var(--color-ink);
+    box-shadow: var(--shadow-hard);
+}
+
+/* THE THUMB. Exactly half the track — which is only true because both tabs are
+   flex: 1 below, so "Front" and "Back" occupy equal halves despite being
+   different lengths. Sized with inset rather than width so its height comes
+   from the track and cannot be stated twice.
+
+   TRANSFORM, NOT `left`. A transform is composited and does not touch layout,
+   so the slide cannot reflow the labels sitting on top of it; animating `left`
+   would relayout the control on every frame of the travel.
+
+   250ms is --duration-rule, the sticky month's own slide (tokens.css:147),
+   borrowed rather than invented so the theme has one speed for a thing moving
+   a short distance under a direct instruction. */
+.qntns-postcard__toggle::before {
+    content: "";
+    position: absolute;
+    inset: 0 50% 0 0;
+    background: var(--color-beige-dark);
+    transition: transform var(--duration-rule, 250ms) var(--ease-flip, ease);
+}
+
+/* WHERE THE THUMB RESTS: wherever the shown side is. postcard.js writes
+   data-side on this element in showSide(), which is the same function that
+   swaps the canvas for the form, so the thumb cannot disagree with what is on
+   screen — there is one place that decides which side is showing. */
+.qntns-postcard__toggle[data-side="back"]::before {
+    transform: translateX(100%);
+}
+
+/* AND WHERE IT GOES WHEN YOU POINT AT THE OTHER HALF. Hovering either tab pulls
+   the thumb over to it; taking the pointer away drops it back to the resting
+   position above, because these rules simply stop applying and the transition
+   runs the other way. That is the whole of "slides back to its current state" —
+   there is no second animation and no JavaScript in it.
+
+   :has() IS THE ONLY WAY TO SAY THIS. The thumb is a pseudo-element of the
+   track and the tabs are its siblings-in-spirit; no sibling combinator reaches
+   backwards from a hovered tab to the track's own ::before. Where :has() is
+   unsupported the whole block is dropped and the thumb simply does not preview
+   on hover — the control still works and still slides on selection.
+
+   @media (hover: hover) because a touch device latches :hover on the last thing
+   tapped, which would leave the thumb parked under a tab that is not selected. */
+@media (hover: hover) {
+    .qntns-postcard__toggle:has(.qntns-postcard__tab:first-child:hover)::before {
+        transform: translateX(0);
+    }
+
+    .qntns-postcard__toggle:has(.qntns-postcard__tab:last-child:hover)::before {
+        transform: translateX(100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* The thumb still moves — it is the only thing saying which side is shown.
+       It just arrives rather than travels. */
+    .qntns-postcard__toggle::before { transition: none; }
+}
+
+/* flex: 1 SO THE TWO HALVES ARE EQUAL, which is what lets the thumb be a flat
+   50% instead of something measured per label. position: relative to sit above
+   the thumb, which is painted first and would otherwise cover them. */
+/* THE SIDE NOT BEING LOOKED AT RECEDES: regular weight, and its label at 75% of
+   full strength. Both halves were bold and both were at full contrast, so the
+   toggle read as two live labels with one of them highlighted rather than as one
+   selected and one available.
+
+   MIXED TOWARD THE FILL RATHER THAN SET WITH opacity. Fading the element would
+   fade its navy ground as well and lift a pale rectangle out of the control;
+   mixing the label 75% of the way from the ink toward the card colour is what
+   75% alpha text on that ground actually looks like, with the ground untouched.
+
+   WEIGHT FOLLOWS THE SELECTION; COLOUR FOLLOWS THE THUMB. They are deliberately
+   keyed to different things. The weight is the real state and must not flicker
+   under a passing cursor. The colour has no choice: the thumb slides out from
+   under the selected label on hover and a beige-mixed label on a beige thumb is
+   unreadable, so whichever half the thumb is currently under has to be ink. */
+/* flex: 1 SO THE TWO HALVES ARE EQUAL, which is what lets the thumb be a flat
+   50% instead of something measured per label. position: relative to sit above
+   the thumb, which is painted first and would otherwise cover them. The fill is
+   the track's now, so these carry none. */
+.qntns-postcard__tab {
+    position: relative;
+    flex: 1;
+    border: 0;
+    padding: 0 var(--space-16);
+    background: none;
+    box-shadow: none;
+    font-weight: 400;
+    color: color-mix(in srgb, var(--color-card) 75%, var(--color-ink));
+    transition: color var(--duration-rule, 250ms) var(--ease-flip, ease);
+}
+
+.qntns-postcard__tab[aria-selected="true"] {
+    font-weight: 700;
+}
+
+/* The resting case: no tab is hovered, so the thumb is under the selected one. */
+.qntns-postcard__toggle:not(:has(.qntns-postcard__tab:hover)) .qntns-postcard__tab[aria-selected="true"] {
+    color: var(--color-ink);
+}
+
+@media (hover: hover) {
+    .qntns-postcard__tab:hover {
+        color: var(--color-ink);
+    }
+}
+
+/* AND THE SAME THING FOR A SCREEN WITH NO POINTER, WHICH IS NOT BELT AND
+   BRACES — IT IS THE ONLY RULE THAT FIRES THERE.
+
+   The guarded rule above reads "ink the selection unless something is hovered",
+   and it is correct on a desktop because the thumb really does slide out from
+   under the selected label when the cursor visits the other half.
+
+   iOS SAFARI LEAVES :hover STUCK ON WHATEVER WAS LAST TAPPED. So one tap on
+   Back makes `:has(.qntns-postcard__tab:hover)` true for the rest of the
+   session, the guarded rule stops matching, and the label drops to the 75%
+   mixed grey. On a desktop the hover rule immediately above hands the ink back;
+   on iOS it cannot, because `@media (hover: hover)` does not apply there. The
+   result was a permanently half-grey label on the selected half, on the one
+   platform where the thumb never slides at all.
+
+   A pointerless screen has no cursor to move out from under anything, so the
+   selection is simply ink and no guard belongs on it. Scoped to `hover: none`
+   rather than replacing the rule above so the desktop behaviour this component
+   was designed around is untouched. */
+@media (hover: none) {
+    .qntns-postcard__tab[aria-selected="true"] {
+        color: var(--color-ink);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-postcard__tab { transition: none; }
+}
+
+.qntns-postcard__icon {
+    display: block;
+}
+
+/* ---------------------------------------------------------------------------
+   The stage
+   ------------------------------------------------------------------------ */
+
+/* THE STAGE IS THE PERSPECTIVE BOX, NOT THE CARD. It holds the size and the
+   aspect ratio and nothing else; the border, the shadow, the fill and the
+   clipping all belong to the two FACES below, because a face is a card and the
+   stage is the space the card turns in.
+
+   Perspective is depth, not spacing, so the base-4 rule has nothing to say
+   about it — but 1200px is a multiple of 4 anyway. It is deeper than the card
+   group's 900px for one reason: this card is roughly three times as wide as a
+   deck card, and perspective is measured in absolute pixels, so reusing 900
+   here would throw the near edge out far harder than it does on a deck card. */
+/* NO transform: scale(), ON THIS BOX OR ON ANYTHING INSIDE IT. THIS IS A
+   CONSTRAINT ON EVERY FUTURE EDIT AND NOT A NOTE ABOUT THE LAST ONE.
+
+   paintPreview() reads canvas.clientWidth on every repaint and sizes the
+   backing store from it, so the card is RASTERISED at whatever width this rule
+   resolves to and stays sharp at any of them. A CSS scale does the opposite: it
+   resamples a bitmap that has already been drawn at the old size, and the
+   result is a soft card and an unreadable QR that no amount of redrawing fixes,
+   because the redraw happens before the scale.
+
+   So a sizing problem here is fixed by changing --postcard-w and letting the
+   canvas re-rasterise. It is never fixed with a transform. */
+.qntns-postcard__stage {
+    width: var(--postcard-w);
+    aspect-ratio: 2 / 3;
+    perspective: 1200px;
+    /* BOTH AXES ARE OURS NOW. A sideways drag turns the card over and an
+       up-and-down drag runs the quoted passage (see the gesture note in
+       postcard.js), so the browser must not claim either one first as a scroll
+       or a back-navigation.
+
+       This was pan-y, which kept the vertical half for the browser. That was
+       right while vertical did nothing here; it is wrong now, because a touch
+       drag up the card would be eaten as a page scroll before pointermove was
+       ever dispatched. Nothing is lost: the popover is fixed over a scrim, so
+       the page behind it is not somewhere the reader is going, and the address
+       form on the back does not scroll — its one scrolling part is the address
+       suggestion list, which is its own box and keeps its own overflow. */
+    touch-action: none;
+}
+
+/* ---------------------------------------------------------------------------
+   The scroll track
+   ---------------------------------------------------------------------------
+
+   A 16px track down the left of the card holding a navy nub that says how much
+   of the passage is on the card and where in it the reader is standing. Before
+   it, the only signs the passage moved were the chevrons dimming and the words
+   changing, and neither says HOW MUCH or WHERE. CHECKLIST-v7 §8.
+
+   IT IS EDITING CHROME AND IT MUST NEVER PRINT. It is DOM inside the stage,
+   absolutely positioned outside the canvas's left edge, and nothing about it
+   goes anywhere near paintFront(), drawFigure() or LAYOUT. paintPreview() and
+   exportFront() are one function at two scales, so anything paintFront draws is
+   on a card somebody paid to have mailed — a scrollbar burned into a printed
+   postcard is the exact failure DECISIONS-LOG.md #37 exists to prevent.
+
+   The width arithmetic that pays for it is on --postcard-w at the top of this
+   file, with the no-scale constraint and the base-4 exemption. */
+
+/* The 24 goes on the COLUMN, as padding, and not on the stage alone. The
+   toolbar and the actions row centre on their own, so a margin on the stage
+   would move the stage and leave those two sitting 12px to its left. Put the
+   shift in flow once, on the box that holds all three, and everything above and
+   below the card inherits it. */
+.qntns-postcard__panel { padding-left: var(--space-24) }
+
+/* The stage is already a containing block for absolute children — "perspective"
+   makes it one — but say so, because a reader who deleted the perspective would
+   silently reparent the track to the viewport. */
+.qntns-postcard__stage { position: relative }
+
+/* Pinned to the CARD'S OWN BOX rather than given the 624 the arithmetic
+   produces: "top: 0; bottom: 0" is exactly the card's height at every viewport,
+   including the two smaller branches of the min(), where 624 would be wrong.
+   "right: 100%" puts it outside the stage's left edge and margin-right opens
+   the 8 — together they land inside the panel's 24 of padding, which is why the
+   track is out of flow and still cannot overlap anything.
+
+   OUTLINE, NOT BORDER. "* { box-sizing: border-box }" is set theme-wide, so a
+   1px border on a 16px track leaves a 14px interior and the nub could never be
+   the 16-square it is meant to be. An outline consumes no layout at all, and it
+   paints AFTER descendants, so the navy hairline frames the navy nub instead of
+   being buried under it. The 1px is CLAUDE.md's named hairline exemption — a
+   rule, not a measurement — and this comment is where it is taken.
+
+   pointer-events: auto is NOT decoration. .qntns-postcard__panel sets
+   pointer-events: none so that a press on its empty parts falls through to the
+   scrim and dismisses; anything inside it that means to be grabbed has to take
+   it back, exactly as the real controls do above. */
+.qntns-track {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    margin-right: var(--space-8);
+    width: 16px;
+    background: var(--color-beige-dark);
+    outline: 1px solid var(--color-ink);
+    outline-offset: -1px;
+    pointer-events: auto;
+    touch-action: none;
+    transition: opacity var(--duration-flip) var(--ease-flip);
+}
+
+/* height and top are written by layoutTrack() in postcard.js. */
+.qntns-track__nub {
+    position: absolute;
+    left: 0;
+    width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-card);
+    cursor: grab;
+}
+
+/* The glyph is the grabber's own, turned on its side, so the nub is grabbable
+   in the language the card already speaks rather than in a second one invented
+   for it. size 16 and not the grabber's 20: 20 overflows a 16-wide nub by 2
+   each side. */
+.qntns-track__nub .icon { transform: rotate(90deg) }
+
+/* GO NULL ON THE BACK, IN CSS AND NOT OFF onPaint. paint() returns immediately
+   when the card is not showing its front, so onPaint NEVER FIRES on the back
+   and a callback-driven fade would simply never happen. showSide() writes
+   [data-back] on [data-postcard-flip] the instant the turn starts, which is the
+   signal :has() can see.
+
+   VISIBLE, faded, and inert — not hidden. A track that vanished would give the
+   panel its 24px back and let the card jump sideways mid-flip. */
+.qntns-postcard__stage:has([data-postcard-flip][data-back]) .qntns-track {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* The thing that actually turns. The front rests at 0deg and the back at
+   -180deg about Y, which is the whole of the direction rule: winding to the
+   back sweeps the card one way and unwinding sweeps it back the other. See the
+   note on showSide() in postcard.js.
+
+   THE SIGN IS THE DIRECTION and it is negative here, which is the opposite of
+   the deck's forward page turn. The deck and the postcard are not the same
+   gesture: paging forward advances through a feed, while turning a postcard
+   over is the reader's own hand on the card. Both faces below read the same
+   sign, so it cannot be changed in one place and not the other.
+
+   Same --duration-flip and --ease-flip as the card group's page turn, so the
+   postcard and the deck move at one speed. */
+.qntns-postcard__flip {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform var(--duration-flip) var(--ease-flip);
+}
+
+.qntns-postcard__flip[data-back] {
+    transform: rotate3d(0, 1, 0, -180deg);
+}
+
+/* Each face is the card: the box, the border, the hard shadow and the clip
+   that the stage used to carry. backface-visibility is what hides whichever
+   one is turned away — both faces are always laid out, because there is
+   nothing to turn otherwise. */
+.qntns-postcard__face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border: var(--border-card);
+    box-shadow: var(--shadow-hard);
+    background: var(--color-card);
+    overflow: hidden;
+}
+
+/* Pre-rotated by the same half turn about the same axis AND WITH THE SAME SIGN
+   as the container above, so it reads the right way round once the container
+   has turned. The two -180deg rotations compose to the identity, so the back's
+   border and hard shadow are not mirrored. */
+.qntns-postcard__face--back {
+    transform: rotate3d(0, 1, 0, -180deg);
+}
+
+/* No turn under prefers-reduced-motion: the side swaps in one frame. The sound
+   still plays — a reader who asked for sound and pressed a tab has to hear
+   that something happened. */
+@media (prefers-reduced-motion: reduce) {
+    .qntns-postcard__flip { transition: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   The window's bottom edge
+   ------------------------------------------------------------------------ */
+
+/* THE EDGE IS DOM AND IS NEVER PAINTED INTO THE CANVAS. paintFront() draws the
+   preview and the artwork the printer gets — one function at two scales — so a
+   rule and a grabber drawn into it would arrive on a physical postcard in
+   somebody's hand. This element is laid OVER the canvas instead.
+
+   It lives inside the front face rather than in the stage, which is what buys
+   the rest for nothing: it turns with the card, is clipped by the card's own
+   overflow, and is hidden by backface-visibility the moment the back comes up.
+   No JavaScript shows or hides it.
+
+   top comes from --postcard-edge, which paint() sets to the last drawn
+   baseline over the 1800-unit trim height, as a percentage. The face's padding
+   box IS the canvas box — the canvas is width and height 100% with no padding
+   between them — so that percentage is a fraction of the drawing itself, at
+   any width and any device pixel ratio. */
+.qntns-postcard__edge {
+    position: absolute;
+    top: var(--postcard-edge, 50%);
+    right: var(--space-16);
+    left: var(--space-16);
+    display: flex;
+    justify-content: center;
+    /* OFF THE BASE-4 GRID, AND NAMED HERE BECAUSE CLAUDE.md REQUIRES AN
+       EXEMPTION TO BE NAMED WHERE IT IS TAKEN. 2px is a rule, not a
+       measurement — the same class of thing as the 1px hairline the constraint
+       already exempts. It lines nothing up and spaces nothing apart; it is the
+       lightest weight this edge can carry and still read as something to take
+       hold of rather than as another border. The card's own hairline is 1px
+       and this has to be visibly heavier than that. Every other number in this
+       block is on the grid. */
+    border-top: 2px solid var(--color-ink);
+    cursor: ns-resize;
+    /* The drag is ours end to end; see the stage's note above. */
+    touch-action: none;
+}
+
+/* display: flex above outranks the user agent's [hidden] rule on specificity,
+   so the attribute has to be honoured here or the edge shows at its fallback
+   position for the one frame before the first paint places it. */
+.qntns-postcard__edge[hidden] {
+    display: none;
+}
+
+/* The grabber, centred on the rule rather than hung below it: half of its own
+   24px height pulled back up, so the rule runs through its middle and the
+   whole mark reads as one control. -12 is on the grid. */
+.qntns-postcard__grip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--space-32);
+    height: var(--space-24);
+    margin-top: -12px;
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-card);
+}
+
+/* ---------------------------------------------------------------------------
+   The picture's own controls
+   ---------------------------------------------------------------------------
+
+   One square button laid OVER the drawn picture: expand. On a full-front
+   picture the box is the whole front above the band. CHECKLIST-v7 §2.3,
+   CHECKLIST-13 §6–7.
+
+   THEY ARE CHROME AND THEY MUST NEVER PRINT. Same rule as the edge above and
+   the track beside it, and it is a principle rather than a note about this
+   block: paintPreview() and exportFront() are ONE function at two scales, so
+   anything paintFront() draws is on a card somebody paid to have mailed. A
+   maximize icon burned into a postcard is the exact failure DECISIONS-LOG.md
+   #37 exists to prevent. Nothing here goes near paintFront(), drawFigure() or
+   LAYOUT.
+
+   THE BOX IS THE PICTURE. paint() writes left, top, width and height as
+   percentages of the 1200 x 1800 trim, taken from the rectangle paintFront
+   reports on `view.figure`. The face's padding box IS the canvas box, so those
+   percentages are fractions of the drawing at any popover width — including the
+   416 the card became when §8 shipped the track, which changed the card's
+   RESOLUTION and not one number of its trim geometry. §8.6.
+
+   THE 8 IS PADDING ON THIS BOX, NOT AN OFFSET ON THE BUTTONS. §2.3 asks for an
+   8px inset from the image's edge, and 8 CSS px is what a finger meets — an
+   inset expressed in trim units would be a different physical size on every
+   screen. It is on the base-4 grid. Doing it as padding also means the two
+   buttons are laid out by flex against the padded box rather than each carrying
+   its own corner arithmetic.
+
+   pointer-events: none ON THE BOX, auto ON THE BUTTONS. The box covers the
+   whole picture, and a press anywhere on a picture that is not on a button has
+   to reach the stage — that is where the drag that runs the passage and the
+   swipe that turns the card live. Only the two buttons take the press back.
+   This is the same trick .qntns-postcard__panel plays for the scrim. */
+.qntns-postcard__imgctl {
+    position: absolute;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-8);
+    pointer-events: none;
+}
+
+/* display: flex above outranks the user agent's [hidden] rule on specificity,
+   so the attribute has to be honoured here — exactly as it does for the edge.
+   The box is hidden whenever no picture is in the window, which is §2.6's
+   "scrolling past an image hides it". */
+.qntns-postcard__imgctl[hidden] {
+    display: none;
+}
+
+/* §13.25: in the full-front mosaic the box takes the press itself, so a drag
+   that starts on a picture reorders instead of flipping. touch-action and the
+   callout for the same reason the buttons carry them below. */
+.qntns-postcard__imgctl[data-reorder] {
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    cursor: grab;
+}
+
+/* The lifted picture and the drop spot. DOM over the canvas, never painted,
+   so neither can reach the download or the mailed card (#37). Placed in % of
+   the box by postcard.js; the 4px rule is inset so it stays on the cell. */
+.qntns-postcard__lift,
+.qntns-postcard__drop {
+    position: absolute;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+.qntns-postcard__lift {
+    background: var(--color-card);
+    opacity: 0.5;
+}
+
+.qntns-postcard__drop {
+    border: 4px solid var(--color-accent);
+}
+
+.qntns-postcard__lift[hidden],
+.qntns-postcard__drop[hidden] {
+    display: none;
+}
+
+/* THE RAISED BEIGE SQUARE IS THE UNPRESSED STATE, and it is inherited rather
+   than restated: .qntns-postcard__square already carries the beige-dark fill,
+   the 1px ink hairline, the 4px hard shadow and the 32px square. §2.3 asks for
+   "outlined/hollow/beige", which is that shape exactly, so these buttons are
+   the theme's filled-square control reused and not a fourth one invented for
+   the canvas.
+
+   THESE ARE HELD OVER A PHOTOGRAPH, which on a touch device is the gesture that
+   raises "Save Image" or a selection callout over the button being pressed. The
+   toolbar squares take the same three lines for the same reason. */
+.qntns-postcard__imgbtn {
+    pointer-events: auto;
+    flex: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    touch-action: manipulation;
+    /* §5: no shadow on picture buttons — overlay controls held over a photo
+       don't get the raised-square shadow .qntns-postcard__square casts
+       (CSS:234), in either state. */
+    box-shadow: none;
+    /* THE FILL ANIMATES IN, which is §2.3's requirement and the reason this is
+       a transition rather than a second class: the button has to say which way
+       it will go NEXT, and a fill that arrives is the difference between a
+       state and a label. --duration-rule is the theme's own 250ms, the same
+       one the code block's copy button widens on. Colour only — nothing here
+       moves, so nothing has to be undone at a different scale. */
+    transition: background-color var(--duration-rule) var(--ease-flip),
+                color var(--duration-rule) var(--ease-flip);
+}
+
+/* PRESSED IS FILLED INK, the same navy-on-card the toolbar squares wear, so an
+   expanded picture's button reads as the same class of thing as a live control
+   elsewhere on the panel rather than as a new colour. No shadow either state
+   (§5) — these sit on a photo, not the card face. */
+.qntns-postcard__imgbtn[aria-pressed="true"] {
+    background: var(--color-ink);
+    color: var(--color-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-postcard__imgbtn { transition: none; }
+}
+
+/* BOTH GLYPHS ARE IN THE EXPAND BUTTON AND CSS SHOWS ONE. The alternative is
+   postcard.js rewriting innerHTML on every toggle, which throws away the
+   element the transition is running on. aria-pressed is doing three jobs here —
+   it announces the state, it swaps the mark, and it is what the fill
+   transitions on — and no class is set for any of them. */
+.qntns-postcard__icon--in {
+    display: none;
+}
+
+.qntns-postcard__imgbtn[aria-pressed="true"] .qntns-postcard__icon--out {
+    display: none;
+}
+
+.qntns-postcard__imgbtn[aria-pressed="true"] .qntns-postcard__icon--in {
+    display: block;
+}
+
+/* ---------------------------------------------------------------------------
+   The canvas
+   ------------------------------------------------------------------------ */
+
+/* The canvas is sized by CSS and its backing store is set in JavaScript from
+   clientWidth x devicePixelRatio. Stating the height as 100% rather than auto
+   matters: an auto-height canvas uses its attribute height, which is device
+   pixels, and the card would be drawn at three times its intended size on a
+   retina screen. */
+.qntns-postcard__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+
+/* ---------------------------------------------------------------------------
+   The back — a form, not a preview
+   ------------------------------------------------------------------------ */
+
+/* THIS IS NOT A PICTURE OF THE PRINTED CARD and must never be dressed up as
+   one. PostGrid composes the back itself from the message and the address; what the
+   sender sees here is the form whose values get sent. The note at the bottom
+   says so in the interface, because the layout alone implies otherwise. */
+.qntns-postcard__back {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: var(--space-16);
+    gap: var(--space-8);
+}
+
+
+/* The visible label is the placeholder; this one is for a screen reader, which
+   gets no placeholder. Not .visually-hidden from a11y.css — that file is not
+   guaranteed to be loaded before this one in the story, and the rule is three
+   lines. */
+.qntns-postcard__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.qntns-postcard__field {
+    position: relative;
+    display: block;
+}
+
+.qntns-postcard__message {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    padding: var(--space-12);
+    border: var(--border-card);
+    background: var(--color-beige-dark);
+    color: var(--color-ink);
+    font-family: inherit;
+    font-size: var(--type-step--1);
+    line-height: 1.5;
+    border-radius: var(--radius-control);
+    resize: none;
+}
+
+.qntns-postcard__field--message {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.qntns-postcard__count {
+    margin: 0;
+    text-align: right;
+    font-size: var(--type-step--2);
+    color: color-mix(in srgb, var(--color-ink) 60%, var(--color-card));
+}
+
+/* "From ______", on one writing line, directly under the message — which is
+   where PostGrid renders it on the printed back. The word is a static label rather
+   than placeholder text so it stays visible once the sender has typed, and it
+   is aria-hidden because the <label> above already names the field properly for
+   a screen reader. The input takes the rest of the line and carries the rule. */
+.qntns-postcard__field--from {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-8);
+    border-bottom: var(--border-card);
+}
+
+.qntns-postcard__from-mark {
+    flex: none;
+    font-size: var(--type-step--1);
+    font-style: italic;
+    color: color-mix(in srgb, var(--color-ink) 60%, var(--color-card));
+}
+
+.qntns-postcard__field--from input {
+    flex: 1;
+    min-width: 0;
+    padding: 0 0 var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--color-ink);
+    font-family: inherit;
+    font-size: var(--type-step--1);
+    border-radius: 0;
+}
+
+.qntns-postcard__field--from input::placeholder {
+    color: color-mix(in srgb, var(--color-ink) 45%, var(--color-card));
+}
+
+/* The address block is pushed to the bottom of the card, where an address sits
+   on a real postcard. margin-top: auto rather than a fixed offset, so the
+   message box above it takes whatever height is left over. */
+.qntns-postcard__address {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+}
+
+/* A rule under the line, not a box around it — the frame draws these as writing
+   lines and that is what they are. */
+.qntns-postcard__address input {
+    width: 100%;
+    padding: 0 0 var(--space-4);
+    border: 0;
+    border-bottom: var(--border-card);
+    background: none;
+    color: var(--color-ink);
+    font-family: inherit;
+    font-size: var(--type-step--1);
+    border-radius: 0;
+}
+
+/* ---- Address suggestions ---------------------------------------------------
+
+   THE LIST FLOATS OVER THE FIELDS BELOW IT rather than pushing them down. An
+   address form that jumps every time a suggestion arrives is a form where the
+   sender's cursor lands somewhere they did not aim, so the wrapper is the
+   positioning context and the list is taken out of flow inside it.
+
+   The wrapper does NOT get position on the label — .qntns-postcard__field is
+   already position: relative and the list is a SIBLING of the label, not a
+   child, so it needs its own. See the note in postcard.js's backForm for why
+   the list cannot live inside the label at all.
+
+   z-index 2, which only has to beat the address fields under it. The popover's
+   own stacking is settled far above this by .qntns-postcard__panel. */
+.qntns-postcard__suggest-wrap {
+    position: relative;
+}
+
+/* max-height is 8 rows at 48 minus a hair, which is what makes it obvious the
+   list scrolls rather than ending exactly on a row boundary. The Worker asks
+   Geoapify for 8 and caps at 8, so this is the whole list on a wide screen and
+   a scroll only where the type has grown. */
+.qntns-postcard__suggest {
+    position: absolute;
+    z-index: 2;
+    top: calc(100% + var(--space-4));
+    right: 0;
+    left: 0;
+    max-height: 232px;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--space-4);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-card);
+    list-style: none;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--color-ink) 20%, transparent);
+}
+
+.qntns-postcard__suggest[hidden] {
+    display: none;
+}
+
+/* Two lines: the street on top, the town under it in the quieter colour. The
+   street is what is being chosen and the town is what tells two identical
+   street names apart, so they are not the same weight. */
+.qntns-postcard__suggestion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-8) var(--space-12);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+}
+
+/* One rule for hover and for the arrow keys, so pointing at a row and arrowing
+   onto it cannot look different. is-active is set by the keyboard handler. */
+.qntns-postcard__suggestion:hover,
+.qntns-postcard__suggestion.is-active {
+    background: var(--color-beige-dark);
+}
+
+.qntns-postcard__suggestion-line {
+    font-size: var(--type-step--1);
+    color: var(--color-ink);
+}
+
+.qntns-postcard__suggestion-place {
+    font-size: var(--type-step--2);
+    color: color-mix(in srgb, var(--color-ink) 60%, var(--color-card));
+}
+
+.qntns-postcard__address input::placeholder {
+    color: color-mix(in srgb, var(--color-ink) 45%, var(--color-card));
+}
+
+/* STATE AND ZIP SHARE A WRITING LINE; CITY NOW HAS ITS OWN, above this one.
+   All three used to sit on this row, which left the city box squeezed between
+   two fixed-width neighbours — see the note in postcard.js's backForm. The
+   underline is still drawn by the row rather than by the inputs, so the pair
+   reads as one written line instead of two short rules with a gap in them.
+   THE TWO SPLIT THE LINE EVENLY — half each, on the user's instruction of
+   2026-08-31, rather than State being sized to its two characters and ZIP
+   taking the remainder. A two-character box beside a very wide one read as one
+   field with something stuck to the front of it; two equal halves read as two
+   fields. Both get flex: 1 and min-width: 0, so the 8px gap comes out of the
+   pair evenly and neither can refuse to shrink on a narrow screen. */
+.qntns-postcard__field--row {
+    display: flex;
+    gap: var(--space-8);
+    align-items: baseline;
+    border-bottom: var(--border-card);
+}
+
+.qntns-postcard__field--row input {
+    border-bottom: 0;
+    padding-bottom: var(--space-4);
+}
+
+.qntns-postcard__field--row input[data-postcard-field="state"],
+.qntns-postcard__field--row input[data-postcard-field="zip"] { flex: 1; min-width: 0; }
+
+/* ---------------------------------------------------------------------------
+   The action row
+   ------------------------------------------------------------------------ */
+
+/* Outside the stage and identical on both sides, because it is the same order
+   whichever side is showing and a button that moves between views is a button
+   that gets missed.
+
+   THE THREE BUTTONS GROUP AT THE RIGHT EDGE and the empty space falls on the
+   left, where the eye leaves the card. justify-content: flex-end rather than
+   margin-left: auto on the share square, because the auto margin would have to
+   stand in for the 8px gap as well as push the group, and the two are then one
+   number doing two jobs — change the gap and the group silently stops being
+   flush. flex-end moves the whole run and leaves gap: 8 as the only thing
+   deciding the spacing between them. */
+.qntns-postcard__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-8);
+    width: 100%;
+    max-width: var(--postcard-w);
+}
+
+/* THE CARD'S SETTINGS SIT LEFT, the share / download / Mail group stays right
+   (§13.1). margin-right: auto on the group is the only push; gap: 8 still sets
+   the spacing inside it and beside it. */
+.qntns-postcard__settings {
+    display: flex;
+    gap: var(--space-8);
+    margin-right: auto;
+}
+
+/* A SETTINGS TOGGLE IS NAVY, NOT RAISED BEIGE, and flat in both states. Off is
+   a navy outline with a navy mark; on is navy fill with the card-coloured
+   mark, the toolbar squares' treatment. aria-pressed carries the state, as it
+   does on the picture buttons. SCOPED TO THE SETTINGS GROUP: the Front/Back pill
+   shares the class, and an unscoped rule stripped its fill and shadow. */
+.qntns-postcard__settings .qntns-postcard__toggle {
+    background: transparent;
+    color: var(--color-ink);
+    box-shadow: none;
+}
+
+/* The A buttons are actions, not switches — never aria-pressed — so they wear
+   the pressed fill always (§13.17). A dead one still fades by the rule below. */
+.qntns-postcard__settings .qntns-postcard__toggle[data-postcard-smaller],
+.qntns-postcard__settings .qntns-postcard__toggle[data-postcard-larger] {
+    background: var(--color-ink);
+    color: var(--color-card);
+}
+
+/* WRAP RISES TO FILL, the bar's sound toggle's motion (§13.19): navy grows up
+   from the bottom edge when pressed and drains back down when not. 320ms ease
+   is --duration-sound (sound.css:74, 122), restated because that token is
+   scoped to the bar's buttons. A background-size grow, not sound.css's clipped
+   fill layer, because the wrap button has one icon and no layers; the icon
+   fades its colour over the same 320ms instead of being cut by the edge. */
+.qntns-postcard__settings .qntns-postcard__toggle[data-postcard-wrap] {
+    background: linear-gradient(var(--color-ink), var(--color-ink)) bottom / 100% 0 no-repeat;
+    transition: background-size 320ms ease, color 320ms ease;
+}
+
+.qntns-postcard__settings .qntns-postcard__toggle[data-postcard-wrap][aria-pressed="true"] {
+    background-size: 100% 100%;
+    color: var(--color-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-postcard__settings .qntns-postcard__toggle[data-postcard-wrap] {
+        transition: none;
+    }
+}
+
+/* The Front/Back pill shares this class name and paints a beige thumb over its
+   left half with ::before (above); a settings button has no thumb. */
+.qntns-postcard__settings .qntns-postcard__toggle::before {
+    content: none;
+}
+
+/* Faded by the same 0.35 as every other dead control in this file. */
+.qntns-postcard__settings .qntns-postcard__toggle[aria-disabled="true"] {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* THE MAIL BUTTON HUGS ITS LABEL rather than eating the rest of the row. It
+   was flex: 1, which made a $4 charge look like a full-width submit bar; it is
+   the primary action but it is still a button, and being the only one with a
+   price on it is enough to say so.
+
+   24 and not 16 for the padding: at 16 the button ends up within a few pixels
+   of the two 32px squares beside it and the row reads as three same-sized
+   things, one of which happens to have words in it. 24 gives it about 48px of
+   its own before the label starts, which is enough for it to read as the
+   different one. 16 is also already spoken for as the tab padding above, and
+   the two controls are not the same kind of thing. */
+.qntns-postcard__mail {
+    padding: 0 var(--space-24);
+    box-shadow: var(--shadow-hard);
+}
+
+/* THE BUY BUTTON IS DEAD UNTIL THE ADDRESS IS THE RIGHT SHAPE, and it says so
+   the same way the toolbar arrows do — pale, and no shadow, so the affordance
+   is withdrawn rather than a decoration switched off.
+
+   aria-disabled and not :disabled, for the third time in this file and the same
+   reason each time: a pressed button that dispatches no event cannot be
+   answered, and this one has something to say when it is pressed early. It
+   refuses out loud and moves the focus to the first field that is wrong, which
+   is the only thing the sender can act on. postcard.js's startMail is the guard;
+   nothing else stops the press. */
+.qntns-postcard__mail[aria-disabled="true"] {
+    opacity: 0.35;
+    box-shadow: none;
+    cursor: default;
+}
+
+/* The shadow sits 4px right and 4px down of every raised control here, so the
+   row needs that much clearance beneath it or the bottom shadow is clipped by
+   the popover's padding. */
+.qntns-postcard__actions,
+.qntns-postcard__toolbar {
+    margin-bottom: var(--space-4);
+}
+
+/* NO ZOOM-ON-FOCUS (CHECKLIST-29 §29): 16px floor on touch for every text
+   control here (iOS zooms under 16). Desktop keeps --type-step--1 (14px).
+   Selectors repeat the originals, so order decides. */
+@media (pointer: coarse) {
+    .qntns-postcard__message,
+    .qntns-postcard__field--from input,
+    .qntns-postcard__address input { font-size: 16px; }
+}

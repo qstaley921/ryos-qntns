@@ -1,0 +1,250 @@
+/* QNTNs toast — the order confirmation that sits over the footer bar.
+   =========================================================================
+   CHECKLIST-15 §67, and assets/js/qntns/toast.js is the whole of the logic —
+   which param, which wording, and when the URL is rewritten. This file only
+   has to put one box somewhere a returning buyer cannot miss it.
+
+   IT IS THE THEME'S ORDINARY CARD, not a new surface: --color-card, the
+   lighter beige (CHECKLIST-29 §21b attempt 3, the user: "lighter --color-card
+   beige"; attempt 2's --color-beige-dark was rejected) on the 1px hairline in --color-ink with --shadow-hard under it, exactly as the
+   post cards, the unlock callout and the postcard sheet are drawn. A
+   confirmation that introduced its own material would read as something the
+   page did not make.
+
+   WHERE IT SITS, AND THE ARITHMETIC IS THE POINT:
+
+       56   the footer bar, pinned to the bottom of the viewport for the whole
+            scroll — the height is named in home.css and it is 14 x 4
+     + 16   one step of clear air between the two
+     ----
+       72   bottom
+
+   72 = 18 x 4. Clearing the bar is not decoration: the bar is opaque and
+   intercepts clicks (see .qntns-footer__bar in home.css), so a toast overlapping
+   it would have its own x sitting under a surface that eats the press.
+
+   Z-INDEX 6, ONE ABOVE THE BAR'S 5 and therefore the top of the root stacking
+   order recorded in home.css:
+
+       6  .qntns-toast                           here
+       5  .qntns-footer__bar and .qntns-footer   home.css
+       4  .qntns-search-header                   search.css
+       3  .qntns-feed__heading                   card-group.css
+       2  .qntns-feed__band                      card-group.css
+
+   It does NOT try to beat the drawer (90) or the postcard sheet (100), and
+   that is correct rather than an oversight: those are modal, they own the
+   screen while they are open, and a reader who has opened one has moved on
+   from the confirmation. The toast is still there underneath when they close it.
+
+   CENTRED, NOT CORNERED. The bar below it centres the wordmark, so a toast
+   pinned to one corner would read as unrelated furniture arriving from the
+   side. Held to 384px (96 x 4) so a desktop line does not run the width of the
+   window, and inset 16px on both edges so a phone gets the same gutter the
+   rest of the theme uses. */
+
+.qntns-toast {
+    position: fixed;
+    bottom: 72px;
+    left: var(--space-16);
+    right: var(--space-16);
+    z-index: 6;
+    display: flex;
+    /* §21b: ONE AXIS. Icon, text and x all centre on the row. The row is the
+       32px x. §21b attempt 4 (the user: "snap the toast box to 64px"):
+           title only    16 + 32 + 16 = 64 = 16 x 4
+           title + body  16 + 48 + 16 = 80 = 20 x 4   (24 + 4 + 20 text)
+       THE HAIRLINE IS AN INSET SHADOW, NOT A BORDER, so it takes no layout.
+       A 1px border is snapped to one DEVICE pixel: at devicePixelRatio 1.5
+       (measured in Storybook) it computes to 0.667px and the box came out
+       63.33 / 65.33 instead of a whole number. An inset 0 0 0 1px draws the
+       same ink rule inside the 16px padding and the box is 64 at every zoom
+       and every root size (all px). The x is now 16 from the edge, not 17.
+       Icon (20) and title (24) centre on the 32 row: centring's arithmetic,
+       not a spacing value. With a body the text is taller than the x, so the
+       x and the icon centre on the text instead. */
+    align-items: center;
+    gap: var(--space-12);
+    width: auto;
+    max-width: 384px;
+    margin-inline: auto;
+    padding: var(--space-16);
+    background: var(--color-card);
+    border: 0;
+    /* the 1px ink hairline (--border-card's rule, drawn inset), then the
+       card's hard shadow */
+    box-shadow: inset 0 0 0 1px var(--color-ink), var(--shadow-hard);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+
+    /* §21b attempt 3 (the user: "slower, animating in all the way from off
+       screen"). It RISES FROM BELOW THE VIEWPORT: translateY(100% + 72px) is
+       the toast's own height plus its 72px bottom offset, so at the first
+       frame its top edge sits exactly on the viewport's bottom edge.
+       640ms: no motion token is that long (the longest is --duration-flip,
+       400ms), so it is named here. 640 = 160 x 4, slow enough to watch it
+       travel the ~140px. --ease-rise is the theme's landing curve. No opacity
+       fade: it is off screen until it arrives, so a fade would only hide the
+       glide. */
+    animation: qntns-toast-in 640ms var(--ease-rise) both;
+}
+
+/* §21b attempt 4 (the user: "the fadeout can be the same as it was, moving
+   out while fading"): NOT the in-glide reversed. A short 8px drop while it
+   fades to 0 — the smallest step that reads as movement — over
+   --duration-rule (250ms), ease-in, because a thing leaving speeds up as it
+   goes. toast.js removes the node on this animation's end. */
+.qntns-toast--out {
+    animation: qntns-toast-out var(--duration-rule) ease-in both;
+}
+
+@keyframes qntns-toast-out {
+    to {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@keyframes qntns-toast-in {
+    from {
+        transform: translateY(calc(100% + 72px));
+    }
+    to {
+        transform: none;
+    }
+}
+
+/* A reader who has asked for less motion gets the box, immediately, in place.
+   Not `animation: none` — that would also drop the opacity keyframes and is
+   the same thing written less clearly. */
+@media (prefers-reduced-motion: reduce) {
+    .qntns-toast {
+        animation-duration: 1ms;
+    }
+}
+
+/* §21b: no top nudge any more — the row centres it (see .qntns-toast). */
+.qntns-toast__icon {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+/* flex: 1 1 auto IS THE FIX FOR THE X DRIFTING LEFT, and it is worth naming
+   what was wrong because the symptom pointed at the wrong element. The text
+   block had `min-width: 0` and no grow, so it sized to its CONTENT and the
+   close button sat immediately after it — which meant the x's distance from
+   the right edge was a function of how long the title happened to be. The
+   funding day has the shortest of the three titles and therefore showed the
+   worst of it; the x was not inset by a rule, it was being pushed by a
+   sentence. MEASURED IN THE RUNNING STORYBOOK, gap from the toast's right edge
+   to the button's, before and after:
+
+                    before      after
+       Book            9px       17px
+       Postcard        9px       17px
+       FundingDay     35.7px     17px   <- the report, and 35.7 is not even a
+       TwoLineWrap     9px       17px      number anyone could have typed
+
+   Growing the text column pins the button to the right edge, so all four are
+   now the same 17 = the toast's 16px padding plus its own 1px border, which is
+   what the measurement is taken across. 16 is the grid value; the 1 is the
+   hairline, which is a rule and not a measurement. Identical to the mail glyph
+   opposite.
+   min-width: 0 stays: a flex item's default min-width is auto, and without
+   this an unbreakable string would refuse to wrap and widen the box. */
+.qntns-toast__text {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.qntns-toast__title {
+    font-size: 1rem;
+    /* 24px, fixed rather than a ratio: 1rem is fluid here (17.95px measured
+       in Storybook), so 1.25 came out 22.44. Centring, not matching heights,
+       is what puts it on the icon's axis. */
+    line-height: 24px;
+}
+
+.qntns-toast__body {
+    font-size: 0.875rem;
+    /* 20px (14 x 1.4 was 19.6), so title + gap + body is 48 = 12 x 4. */
+    line-height: 20px;
+}
+
+/* A SOLID BLUE SQUARE, COPIED FROM THE PLAY BUTTONS RATHER THAN INVENTED.
+   The user: "the X button should be a solid blue square". The theme already
+   has that object — the audio card's play/pause and the video card's, at
+   content-cards.css:505 and :1273 — and this is their rule, token for token:
+
+       32 x 32            the size every control in the theme is (8 x 4)
+       var(--border-card) the 1px ink hairline
+       var(--color-ink)   the fill
+       var(--color-card)  the glyph, which is the page's own beige on it
+       square corners     --radius-control is 0; stated, not inherited by luck
+
+   THE HAIRLINE IS KEPT even though it is ink on ink and therefore invisible.
+   An earlier revision dropped it, reasoning that a second border 16px inside
+   the toast's own would read as a mistake — which was true of a PALE square
+   and is not true of this one. Keeping it means this button is literally the
+   play button's rule and a future change to --border-card moves both. It costs
+   no layout: box-sizing is border-box globally, so 32 is still 32.
+
+   NO NEGATIVE MARGINS ANY MORE, AND THE INSET IS THE PADDING. They used to
+   pull the button 8px back into the 16px padding so its pressable area reached
+   the corner. With the button now a filled block rather than a tinted hint,
+   that read as the x crowding the edge while the icon opposite sat at a
+   comfortable 16 — so it sits at the toast's own 16px padding, the same inset
+   as the mail glyph on the left, and the box is symmetrical. 32px is a large
+   enough target without borrowing from the gutter.
+
+   NO HOVER STATE, matching the play buttons, which have none either. A solid
+   block with a pointer cursor does not need to also change colour to say it
+   is a button. */
+.qntns-toast__close {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--space-32);
+    height: var(--space-32);
+    padding: 0;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-card);
+    cursor: pointer;
+}
+
+/* AN EXPLICIT RING, AND IT SURVIVED THE BUTTON TURNING BLUE — checked rather
+   than assumed, because an ink ring drawn ON an ink fill would be nothing at
+   all. It is the OFFSET that saves it: outline-offset pushes the ring 2px
+   OUTSIDE the square, onto the toast's beige (--color-card), so what is being
+   contrasted is ink against beige — the theme's primary pair, the same
+   contrast the body text on this card already relies on. The ring never
+   touches the fill it surrounds. MEASURED, not assumed: ink #182a53 on the
+   card's #e4dcd3 is 10.35:1, well past WCAG's 3:1 for a non-text indicator.
+   Against the fill it would be 1:1, which is what the offset exists to avoid.
+   The glyph on the fill measures the same 10.35:1, being the same two colours
+   the other way up.
+   The UA default is overridden rather than trusted so the ring does not change
+   shape per browser. 2px is a rule and not a measurement and takes the same
+   base-4 exemption the 1px hairline does; the 2px offset is the same number
+   for the same reason. */
+/* §28c: the action is the same navy block, grown to its label: 32 tall,
+   8px inset each side, 4 between glyph and word. */
+.qntns-toast__action {
+    width: auto;
+    gap: var(--space-4);
+    padding: 0 var(--space-8);
+    font: inherit;
+    font-size: var(--text-sm, 0.875rem);
+    white-space: nowrap;
+}
+
+.qntns-toast__close:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}

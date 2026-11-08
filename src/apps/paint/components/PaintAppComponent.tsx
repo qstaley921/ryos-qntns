@@ -1,19 +1,46 @@
-import React from "react";
-import { PaintToolbar } from "./PaintToolbar";
-import { PaintCanvas } from "./PaintCanvas";
-import { PaintMenuBar } from "./PaintMenuBar";
-import { PaintPatternPalette } from "./PaintPatternPalette";
-import { PaintStrokeSettings } from "./PaintStrokeSettings";
+import React, { useEffect, useRef } from "react";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
 import { AppProps, PaintInitialData } from "../../base/types";
-import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
-import { SaveFileDialog } from "@/components/dialogs/SaveFileDialog";
-import { appMetadata } from "..";
-import { usePaintLogic } from "../hooks/usePaintLogic";
-import { useRegisterUndoRedo } from "@/hooks/useUndoRedo";
-import { useMenuShortcuts } from "@/hooks/useMenuShortcuts";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { OS_NATIVE_CHROME_SKIP_CLASS } from "@/lib/themeChrome";
+import { MenuBar } from "@/components/layout/MenuBar";
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from "@/components/ui/menubar";
+import { attachGraffiti, graffitiApi, renderGraffiti, wallOf } from "../wall/qntns/graffiti.js";
+import "../wall/css/tokens.css";
+import "../wall/css/views-menu.css";
+import "../wall/css/graffiti.css";
+import "../wall/css/toast.css";
+import "../wall/css/postcard.css";
+import "../wall/css/wall.css";
+
+// CHECKLIST-36 §24: Paint is the theme's graffiti wall, hosted as-is. ryOS's
+// own canvas, tools and filters (PaintCanvas, usePaintLogic) are not shown.
+// The doc that opened Paint picks the wall page (§11's { ghost }); a slug that
+// is not one of graffiti.js PAGES is Misc., as ?wall= is in the theme.
+type WallData = PaintInitialData & { ghost?: { slug?: string } };
+
+// connectGraffiti (graffiti-lazy.js's entry) minus its address-bar sync: the
+// page comes from the doc, not ?wall=, and ryOS's URL is not the wall's.
+const Wall: React.FC<{ slug?: string; host: React.RefObject<HTMLDivElement | null> }> = ({ slug, host }) => {
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    // Signed out until CHECKLIST-37 §29: renderGraffiti() with no name is see-only.
+    el.innerHTML = renderGraffiti();
+    const root = el.firstElementChild as HTMLElement;
+    root.dataset.graffitiPage = wallOf(slug);
+    const detach = attachGraffiti(root, {
+      member: root.querySelector("[data-graffiti-name]") ? { id: null } : null,
+      api: graffitiApi(),
+      scrollRoot: el, // §24a: this div scrolls, not window
+    });
+    return () => {
+      detach();
+      el.innerHTML = "";
+    };
+  }, [slug]);
+  return <div ref={host} className={`paint-wall h-full w-full overflow-auto ${OS_NATIVE_CHROME_SKIP_CLASS}`} />;
+};
 
 export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
   isWindowOpen,
@@ -25,103 +52,31 @@ export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
   onNavigateNext,
   onNavigatePrevious,
 }) => {
-  const {
-    t,
-    translatedHelpItems,
-    selectedTool,
-    handleToolSelect,
-    selectedPattern,
-    setSelectedPattern,
-    strokeWidth,
-    setStrokeWidth,
-    canUndo,
-    setCanUndo,
-    canRedo,
-    setCanRedo,
-    isHelpDialogOpen,
-    setIsHelpDialogOpen,
-    isAboutDialogOpen,
-    setIsAboutDialogOpen,
-    isConfirmNewDialogOpen,
-    setIsConfirmNewDialogOpen,
-    hasUnsavedChanges,
-    currentFilePath,
-    isSaveDialogOpen,
-    setIsSaveDialogOpen,
-    saveFileName,
-    setSaveFileName,
-    canvasWidth,
-    canvasHeight,
-    error,
-    windowTitle,
-    isWindowsTheme,
-    handleUndo,
-    handleRedo,
-    handleClear,
-    handleNewFile,
-    handleConfirmNew,
-    handleSave,
-    handleSaveSubmit,
-    handleImportFile,
-    handleExportFile,
-    handleFileSelect,
-    handleCut,
-    handleCopy,
-    handlePaste,
-    handleContentChange,
-    handleApplyFilter,
-    handleCanvasRef,
-  } = usePaintLogic({ initialData, instanceId });
-
-  useRegisterUndoRedo(instanceId!, {
-    undo: handleUndo,
-    redo: handleRedo,
-    canUndo,
-    canRedo,
-  });
-
-  // ⌘S/Ctrl+S Save (web + desktop). New/Open use browser-reserved combos so
-  // they fire in the Electron shell (Open is also intercepted on the web).
-  useMenuShortcuts(instanceId, {
-    save: handleSave,
-    newFile: handleNewFile,
-    open: handleImportFile,
-  });
-
-  const menuBar = (
-    <PaintMenuBar
-      isWindowOpen={isWindowOpen}
-      isForeground={isForeground}
-      onClose={onClose}
-      canUndo={canUndo}
-      canRedo={canRedo}
-      onUndo={handleUndo}
-      onRedo={handleRedo}
-      onClear={handleClear}
-      onShowHelp={() => setIsHelpDialogOpen(true)}
-      onShowAbout={() => setIsAboutDialogOpen(true)}
-      onNewFile={handleNewFile}
-      onSave={handleSave}
-      onImportFile={handleImportFile}
-      onExportFile={handleExportFile}
-      hasUnsavedChanges={hasUnsavedChanges}
-      currentFilePath={currentFilePath}
-      handleFileSelect={handleFileSelect}
-      onCut={handleCut}
-      onCopy={handleCopy}
-      onPaste={handlePaste}
-      onApplyFilter={handleApplyFilter}
-    />
-  );
-
+  const { isWindowsTheme } = useThemeFlags();
+  const host = useRef<HTMLDivElement>(null);
   return (
     <AppWindowShell
       isWindowOpen={isWindowOpen}
       isWindowsTheme={isWindowsTheme}
       isForeground={isForeground}
-      menuBar={menuBar}
+      menuBar={
+        <MenuBar inWindowFrame={isWindowsTheme}>
+          <MenubarMenu>
+            <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">File</MenubarTrigger>
+            <MenubarContent align="start" sideOffset={1} className="px-0">
+              {/* Clicks the wall's own (hidden) Postcard button, so the handler is unchanged. */}
+              <MenubarItem
+                className="text-md h-6 px-3"
+                onClick={() => host.current?.querySelector<HTMLElement>("[data-graffiti-postcard]")?.click()}
+              >
+                Postcard…
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+        </MenuBar>
+      }
       windowFrameProps={{
-        title: windowTitle,
+        title: "Paint",
         onClose,
         isForeground,
         appId: "paint",
@@ -131,108 +86,8 @@ export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
         onNavigatePrevious,
         keepMountedWhenMinimized: true,
       }}
-      trailing={
-        <>
-          <SaveFileDialog
-            isOpen={isSaveDialogOpen}
-            onOpenChange={setIsSaveDialogOpen}
-            onSubmit={handleSaveSubmit}
-            title="Save Image"
-            description="Enter a name for your image"
-            value={saveFileName}
-            onChange={setSaveFileName}
-            defaultDirectory="/Images"
-          />
-          <AppHelpAboutDialogs
-            appId="paint"
-            helpItems={translatedHelpItems}
-            metadata={appMetadata}
-            isHelpOpen={isHelpDialogOpen}
-            onHelpOpenChange={setIsHelpDialogOpen}
-            isAboutOpen={isAboutDialogOpen}
-            onAboutOpenChange={setIsAboutDialogOpen}
-          />
-          <ConfirmDialog
-            isOpen={isConfirmNewDialogOpen}
-            onOpenChange={setIsConfirmNewDialogOpen}
-            onConfirm={handleConfirmNew}
-            title={t("apps.paint.dialogs.discardChanges")}
-            description={t("apps.paint.dialogs.discardChangesDescription")}
-          />
-        </>
-      }
     >
-        <div
-          // Paint UI is intentionally skinned for the classic Paint look in
-          // every theme — opt out of the macOS Aqua dark coverage layer so
-          // toolbars, the canvas chrome, and the pattern palette keep their
-          // light surfaces in dark mode too.
-          className={`flex flex-col h-full w-full min-h-0 p-2 ${OS_NATIVE_CHROME_SKIP_CLASS}`}
-          style={{
-            backgroundImage: 'url("/patterns/Property 1=7.svg")',
-            backgroundRepeat: "repeat",
-            backgroundColor: "#c0c0c0",
-          }}
-        >
-          <div className="flex flex-1 gap-2 w-full min-h-0 px-1">
-            <div className="flex flex-col gap-2 w-[84px] shrink-0">
-              <div className="bg-white border border-black w-full shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)]">
-                <PaintToolbar
-                  selectedTool={selectedTool}
-                  onToolSelect={handleToolSelect}
-                />
-              </div>
-              <div className="bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)]">
-                <PaintStrokeSettings
-                  strokeWidth={strokeWidth}
-                  onStrokeWidthChange={setStrokeWidth}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col flex-1 gap-2 min-h-0 min-w-0">
-              <div className="flex-1 bg-white min-h-0 min-w-0 border border-black border-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] overflow-auto relative">
-                {error && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-neutral-200 text-red-500 p-4">
-                    Error: {error}
-                  </div>
-                )}
-                <PaintCanvas
-                  ref={handleCanvasRef}
-                  selectedTool={selectedTool}
-                  selectedPattern={selectedPattern}
-                  strokeWidth={strokeWidth}
-                  onCanUndoChange={setCanUndo}
-                  onCanRedoChange={setCanRedo}
-                  onContentChange={handleContentChange}
-                  canvasWidth={canvasWidth}
-                  canvasHeight={canvasHeight}
-                  isForeground={isForeground}
-                />
-              </div>
-
-              <div className="h-[58px] bg-white border-black flex items-center border-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)]">
-                <div className="border-r border-black h-full px-3 flex items-center">
-                  <div className="w-[36px] h-[32px] border border-black shrink-0">
-                    <img
-                      src={`/patterns/Property 1=${
-                        selectedPattern.split("-")[1]
-                      }.svg`}
-                      alt="Selected Pattern"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 h-full min-w-0 translate-y-[-1px]">
-                  <PaintPatternPalette
-                    selectedPattern={selectedPattern}
-                    onPatternSelect={setSelectedPattern}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <Wall host={host} slug={(initialData as WallData | undefined)?.ghost?.slug} />
     </AppWindowShell>
   );
 };

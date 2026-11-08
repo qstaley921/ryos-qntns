@@ -1,0 +1,67 @@
+/* What the copied wall CSS reads from theme files that are not copied whole.
+   Each value is the theme's own, from the file named. The root tokens.css is
+   not copied: its --z-base collides with ryOS's styles/themes/tokens.css. */
+:root {
+    /* assets/css/tokens.css */
+    --color-accent: #182952;
+    --color-accent-contrast: #fffaf4;
+    --color-accent-h: 224;
+    --color-up: hsl(140 45% 30%);
+    --color-down: hsl(4 65% 42%);
+    /* assets/css/type.css. shortcut: the faces fall back to Arial unless another app has loaded the theme fonts; copy assets/fonts if the wall must carry its own. */
+    --font-ui: "Josefin Sans", Arial, sans-serif;
+    --font-display: "Gill Sans Ultra", "Arial Black", sans-serif;
+    --font-meta: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --type-step--2: 0.75rem;
+    --type-step--1: 0.875rem;
+    /* assets/css/qntns/home.css */
+    --footer-inner-max: 720px;
+    --footer-control-size: 32px;
+}
+
+/* assets/css/qntns/content.css: the theme's 32px navy control. */
+.qntns-content__share {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-card);
+    cursor: pointer;
+}
+
+/* assets/css/qntns/card-group.css: the Postcard button, widened for its word. */
+.qntns-graffiti .qntns-card-group__postcard {
+    width: auto;
+    gap: var(--space-8);
+    padding: 0 var(--space-8);
+    font-family: var(--font-meta);
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* assets/css/qntns/fund.css */
+.qntns-fund__heading {
+    text-align: center;
+    margin: 0 0 var(--space-24);
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 32px;
+    font-weight: 400;
+}
+
+/* The window is the wall's page. The theme's footer margins (76 above, -64
+   below) have no footer to sit in here, so they go; 16 is the column gutter. */
+.paint-wall {
+    background: var(--color-page);
+    padding: 0 var(--space-16);
+}
+
+.paint-wall .qntns-graffiti {
+    margin: var(--space-16) 0 0;
+}

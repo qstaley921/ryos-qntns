@@ -1,0 +1,1362 @@
+/* QNTNs graffiti wall — the shared whiteboard under Fund (CHECKLIST-29).
+
+   FULL-BLEED CANVAS, CONTROLS IN A STRIP ABOVE IT (§1, §3c). The section
+   and .qntns-graffiti__box sit in .qntns-footer__inner's column; only
+   the canvas breaks out to the viewport with the same `100vw / calc(50% - 50vw)`
+   trick .qntns-footer uses. The strip is Fund's width (--footer-inner-max)
+   and holds the Subscribe / name corner on its left edge and Undo, −, + on
+   its right, so both line up with Fund's content above. The Tool group
+   (Hand, Pencil, Pen, Watercolor, Water, Eraser) is its own bar, sticky 16
+   above the viewport bottom (§35, .qntns-graffiti__tools).
+   No fill, no rules: the buttons on the footer.
+
+   THE STICKY STRIP AND VIEW (answers-3, §3c). The box is the whole wall's
+   height and the page scrolls it. The strip is `position: sticky; top: 16` in
+   the section, so it rides 16 under the viewport top while the wall is in view.
+   .qntns-graffiti__view is sticky at top: 0 and at most a viewport tall. At
+   rest the canvas starts 8 below the strip and no control covers it; once the
+   wall is scrolled into, the art runs up to the viewport top and the stuck
+   strip floats over it (z-index 1), as the controls did before §3c.
+   graffiti.js draws whichever slice the view is over. Sticky works here
+   because .qntns-page is overflow-x: clip, not hidden.
+
+   §6 LAYER SCALE (art at the bottom, controls on top; the popovers are top layer):
+     canvas auto, cards / card images 1 (card overlays inside them)
+     < postcard framing fade 2 < tip, live labels 3 < strip, tool bar 4 (and the
+     page/views menu, z 10 inside the strip) < gate 5 < toasts 6 (toast.css).
+
+   SPACING, ALL BASE 4:
+     76   margin-top, 48 + 28         Fund's visible gap above itself: its 48 plus
+                                      the subscribe form's empty 28 message line
+     32   heading                     .qntns-fund__heading, reused as-is (32/32)
+     24   heading margin-bottom       from that same class
+    480+  the box                     BOX_MIN in graffiti.js; grows with the ink
+                                      by ROOM_CELLS (30 grid cells, §21a), rounded up to 4 (§5a)
+     32   the strip                   one control tall
+      8   strip → canvas gap, --space-8
+     16   the strip's sticky top      --graffiti-strip-top, --space-16 (§3c add)
+      0   the view's sticky top       the art runs to the viewport top; the
+                                      stuck strip floats over it (§3c add)
+    720   the strip's width           --footer-inner-max, Fund's content edges
+      8   corner → toolbar minimum    --space-8, the strip's flex gap
+     32   every control               --footer-control-size
+      4   gap inside a button group
+     16   gap between the undo and zoom groups (§24a)
+     16   the tool bar's sticky bottom  --space-16 (§35)
+    -64   margin-bottom, --space-64   cancels .qntns-footer's 64 bottom padding
+                                      (home.css), so the box is the last thing on
+                                      the page with nothing below it (answers-5)
+    224   the name field, fixed       same as the open subscribe field
+     32   the corner controls         --graffiti-control-h = --footer-control-size,
+                                      the toolbar buttons' and send square's height
+     32   the artist tip (§10a)       --graffiti-control-h, the name field's look
+      8   tip ↔ click point           --space-8, above (or below, data-below)
+     12   tip side padding            --space-12, as the name field
+     16   tip ↔ viewport edge         clamped in graffiti.js
+   NO GROUND OF ITS OWN (answers-5). No rules, no fill: the canvas is
+   transparent over the footer's own beige; the dot grid is the only sign of
+   the wall.
+   Exemptions: the 1px border on the controls is a rule; the 14px label is a type
+   metric, as on .qntns-footer__send; the 2px grid dot is drawn in graffiti.js
+   and is a mark.
+
+   Hard edges: every radius token is 0. No colour literals. */
+
+.qntns-graffiti {
+    --graffiti-dot: color-mix(in srgb, var(--color-ink) 20%, transparent);
+    /* §28b: the watercolor's blue, on the accent's own hue (as tokens.css
+       builds --color-accent-soft). graffiti.js reads it. FLAG for the user. */
+    --graffiti-wash: hsl(var(--color-accent-h) 70% 45%);
+    width: 100%;
+    margin: calc(var(--space-48) + var(--space-28)) 0 calc(-1 * var(--space-64));
+    font-family: var(--font-ui);
+}
+
+/* The height is BOX_MIN until graffiti.js measures the ink and sets it. */
+.qntns-graffiti__box {
+    position: relative;
+    height: 480px;
+}
+
+/* lvh, not dvh: never shorter than the window, so a collapsing mobile URL bar
+   never uncovers the box under the canvas, and the canvas is not reallocated
+   on every toolbar show/hide. */
+.qntns-graffiti__view {
+    position: sticky;
+    top: 0;
+    height: min(100lvh, 100%);
+}
+
+.qntns-graffiti__canvas {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(50% - 50vw);
+    display: block;
+    width: 100vw;
+    height: 100%;
+    cursor: grab;
+}
+
+/* TOUCH-ACTION (§6, answers-3). Hand: pan-y, so a finger's vertical movement
+   scrolls the page and graffiti.js pans the wall sideways with the rest. Pen and
+   Eraser (§3b): none, every touch draws or erases. Pinch is never in either value, so two
+   fingers always reach graffiti.js, which zooms on nothing (§23) and reads a
+   two-finger double tap as undo (§24). Set on the canvas only; the toolbar and corner keep the
+   page's own scrolling. */
+.qntns-graffiti__canvas {
+    touch-action: pan-y;
+}
+
+.qntns-graffiti__box[data-tool="graphite"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="pencil"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="pen"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="watercolor"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="water"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="smudge"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="eraser"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="link"] .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="lasso"] .qntns-graffiti__canvas {
+    touch-action: none;
+    cursor: crosshair;
+}
+
+/* §23 attempt 2: once a stylus is seen (graffiti.js sets data-pen-seen), a
+   finger under Pen / Eraser is a Hand finger: pan-y, so its vertical drag
+   scrolls the page and graffiti.js pans the wall sideways. A stylus still
+   draws: its touchstart is cancelled in graffiti.js for touchType "stylus". */
+.qntns-graffiti__box[data-pen-seen] .qntns-graffiti__canvas {
+    touch-action: pan-y;
+}
+
+.qntns-graffiti__box[data-dragging] .qntns-graffiti__canvas {
+    cursor: grabbing;
+}
+
+/* §10a add: a line under the cursor, Hand, no button down. */
+.qntns-graffiti__box[data-tool="hand"][data-over-ink]:not([data-dragging]) .qntns-graffiti__canvas {
+    cursor: pointer;
+}
+
+/* §62a: the reader's own link card under the cursor, Hand: a click edits it,
+   so the cursor is lucide pencil, inline and haloed as the turn cursor
+   (§58), hotspot at the nib (2, 22). Its link line keeps the link's pointer;
+   another reader's card is one link, so pointer anywhere on it. */
+.qntns-graffiti__box[data-tool="hand"][data-over-own]:not([data-dragging]) .qntns-graffiti__canvas {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg stroke='white' stroke-width='5'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/g%3E%3Cg stroke='black' stroke-width='2'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/g%3E%3C/svg%3E") 2 22, pointer;
+}
+.qntns-graffiti__box[data-tool="hand"] .qntns-graffiti__card,
+.qntns-graffiti__card-url {
+    cursor: pointer;
+}
+
+/* §43b: a held lasso selection under the cursor, mouse / pen, no button down. */
+.qntns-graffiti__box[data-tool="lasso"][data-over-sel]:not([data-dragging]) .qntns-graffiti__canvas,
+.qntns-graffiti__box[data-tool="link"][data-over-sel]:not([data-dragging]) .qntns-graffiti__canvas {
+    cursor: grab;
+}
+
+/* §10a: the artist tip. The theme has no tooltip of its own (the footnote
+   popover is a centred panel, not an anchored tip), so it borrows the corner's
+   name field: one control tall, the card border, page ground, ink text, 14px.
+   left / top are the click point inside the box (graffiti.js); the transform
+   centres it on that point and lifts it 8 clear. pointer-events: none so a
+   click on it still reaches the line beneath. */
+.qntns-graffiti__tip {
+    position: absolute;
+    z-index: 3;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    height: var(--graffiti-control-h);
+    margin: 0;
+    padding: 0 var(--space-12);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 14px; /* type metric, as .qntns-graffiti__artist */
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - var(--space-8)));
+}
+
+.qntns-graffiti__tip[data-below] {
+    transform: translate(-50%, var(--space-8));
+}
+
+.qntns-graffiti__tip[hidden] {
+    display: none;
+}
+
+/* §52: another artist's name at their pen tip while they draw. The tip's
+   look, one control tall; left / top are the line's last point inside the box
+   (graffiti.js paintRemote), and it sits 8 right and 8 above it, clear of the
+   nib. FLAG for the user: size and offset. */
+.qntns-graffiti__live {
+    position: absolute;
+    z-index: 3;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    height: var(--graffiti-control-h);
+    margin: 0;
+    padding: 0 var(--space-12);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 14px; /* type metric, as .qntns-graffiti__tip */
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translate(var(--space-8), calc(-100% - var(--space-8)));
+}
+
+/* §3c: corner left, toolbar right, one control tall, 8 above the canvas.
+   Its width is Fund's and the subscribe form's, min(100%, --footer-inner-max)
+   centred, so the buttons share their content edges, not the wider column.
+   z-index keeps it over the canvas once the canvas slides up under it. */
+/* §30 (not quite) THE HEADER ROW: the "Graffiti Wall" h2 centred, the
+   theme's postcard button (card-group.js renderPostcardButton's markup:
+   .qntns-content__share .qntns-card-group__postcard, send 18, "Postcard")
+   right-aligned on the same line. Same width and edges as the strip, so the
+   button's right edge is the strip's. 1fr auto 1fr keeps the h2 on the
+   centre line; when space runs short the left 1fr gives way first, so the
+   two never overlap. The h2's own 24 margin moves to the row, which is
+   32 tall (heading 32/32, button 32): the vertical budget above is unchanged. */
+.qntns-graffiti__head {
+    width: min(100%, var(--footer-inner-max, 100%));
+    margin: 0 auto var(--space-24);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    container: graffiti-head / inline-size;
+}
+
+.qntns-graffiti__head .qntns-fund__heading {
+    grid-column: 2;
+    margin: 0;
+}
+
+/* The word-holding width is card-group.css's :is(.qntns-card-group,
+   .qntns-graffiti) .qntns-card-group__postcard (8 + 18 icon + 8 + label + 8),
+   one source for both; only the placement is here. */
+.qntns-graffiti__head .qntns-card-group__postcard {
+    grid-column: 3;
+    justify-self: end;
+}
+
+/* The phone square, as card-group's [data-mobile] one. The h2 stays centred
+   while half the row holds half the heading + 8 + the button:
+   W/2 >= HEADING/2 + 8 + BUTTON  ->  W >= HEADING + 16 + 2 x BUTTON.
+   HEADING "Graffiti Wall" 244.7, BUTTON 2 border + 8 + 18 + 8 + 81.9
+   "Postcard" + 8 = 125.9 (text measures, exempt): 244.7 + 16 + 251.8 =
+   512.5, so under a 516 row (base 4 up) it is the 32 square. Square, the
+   h2 stays centred down to 244.7 + 16 + 64 = 325; on a 320 phone (288 row)
+   the left 1fr gives way and the h2 sits 10 left of centre (measured), no overlap. */
+@container graffiti-head (width < 516px) {
+    .qntns-graffiti__head .qntns-card-group__postcard {
+        width: 32px;
+        gap: 0;
+        padding: 0;
+    }
+
+    .qntns-graffiti__head .qntns-card-group__postcard-label {
+        display: none;
+    }
+}
+
+.qntns-graffiti__strip {
+    width: min(100%, var(--footer-inner-max, 100%));
+    margin-inline: auto;
+    position: sticky;
+    top: var(--graffiti-strip-top);
+    z-index: 4;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-8);
+    height: var(--graffiti-control-h);
+    margin-block-end: var(--space-8);
+    container: graffiti-strip / inline-size;
+}
+
+/* §69: Redo joins Undo in its group (32 + 4 + 32 = 68), so the bar is 188, not
+   152, and the folds below move up 36: 592 -> 628, 340 -> 376 (179 + 8 + 188 =
+   375). The 152-based figures in the notes below are the old costs.
+   §24a, §35, §51: two groups, 16 apart: [undo] [− fit +]
+   = 32 + 16 + (3 x 32 + 2 x 4) = 152. (§30's postcard group made it 200;
+   the button moved to the header row, so the folds are re-costed on 152.)
+   The Tool group left the strip (§35), so the §27b tools dropdown and its
+   fold (§28e) are gone; two folds are left, both below:
+     labelled corner 432 (32 square + 224 field + 8 + 168 page button)
+     + 8 strip gap + 152 = 592. Under a 592 strip the page button is square.
+     1440 / 1024 / 768: strip 720, labelled.
+     signed out: "Login to draw" 139 (12 + 16 + 8 + 91 label + 12, text
+       measure) + 8 + 32 page button = 179; 179 + 8 + 152 = 339, so under a
+       340 strip (339 up to base 4) the link drops its label to the 32 icon
+       square. Still needed: a 320 phone's strip is 288.
+   A phone, 375 - 2 x 16 = 343 (square page, labelled login):
+     corner = 343 - 152 - 8 = 183
+     signed out: 179, 4 to spare
+     signed in: 183 - 8 - 32 = 143 for the name, 32 square + 111 input
+       (the input shrinks and scrolls, as before). */
+.qntns-graffiti__bar {
+    display: flex;
+    flex: none;
+    gap: var(--space-16);
+}
+
+/* §35 THE TOOL BAR, sticky at the bottom: `bottom: 16` rides it 16 above
+   the viewport bottom while the wall is on screen and parks it 16 above the
+   wall's bottom edge at the end. Every tool, never folded:
+     7 x 32 + 6 x 4 = 248 (§40a added Pencil), inside a 343 phone strip
+     (375 - 2 x 16) with 95 to spare.
+   §36b attempt 2: box and bar share one grid cell of .qntns-graffiti__wall,
+   the bar's containing block. Before, a −48 top margin took its height back,
+   and a negative margin shrinks the margin box sticky keeps inside the
+   containing block, so the bar could rise 48 above the box top, onto the
+   strip. In the shared cell the bar needs no negative margin: align-self: end
+   plus margin-bottom 16 puts its spot at box bottom − 16 − 32, it adds no
+   height, and its highest top is the box top (the dotted area's top, inset 0,
+   as 29-36b-want.png: strip → bar 8, the strip → canvas gap).
+   justify-self: center, width = the buttons: it never takes a touch meant for
+   the canvas outside it. z-index 1, as the strip, keeps it over the canvas. */
+.qntns-graffiti__wall {
+    display: grid;
+}
+
+.qntns-graffiti__wall > * {
+    grid-area: 1 / 1;
+}
+
+/* §48: the bar is now groups: Tool, then Save (signed in), 12 apart, the
+   strip's group gap. 248 + 12 + Save 92
+   = ~362 > 343 on a 375 phone: per the user (§47) the bar scrolls sideways
+   there, overflow-x auto, never wraps, never hides a button. max-width 100%
+   keeps it inside the box so the page itself never scrolls sideways.
+   §46d: the tools are four groups, 4 inside, 12 between: [Hand, Eraser]
+   [Pen, Fountain pen] [Pencil, Smudge (§46c)] [Watercolor, Water].
+     signed out  8 x 32 + 4 x 4 + 3 x 12 = 308 <= 343
+     signed in   308 + 12 + Save 92 = 412 > 343: scrolls (§47) */
+.qntns-graffiti__tools {
+    position: sticky;
+    bottom: var(--space-16);
+    z-index: 4;
+    align-self: end;
+    justify-self: center;
+    margin-bottom: var(--space-16);
+    display: flex;
+    gap: var(--space-12);
+    max-width: 100%;
+    min-width: 0; /* §60: overflow moved to the child, so the grid item must shrink itself */
+}
+
+/* §60: the tool groups scroll in their own strip; Save stays pinned at the
+   bar's right. Tools: Paper 32 | Hand, Lasso, Eraser 104 | Pens 68 |
+   Pencil, Smudge 68 | Paint 68 | Link, Image 68 (groups 4 inside, 12 between)
+   ~= 408 + 12 + Save 92 > 343 on a 375 phone: the strip scrolls, Save stays.
+   min-width 0 lets the flex child shrink below its content. */
+.qntns-graffiti__scroll {
+    display: flex;
+    gap: var(--space-12);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.qntns-graffiti__scroll > .qntns-graffiti__group,
+.qntns-graffiti__tools > .qntns-graffiti__group {
+    flex: none;
+}
+
+/* §48 SAVE. One button, one width: the three words share a grid cell and
+   only the current one is visible, so Saved / Saving / Failed never reflow
+   the bar. One fixed width, the widest word's budget rounded up to base 4
+   (measured in Josefin Sans 700 14px: Saved 43.31, Saving 48.75, Failed 44.23):
+      1   border (the hairline, exempt)
+     12   padding
+      8   the light, a circle: green (--color-up) Saved, green blinking
+          Saving, red (--color-down) Failed
+      8   light -> word, the button's own gap
+  48.75   "Saving", the widest
+     12   padding (+ 1.25 slack, the word is left-aligned so it sits right)
+      1   border
+     92   = 23 x 4 */
+.qntns-graffiti__btn.qntns-graffiti__save,
+.qntns-graffiti__btn.qntns-graffiti__now {
+    width: auto;
+    padding: 0 var(--space-12);
+}
+
+/* §48: light then word, from the left; the fixed width's slack is on the right. */
+.qntns-graffiti__btn.qntns-graffiti__save {
+    justify-content: flex-start;
+    width: 92px;
+}
+
+.qntns-graffiti__light {
+    width: var(--space-8);
+    height: var(--space-8);
+    border-radius: 50%;
+    background: var(--color-up);
+}
+
+.qntns-graffiti__save[data-state="unsaved"] .qntns-graffiti__light {
+    background: var(--color-down);
+}
+
+/* §48: Saving is the green light, slowly pulsing; steady for reduced motion. */
+.qntns-graffiti__save[data-state="saving"] .qntns-graffiti__light {
+    animation: qntns-graffiti-blink 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes qntns-graffiti-blink {
+    to { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-graffiti__save[data-state="saving"] .qntns-graffiti__light {
+        animation: none;
+    }
+}
+
+.qntns-graffiti__says {
+    display: grid;
+    justify-items: start;
+}
+
+.qntns-graffiti__says > span {
+    grid-area: 1 / 1;
+    visibility: hidden;
+}
+
+.qntns-graffiti__save[data-state="saved"] .qntns-graffiti__says > :nth-child(1),
+.qntns-graffiti__save[data-state="saving"] .qntns-graffiti__says > :nth-child(2),
+.qntns-graffiti__save[data-state="unsaved"] .qntns-graffiti__says > :nth-child(3) {
+    visibility: visible;
+}
+
+/* Green has nothing to open. */
+.qntns-graffiti__save:not([data-unsaved]) {
+    cursor: default;
+}
+
+/* §42 §45 THE PICK PANELS: the eraser's kinds and the Pen's sizes, the
+   views menu (views-menu.css) in a popover, the top layer, so the bar's
+   scroll cannot clip it. graffiti.js sets left / top: left edge on the
+   button's, bottom 8 above it, 16 inside the viewport. It opens upward, so
+   it keeps the views menu's own unroll from the bottom and rows rising
+   (+32), not the page menu's drop. Rows: 4 + 24 box + 4 = 32; 12 + 24 + 8
+   + 16 glyph + 8 + label + 12 across. No sliding bar: rows tick, none is
+   "current". */
+.qntns-graffiti .qntns-views__menu.qntns-graffiti__pick {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    overflow: visible;
+    color: var(--color-ink);
+    --rise-distance: 32px;
+    animation-name: qntns-views-unroll;
+}
+
+.qntns-graffiti .qntns-views__menu.qntns-graffiti__pick::before {
+    content: none;
+}
+
+/* The Save now panel: a popover (top layer, so the bar's scroll cannot clip
+   it), placed by graffiti.js at the button's top-right corner and pulled up
+   and left by its own size: its right edge on the button's, 8 above it. */
+.qntns-graffiti__panel {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    overflow: visible;
+    transform: translate(-100%, calc(-100% - var(--space-8)));
+}
+
+/* The corner takes all the toolbar leaves: the strip less the bar (200,
+   above) less the 8 gap. flex: 1 gives the field's max-width: 100% a
+   definite width, so the open email field shrinks on a phone rather than
+   running under the toolbar. Its notes hang below it, out of the flow, so the strip stays one control tall. */
+.qntns-graffiti__corner {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex; /* so the name row and the shut button fit their content */
+    gap: var(--space-8); /* §27: name / login → page menu */
+}
+
+.qntns-graffiti__corner > .qntns-graffiti__note {
+    position: absolute;
+    top: calc(100% + var(--space-4));
+    left: 0;
+    width: max-content;
+    max-width: 288px;
+}
+
+.qntns-graffiti__group {
+    display: flex;
+    gap: var(--space-4);
+}
+
+/* ---- Controls ------------------------------------------------------------ */
+
+.qntns-graffiti__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    height: var(--footer-control-size);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 14px; /* exempt from base 4: type metric, as .qntns-footer__send */
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.qntns-graffiti__btn {
+    width: var(--footer-control-size);
+    padding: 0;
+}
+
+/* Pressed reads as the footer's send button: navy filled. */
+.qntns-graffiti__btn[aria-pressed="true"] {
+    background: var(--color-ink);
+    color: var(--color-card);
+}
+
+.qntns-graffiti__btn:disabled,
+.qntns-graffiti__btn[aria-disabled="true"] {
+    color: color-mix(in srgb, var(--color-ink) 40%, transparent);
+    cursor: default;
+}
+
+/* §4a: − and + (and §51's fit between them) are filled navy with a light icon, the same fill as the
+   corner's icon squares (--color-ink under --color-card). At min / max zoom
+   the fill drops to 40% navy over the page, the 40% the disabled tools' icons
+   use, with the navy border kept, so a spent button still reads as a button. */
+.qntns-graffiti__btn[data-graffiti-zoom],
+.qntns-graffiti__btn[data-graffiti-fit],
+.qntns-graffiti__btn[data-graffiti-undo],
+.qntns-graffiti__btn[data-graffiti-redo] {
+    background: var(--color-ink);
+    color: var(--color-card);
+}
+
+/* §24a: undo is filled like − / +, and spent (nothing to undo, or signed
+   out) the same way. */
+.qntns-graffiti__btn[data-graffiti-zoom]:disabled,
+.qntns-graffiti__btn[data-graffiti-fit]:disabled,
+.qntns-graffiti__btn[data-graffiti-undo]:disabled,
+.qntns-graffiti__btn[data-graffiti-redo]:disabled,
+.qntns-graffiti__btn[data-graffiti-undo][aria-disabled="true"],
+.qntns-graffiti__btn[data-graffiti-redo][aria-disabled="true"] {
+    background: color-mix(in srgb, var(--color-ink) 40%, var(--color-page));
+    color: var(--color-card);
+}
+
+/* The signed-out pen still opens the sign-up, so it keeps the hand cursor. */
+.qntns-graffiti__btn[aria-disabled="true"] {
+    cursor: pointer;
+}
+
+.qntns-graffiti__btn:focus-visible,
+.qntns-graffiti__go:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+/* ---- The corner (§8 §9, answers-7; §19a) ------------------------------
+   Two states, one height. Each is a flex row exactly --graffiti-control-h
+   tall whose children are each 100% of it. The pieces carry their own 1px
+   border, not the row, so a navy square is the full height, border included:
+     32   --graffiti-control-h: --footer-control-size, the theme's square
+          control (toolbar buttons, the footer's send square), so the corner
+          lines up with the toolbar (answers-7 correction: 48 was too tall)
+     32   icon square, 32 x 32
+   auto   name field (§9b): 32 square + the name's own width
+   auto   "Login to draw" link: 12 + 16 icon + 8 + label + 12
+     12   input side padding; the link's side padding
+      8   icon-to-label gap in the link
+     16   the icon
+   Signed out, the link opens Ghost Portal's signup (§19a). */
+/* --footer-control-size is set on .qntns-footer, so outside it (the §9a
+   story) it is undefined and the height collapsed to the text; that was the
+   answers-7 squash. The fallback is the same 32. */
+.qntns-graffiti {
+    --graffiti-control-h: var(--footer-control-size, 32px);
+    --graffiti-strip-top: var(--space-16);
+}
+
+.qntns-graffiti__name {
+    position: relative;
+    display: flex;
+    width: auto;
+    max-width: 100%;
+    height: var(--graffiti-control-h);
+    margin: 0;
+}
+
+.qntns-graffiti__sq,
+.qntns-graffiti__go,
+.qntns-graffiti__artist {
+    box-sizing: border-box;
+    height: 100%;
+    margin: 0;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    font-family: var(--font-ui);
+    font-size: 14px; /* type metric, as .qntns-footer__send */
+}
+
+/* The filled navy pieces: the profile square (in), the login link (out). */
+.qntns-graffiti__sq,
+.qntns-graffiti__go {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    width: var(--graffiti-control-h);
+    padding: 0;
+    background: var(--color-ink);
+    color: var(--color-card);
+}
+
+/* The login link is the whole control, icon + "Login to draw". */
+.qntns-graffiti__go {
+    width: max-content;
+    height: var(--graffiti-control-h);
+    padding: 0 var(--space-12);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* The beige name input, joined to the square. §9b: it fits the name,
+   shrinking for a short one and growing while editing up to the 24-character
+   cap (maxlength). field-sizing does it; graffiti.js sets the size attribute
+   where it is unsupported. The width is a text measure, so it is exempt from
+   base 4. */
+.qntns-graffiti__artist {
+    flex: 0 1 auto; /* shrinks, and scrolls its text, when the corner is narrower (phone) */
+    min-width: 0;
+    width: auto;
+    field-sizing: content;
+    padding: 0 var(--space-12);
+    border-left: 0;
+    background: var(--color-page);
+    color: var(--color-ink);
+    cursor: text;
+}
+
+.qntns-graffiti__artist[readonly] {
+    cursor: pointer;
+}
+
+.qntns-graffiti__artist:focus {
+    outline: none;
+}
+
+.qntns-graffiti__name:focus-within {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+.qntns-graffiti__name:has([aria-invalid="true"]) .qntns-graffiti__artist {
+    box-shadow: inset 0 0 0 1px var(--color-ink);
+}
+
+.qntns-graffiti__note {
+    margin: 0;
+    font-size: 12px; /* type metric */
+    line-height: 16px;
+    font-style: italic;
+    color: var(--color-ink);
+}
+
+.qntns-graffiti__note:empty {
+    display: none;
+}
+
+/* ---- The page menu (§27) -----------------------------------------------
+   The views menu (views-menu.css): 32 square button, outlined shut,
+   filled open; its menu and 32px rows. Changes:
+     1. It opens DOWN, 8 under the button: the strip is at the top of the
+        wall, so up would cover the heading. The unroll and the rise are
+        flipped to match (rows fall 32 from above, top row first;
+        graffiti.js sets --rise-i from the top).
+     2. A row has no check box; the active page is the whole row in navy,
+        the menu's inner width (rows are width 100%, the menu has no side
+        padding). Height stays 4 + 24 + 4 = 32 via min-height, so five rows
+        (§31) are 5 x 32 = 160 + 2 x 1 border = 162.
+     3. (attempt 2) Flush rows: the menu has no padding, so the top row
+        touches the top border and the bottom row the bottom.
+     4. (attempt 3) The ground of the shut button and of the menu is
+        --color-page, the toolbar buttons' and the name field's beige (attempt
+        2's lighter --color-card was wrong). Text on navy (the open button's
+        icon, the active row) stays --color-card, as on .qntns-graffiti__sq.
+        One 1px navy outline (--border-card).
+   Rows: 12 + 16 icon + 8 + label + 12.
+
+   PHONE BUDGET: see .qntns-graffiti__bar (§35): at 375 the corner has
+   183, enough for "Login to draw" + 8 + this button (179). */
+.qntns-graffiti__pages {
+    flex: none;
+}
+
+.qntns-graffiti .qntns-views__button {
+    background: var(--color-page);
+}
+
+/* §27c / §27 attempt 4 LABELLED ON A WIDE STRIP: the page button is laid
+   out exactly like a dropdown row (views-menu.css .qntns-views__row), no
+   separate icon square: 1 border + 12 + 16 icon + 8 + label + 12 + 1, the
+   label 16px Josefin trimmed to cap/baseline like .qntns-views__label. The
+   menu's left edge is the button's and both have a 1px border, so the
+   button's icon and label sit on the rows' icon and label columns.
+   Width budget, longest label "World prayers" at 16px (§31a; a text
+   measure, exempt: 115.7 rendered): 2 + 12 + 16 + 8 + 115.7 + 12 =
+   165.7, budgeted as 168.
+     fold point (§35): the bar is 152 (§30 not quite), so the corner is
+       strip - 152 - 8 and needs 432 (32 + 224 + 8 + 168): 432 + 8 + 152 =
+       592. Under 592 the button is the 32 square again.
+     720: corner = 720 - 160 = 560 >= 432, labelled, 128 to spare. */
+.qntns-graffiti__pages .qntns-views__button {
+    width: auto;
+    padding: 0 var(--space-12);
+    font-size: 16px; /* type metric, as .qntns-views__row */
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.qntns-graffiti__pages .qntns-views__layer {
+    justify-content: flex-start;
+    padding: 0 var(--space-12);
+}
+
+.qntns-graffiti__pages .qntns-views__layer--outline {
+    padding: 0;
+}
+
+.qntns-graffiti__pages .qntns-graffiti__label {
+    text-box: trim-both cap alphabetic;
+}
+
+/* §33a LONG DRAFT LABELS. Button capped at the 168 budget above, so its
+   label gets 168 - 2 - 12 - 16 - 8 - 12 = 118 and ends in an ellipsis
+   ("World prayers", 115.7, still fits whole). Menu rows ellipsise at 120 so
+   a 40-character label cannot widen the menu past the strip: row 12 + 16 + 8
+   + 120 + 12 = 168 wide, the button's width. The trimmed label box is 11
+   tall, so overflow would clip descenders: 4 padding top and bottom, pulled
+   back by -4 margins, keeps them inside the clip. */
+.qntns-graffiti__pages .qntns-views__button {
+    max-width: 168px;
+}
+
+.qntns-graffiti__pages .qntns-views__layer {
+    min-width: 0;
+}
+
+.qntns-graffiti__pages .qntns-graffiti__label,
+.qntns-graffiti__pages .qntns-views__label {
+    min-width: 0;
+    max-width: 120px;
+    padding: var(--space-4) 0;
+    margin: calc(-1 * var(--space-4)) 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@container graffiti-strip (width < 628px) {
+    .qntns-graffiti__pages .qntns-views__button {
+        width: var(--graffiti-control-h);
+        padding: 0;
+    }
+
+    .qntns-graffiti__pages .qntns-views__layer {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .qntns-graffiti__pages .qntns-graffiti__label {
+        display: none;
+    }
+}
+
+.qntns-graffiti .qntns-views__layer--fill {
+    color: var(--color-card);
+}
+
+/* §27: the name row gives way to the page button, so the button stays
+   left of the toolbar; the input already shrinks and scrolls inside it. */
+.qntns-graffiti__corner > .qntns-graffiti__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden; /* field-sizing keeps the input's own width; clip it */
+}
+
+.qntns-graffiti .qntns-views__menu {
+    padding: 0;
+    background: var(--color-page);
+    top: calc(100% + var(--space-8));
+    bottom: auto;
+    --rise-distance: -32px;
+    animation-name: qntns-graffiti-drop;
+}
+
+@keyframes qntns-graffiti-drop {
+    from { clip-path: inset(0 0 100% 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+
+.qntns-graffiti .qntns-views__row {
+    min-height: 32px;
+}
+
+/* §27d THE HIGHLIGHT: one navy bar, the menu's ::before, under the rows
+   (a row is positioned and later in the tree, so it paints on top). It sits
+   on the active row and slides to the row under the pointer or the keyboard
+   focus, then back to the active row when the pointer leaves the menu.
+   attachMenu (graffiti.js) sets --hi-y / --hi-h from the row's offsetTop /
+   offsetHeight (0, 32, 64, 96 for four 32 rows, flush, no padding) and
+   marks that row [data-hi] for the light text. Hover never moves
+   aria-checked; a click or Enter does. The menu is display: none while
+   shut, so opening places the bar with no slide. */
+.qntns-graffiti .qntns-views__menu::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: var(--hi-h, 32px);
+    transform: translateY(var(--hi-y, 0px));
+    background: var(--color-ink);
+    transition: transform 160ms ease;
+}
+
+.qntns-graffiti .qntns-views__row {
+    position: relative;
+}
+
+.qntns-graffiti .qntns-views__row[data-hi] {
+    color: var(--color-card);
+}
+
+/* The inset focus ring would be navy on the navy bar; light there. */
+.qntns-graffiti .qntns-views__row[data-hi]:focus-visible {
+    outline-color: var(--color-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-graffiti .qntns-views__menu::before {
+        transition: none;
+    }
+}
+
+/* Signed out, Pencil / Pen / Eraser read spent like their buttons; a pick
+   still opens the sign-up (setTool). */
+.qntns-graffiti .qntns-views__row[aria-disabled="true"]:not([data-hi]) {
+    color: color-mix(in srgb, var(--color-ink) 40%, transparent);
+}
+
+/* NO ZOOM-ON-FOCUS (CHECKLIST-29 §29): iOS zooms the page on focus of a text
+   control under 16px. Touch only; desktop keeps 14px. Later, same selector. */
+@media (pointer: coarse) {
+    .qntns-graffiti__artist { font-size: 16px; }
+}
+
+/* §36, §30b: the heading links to /graffiti/ but never looks like a link:
+   no underline, tint or colour change on hover. a.class (0,1,1 + 0,1,0)
+   outranks type.css:254's a:hover (0,1,1). Keyboard focus keeps a11y.css's
+   global :focus-visible ring; the cursor stays the link's pointer. */
+.qntns-graffiti__home,
+a.qntns-graffiti__home:hover {
+    color: inherit;
+    background: none;
+    text-decoration: none;
+}
+
+/* §57 THE LINK CARD. 480 x 368 wall units = 240 x 184 screen px at zoom 1
+   (§57b rescope 2: landscape, image on top, no description; the base scale
+   is 0.5), square corners, drawn at the wall's scale: --graffiti-s is px per
+   wall unit (graffiti.js, every paint), so --u is one wall unit and the card
+   zooms like ink. TYPE: 28 units = 14px at zoom 1, the wall's text buttons'
+   14px var(--font-ui) (.qntns-graffiti__sq / Save). Lines are 40 units
+   (20px at zoom 1; a type metric, exempt). Budget, wall units (screen px):
+       248  image, 480 x 248 (124), ~1.91:1 OG ratio, cover; none: same block
+     +  16  padding (8)
+     +  40  title, 1 line, bold, ellipsis (20)
+     +   8  gap (4)
+     +  40  link line: icon + host/path… (20)
+     +  16  padding (8)
+     = 368 (184); 32 units (16px) padding left and right.
+   §57d: no image (or one that fails to load) drops the block: data-short,
+   16 + 40 + 8 + 40 + 16 = 120 units (60px), and graffiti.js gives that
+   card its own h, so the hit-test fits it.
+   The hairline is an outline drawn inside the box (a rule, not a measurement).
+   Under every tool but Hand the card lets presses through to the canvas (the
+   eraser, and Link's drag of the card being placed); under Hand the link
+   line's ::after covers the card, so the whole card is one link. §62: on the
+   reader's own card (data-own) the ::after is gone and only the line itself
+   (icon + host/path, as wide as its text) takes presses; the rest passes to
+   the canvas, where a Hand click picks the card up again (graffiti.js). */
+.qntns-graffiti__card {
+    --u: calc(var(--graffiti-s, 0.5) * 1px);
+    position: absolute;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: calc(480 * var(--u));
+    height: calc(368 * var(--u));
+    overflow: hidden;
+    border-radius: 0;
+    outline: 1px solid var(--color-ink);
+    outline-offset: -1px;
+    background: var(--color-card);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: calc(28 * var(--u));
+    line-height: calc(40 * var(--u));
+    pointer-events: none;
+    user-select: none;
+}
+
+.qntns-graffiti__card[data-short] {
+    height: calc(120 * var(--u));
+}
+
+.qntns-graffiti__box[data-tool="hand"] .qntns-graffiti__card {
+    pointer-events: auto;
+}
+
+.qntns-graffiti__box[data-tool="hand"] .qntns-graffiti__card[data-own] { pointer-events: none; }
+.qntns-graffiti__box[data-tool="hand"] .qntns-graffiti__card[data-own] .qntns-graffiti__card-url { pointer-events: auto; }
+.qntns-graffiti__card[data-own] .qntns-graffiti__card-url { align-self: flex-start; max-width: 100%; }
+.qntns-graffiti__card[data-own] .qntns-graffiti__card-url::after { content: none; }
+
+.qntns-graffiti__card-img {
+    display: block;
+    flex: none;
+    width: 100%;
+    height: calc(248 * var(--u));
+    object-fit: cover;
+    background: var(--color-beige-dark);
+}
+
+.qntns-graffiti__card-text {
+    display: flex;
+    flex-direction: column;
+    gap: calc(8 * var(--u));
+    padding: calc(16 * var(--u)) calc(32 * var(--u));
+    min-height: 0;
+}
+
+.qntns-graffiti__card-title {
+    flex: none;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.qntns-graffiti__card-url {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: calc(8 * var(--u));
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+}
+
+.qntns-graffiti__card-url .icon {
+    flex: none;
+    width: calc(32 * var(--u));
+    height: calc(32 * var(--u));
+}
+
+.qntns-graffiti__card-url span {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.qntns-graffiti__card-url::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+/* §57 the Link toast: no title, no helper text. Its text column is one row
+   across the toast's full width: the URL field (flex 1), then the 32 squares
+   ([+] before a card is in, [outlined x][solid check] after). The icon sits
+   at the top, centred on that 32 row, not on the toast:
+       16 + 32 row + 16 = 64 = 16 x 4.
+   16px type in the field: below 16, iOS zooms the page on focus. */
+.qntns-graffiti__link-toast { align-items: flex-start; }
+.qntns-graffiti__link-toast .qntns-toast__icon { height: var(--space-32); align-items: center; }
+
+.qntns-graffiti__link {
+    flex: 1 1 auto;
+    display: flex;
+    gap: var(--space-8);
+    min-width: 0;
+    margin: 0;
+}
+
+.qntns-graffiti__link .qntns-toast__close[hidden] { display: none; }
+
+.qntns-graffiti__link-url {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: var(--space-32);
+    padding: 0 var(--space-8);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 16px;
+}
+
+/* The global focus ring sat 3px outside the 1px border and read as a double
+   border. The field is the toast's only input and has the caret: one border. */
+.qntns-graffiti__link-url:focus-visible { outline: none; }
+
+/* §57 / §58: the outlined square (remove / delete) beside the solid check:
+   the same 32 block, card fill, ink glyph and hairline. */
+.qntns-toast__close.qntns-graffiti__sq-out {
+    background: var(--color-card);
+    color: var(--color-ink);
+}
+
+/* §43b: the lasso toast's Undo, greyed until the selection has been moved. */
+.qntns-toast__close[aria-disabled="true"] { opacity: 0.4; cursor: default; }
+
+/* §58 THE IMAGE. A §57-style overlay: --w / --h are its size and --r its turn,
+   set by graffiti.js every paint, in wall units through --u, so it zooms like
+   ink. Presses always pass through to the canvas, which works out what the
+   handles do (graffiti.js zone()); the handles below are only drawn. Held, it
+   gets its chrome, which does not zoom (px), and turns with it:
+     outline  1px ink, the hairline exemption
+     ball     12 across, on a 20 line out of the top centre: 32 = 8 x 4
+     grip     24 square centred on the bottom-right corner, 16 icon
+   The other corners and the edges resize too; only one corner is drawn. */
+.qntns-graffiti__img {
+    --u: calc(var(--graffiti-s, 0.5) * 1px);
+    position: absolute;
+    z-index: 1;
+    width: calc(var(--w) * var(--u));
+    height: calc(var(--h) * var(--u));
+    transform: rotate(var(--r, 0deg));
+    pointer-events: none;
+    user-select: none;
+}
+
+/* §59c: outside a lasso selection; 0.5 is DIM in graffiti.js, the ink's own dim. */
+.qntns-graffiti__card[data-dim],
+.qntns-graffiti__img[data-dim] { opacity: 0.5; }
+
+/* §71: the marks newer than a card, over it (graffiti.js overlay()); the
+   card's own size, so a link card's overflow and an image's turn clip it. */
+.qntns-graffiti__over {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.qntns-graffiti__img > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.qntns-graffiti__img[data-held] {
+    outline: 1px solid var(--color-ink);
+}
+
+.qntns-graffiti__img-turn,
+.qntns-graffiti__img-grip {
+    position: absolute;
+    display: none;
+}
+
+.qntns-graffiti__img[data-held] .qntns-graffiti__img-turn,
+.qntns-graffiti__img[data-held] .qntns-graffiti__img-grip {
+    display: block;
+}
+
+.qntns-graffiti__img-turn {
+    bottom: 100%;
+    left: calc(50% - var(--space-12) / 2);
+    width: var(--space-12);
+    height: var(--space-32);
+}
+
+/* The line: 1px (hairline exemption), 20 tall, under the ball. */
+.qntns-graffiti__img-turn::before {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: calc(50% - 0.5px);
+    width: 1px;
+    height: var(--space-20);
+    background: var(--color-ink);
+}
+
+.qntns-graffiti__img-turn::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--space-12);
+    height: var(--space-12);
+    border-radius: 50%;
+    background: var(--color-ink);
+}
+
+.qntns-graffiti__img-grip {
+    right: calc(var(--space-24) / -2);
+    bottom: calc(var(--space-24) / -2);
+    width: var(--space-24);
+    height: var(--space-24);
+    padding: var(--space-4);
+    box-sizing: border-box;
+    outline: 1px solid var(--color-ink);
+    outline-offset: -1px;
+    background: var(--color-page);
+    color: var(--color-ink);
+}
+
+.qntns-graffiti__img-grip .icon {
+    display: block;
+}
+
+/* What a press on the held image would do, as a cursor (graffiti.js sets
+   data-img-zone from zone()). No platform has a rotate cursor, so turn is
+   lucide rotate-cw, inline (a data URI is not a network call), haloed so it
+   reads on ink and on paper. */
+.qntns-graffiti__box[data-tool="image"][data-img-zone="move"]:not([data-dragging]) .qntns-graffiti__canvas { cursor: grab; }
+.qntns-graffiti__box[data-tool="image"][data-img-zone="turn"] .qntns-graffiti__canvas {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg stroke='white' stroke-width='5'%3E%3Cpath d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3C/g%3E%3Cg stroke='black' stroke-width='2'%3E%3Cpath d='M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3C/g%3E%3C/svg%3E") 12 12, alias;
+}
+.qntns-graffiti__box[data-tool="image"][data-img-zone="ew"] .qntns-graffiti__canvas { cursor: ew-resize; }
+.qntns-graffiti__box[data-tool="image"][data-img-zone="ns"] .qntns-graffiti__canvas { cursor: ns-resize; }
+.qntns-graffiti__box[data-tool="image"][data-img-zone="nwse"] .qntns-graffiti__canvas { cursor: nwse-resize; }
+.qntns-graffiti__box[data-tool="image"][data-img-zone="nesw"] .qntns-graffiti__canvas { cursor: nesw-resize; }
+
+/* The Link and Image buttons hide without their stub (Ghost ships them so). */
+.qntns-graffiti__btn[hidden],
+.qntns-graffiti__group[hidden] {
+    display: none;
+}
+
+/* §58 THE PICKER, the eraser panel's popover shell. Width, base 4:
+       16 + 3 tiles x 80 + 2 gaps x 8 + 16 = 288,  + 2 x 1 hairline = 290
+   §63: the shell is border-box with a 1px border each side, so at 288 the
+   content box was 254 and the fixed 3 x 80 + 16 = 256 grid overflowed by 2
+   (measured). The hairlines are added on top (a rule, not a measurement), and
+   the columns are 1fr with square tiles so a narrower shell still fits.
+   The search line is the postcard address field as it stands; under it the
+   grid, three rows in view (3 x 80 + 2 x 8 = 256), the rest scrolls. Each
+   tile shows the whole meme (contain) on the beige the card's image sits on. */
+.qntns-graffiti .qntns-views__menu.qntns-graffiti__memes {
+    display: none;
+    width: calc(288px + 2px); /* + the two 1px hairlines, exempt */
+    max-width: calc(100vw - 2 * var(--space-16));
+    padding: var(--space-16);
+    flex-direction: column;
+    gap: var(--space-16);
+}
+
+.qntns-graffiti .qntns-views__menu.qntns-graffiti__memes:popover-open {
+    display: flex;
+}
+
+.qntns-graffiti__meme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-8);
+    max-height: 256px;
+    overflow-y: auto;
+    scrollbar-width: none; /* §63: scrolls, shows no bar */
+}
+
+.qntns-graffiti__meme-grid::-webkit-scrollbar,
+.qntns-graffiti .qntns-views__menu.qntns-graffiti__memes::-webkit-scrollbar {
+    display: none;
+}
+
+.qntns-graffiti .qntns-views__menu.qntns-graffiti__memes {
+    scrollbar-width: none;
+}
+
+/* Load more (§63 not quite): filled navy, near-white text, the site's
+   accent / accent-contrast pair (the solid check's ink); the grid's full
+   width, 32 tall (base 4), last in the grid. */
+.qntns-graffiti__meme-more {
+    grid-column: 1 / -1;
+    height: 32px;
+    margin: 0;
+    padding: 0 var(--space-12);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-accent-contrast);
+    font-family: var(--font-ui);
+    font-size: var(--type-step--1);
+    cursor: pointer;
+}
+
+/* §63: the search field never shows a focus ring ("prevent hard"); its one
+   underline stays. Beats the site-wide :focus-visible ring. */
+.qntns-graffiti .qntns-graffiti__memes input:is(:focus, :focus-visible) {
+    outline: none;
+}
+
+.qntns-graffiti__meme {
+    aspect-ratio: 1; /* 80 x 80 at the full 290 width */
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    outline: 1px solid color-mix(in srgb, var(--color-ink) 24%, var(--color-page));
+    outline-offset: -1px;
+    background: var(--color-beige-dark);
+    cursor: pointer;
+}
+
+.qntns-graffiti__meme:hover,
+.qntns-graffiti__meme:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: -2px;
+}
+
+.qntns-graffiti__meme img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.qntns-graffiti__meme-none {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-step--1);
+    line-height: 20px;
+}
+
+/* §61: a click or tap shows no focus ring anywhere on the wall; Tab still does
+   (:focus-visible). Text inputs count as focus-visible on click, so those hide
+   the ring on :focus and keep their own underline/border as the cue. */
+.qntns-graffiti :focus:not(:focus-visible),
+.qntns-graffiti__canvas:focus {
+    outline: none;
+}
+
+.qntns-graffiti input:is(:focus, :focus-visible) {
+    outline: none;
+}
+
+/* §61: the URL input's cue once the ring is gone: its border goes to ink. */
+.qntns-graffiti__link-url:focus { border-color: var(--color-ink); }
+
+/* §64: the gate bar (default.hbs rules) laid over the canvas while a view's
+   first tiles load. Only placement here; the card's look and 400 ms delay are
+   the gate's. Off (display: none) until graffiti.js adds .is-on. */
+.qntns-graffiti .qntns-graffiti__gate.is-on {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+/* §30 under a 340 strip (see .qntns-graffiti__bar): "Login to draw" is the
+   32 icon square; its aria-label keeps the name. */
+@container graffiti-strip (width < 376px) {
+    .qntns-graffiti__go {
+        width: var(--graffiti-control-h);
+        padding: 0;
+    }
+
+    .qntns-graffiti__go .qntns-graffiti__label {
+        display: none;
+    }
+}
+
+/* §30 POSTCARD FRAME. The layer spans the canvas (the box's height, the
+   full-bleed 100vw) and clips the fade to it; z-index 0 puts it over the
+   canvas and the cards and under the strip and the tool bar (z-index 1), so
+   the postcard button still cancels. The frame's size and place are set by
+   graffiti.js at the card's art ratio; the fade is its own spread shadow.
+   Outline, not border, so the frame box is exactly what is captured; 1px is
+   the hairline exemption. */
+.qntns-graffiti__framing {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(50% - 50vw);
+    width: 100vw;
+    z-index: 2;
+    overflow: hidden;
+}
+
+.qntns-graffiti__frame {
+    position: absolute;
+    box-sizing: border-box;
+    outline: 1px dotted var(--color-ink);
+    box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--color-page) 70%, transparent);
+    cursor: grab;
+    touch-action: none;
+}
+
+.qntns-graffiti__frame:active {
+    cursor: grabbing;
+}
+
+/* Select: 8 under the frame's bottom-right corner, or 8 over its top-right
+   when the wall has no 40 left below it (data-flip, graffiti.js). Filled
+   navy, as the login link. */
+.qntns-graffiti__select {
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-8));
+    height: var(--graffiti-control-h);
+    padding: 0 var(--space-12);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-card);
+    font-family: var(--font-ui);
+    font-size: 14px; /* type metric, as .qntns-graffiti__go */
+    cursor: pointer;
+}
+
+.qntns-graffiti__frame[data-flip] .qntns-graffiti__select {
+    top: auto;
+    bottom: calc(100% + var(--space-8));
+}
+
+.qntns-graffiti__select:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}

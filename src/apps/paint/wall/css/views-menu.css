@@ -1,0 +1,362 @@
+/* QNTNs views menu — the eye button and its menu of check rows.
+   -------------------------------------------------------------------------
+   A MOCK-UP for CHECKLIST-25 items 2 and 3. See the head of views-menu.js.
+
+   THE BUTTON IS THE BAR TOGGLE, copied rather than shared. Its box, its two
+   stacked layers and its drain are the ones in sound.css — read THE DRAIN
+   there. It is not added to that file's selector lists because it is not a
+   fixed-class toggle (it has its own wrapper and menu). The fill level is driven
+   by aria-expanded instead of aria-pressed, because the state it shows is
+   "the menu is open".
+
+   HOVER FILLS IT (§29), as every outlined bar square does; :focus-visible
+   stays. */
+
+/* --duration-views sits on the wrapper so the button and the row boxes share
+   it. It is sound.css's --duration-sound, so they all drain alike. */
+.qntns-views {
+    --duration-views: 320ms;
+    position: relative;
+    display: inline-block;
+}
+
+.qntns-views__button {
+    --views-level: 100%;
+    display: flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    overflow: hidden;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    cursor: pointer;
+    /* §22c: no touch flash on the trigger or the rows (both are <button>s, so
+       type.css's a:hover never reached them; the tap highlight did). */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Open is full, the way pressed is full on the other toggles. */
+.qntns-views__button[aria-expanded="true"] {
+    --views-level: 0%;
+}
+
+/* HOVER FILL (§29): a mouse over the eye raises the open state's fill all
+   the way, on the same 320ms drain, and leaving drains it; a click opens the
+   menu, already full. Not on touch (no sticky fill); reduced motion: the
+   fill arrives instantly (transition: none below). */
+@media (hover: hover) and (pointer: fine) {
+    .qntns-views__button:hover {
+        --views-level: 0%;
+    }
+}
+
+/* The fill layer sits over the outline with inset: 0. The eye is centred in the
+   32px square at every width: eye only, no word (CHECKLIST-25 §11a). */
+.qntns-views__layer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+}
+
+.qntns-views__layer--fill {
+    position: absolute;
+    inset: 0;
+    background: var(--color-ink);
+    color: var(--color-beige-dark);
+    clip-path: inset(var(--views-level) 0 0 0);
+    transition: clip-path var(--duration-views) ease;
+}
+
+.qntns-views__eye {
+    display: block;
+    flex: none;
+}
+
+.qntns-views__button:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+/* ---- The menu ---------------------------------------------------------------
+   Navy 1px outline, the page's beige, and the theme's hard shadow — 4px 4px
+   with no blur (--shadow-hard). It opens UPWARD, because the button lives in
+   the sticky footer bar at the bottom of the window and there is nothing
+   below it to open into. 8px clears the button; the 4px shadow sits on the
+   right and bottom, away from the button, so it never touches it.
+
+   ROW BUDGET, 32px a row — the same height as the button that opens them:
+
+       4 top padding + 24 box + 4 bottom padding = 32
+
+   (the 16px label line is centred in the 24 by align-items) and across:
+   12 + 24 box + 8 + 16 icon + 8 + label + 12. Eleven rows (§2d, plus
+   CHECKLIST-26's Compact view, Most viewed and Most liked) plus the menu's
+   4px top and bottom padding is 4 + 11 * 32 + 4 = 360, all on the grid. It
+   opens upward from a 56px footer bar, so it fits any viewport taller than
+   360 + 8 + 56 = 424. The 1px border is the hairline exemption. */
+.qntns-views__menu {
+    position: absolute;
+    bottom: calc(100% + var(--space-8));
+    left: 0;
+    z-index: 10;
+    box-sizing: border-box;
+    width: max-content;
+    padding: var(--space-4) 0;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-page);
+    box-shadow: var(--shadow-hard);
+}
+
+.qntns-views__menu[hidden] {
+    display: none;
+}
+
+/* THE RISE (CHECKLIST-26 §20). The (i) menu's drop in content.css (§1g),
+   mirrored for a menu that opens UPWARD: the panel unrolls from its bottom
+   edge, and the rows rise into place one after another starting from the
+   bottom row. --rise-i is set per row by attachViewsMenu, counted from the
+   END of the DOM, so the bottom row (Most liked) is 0 and goes first.
+
+   Timings, distance and curve are the (i) menu's, copied: 280/360/60ms (§22b,
+   20% under the old 350/450/75) and
+   32px on cubic-bezier(0.45, 0, 0.55, 1). The keyframes are copied too, with
+   views names, because card-group.css (which owns qntns-rise-opacity) is not
+   on every page the footer bar is, and content.css is read-only here.
+   qntns-views-rise is content.css's qntns-more-fall with the sign flipped
+   back: rows travel UP from +32px.
+
+   Eleven rows: the top row starts 10 * 60 = 600ms in and ends 600 + 360 =
+   960ms after open. backwards keeps a row on its from-frame while it waits.
+   Unhiding restarts every animation (display: none -> block re-runs them), so
+   each open replays it. Closing stays instant, as on the (i) menu. */
+.qntns-views__menu {
+    --rise-position: 280ms;
+    --rise-opacity: 360ms;
+    --rise-step: 60ms;
+    --rise-distance: 32px;
+    --rise-ease: cubic-bezier(0.45, 0, 0.55, 1);
+    animation: qntns-views-unroll var(--rise-position) var(--rise-ease) backwards;
+}
+
+.qntns-views__menu > .qntns-views__row {
+    animation:
+        qntns-views-rise var(--rise-position) var(--rise-ease) backwards,
+        qntns-views-fade var(--rise-opacity) var(--rise-ease) backwards;
+    animation-delay: calc(var(--rise-i, 0) * var(--rise-step));
+}
+
+@keyframes qntns-views-unroll {
+    from { clip-path: inset(100% 0 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes qntns-views-rise {
+    from { transform: translateY(var(--rise-distance, 32px)); }
+    to   { transform: none; }
+}
+
+@keyframes qntns-views-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.qntns-views__row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--space-4) var(--space-12);
+    border: 0;
+    background: transparent;
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    line-height: 16px;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* -2px offset keeps the ring inside the menu's border instead of drawing it
+   over the neighbouring row. */
+.qntns-views__row:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: -2px;
+}
+
+/* LABEL CENTRED ON THE BOX (§26): the settings-menu.css trim, same numbers.
+   The 16 label box centred in the 32 row put Josefin's capitals at 14.38,
+   1.62 above the 24 box's centre (16); trimmed to cap-top/baseline it is
+   11.23 tall and its capitals sit on 16. Row height unchanged: 4 + 24 + 4.
+   Firefox ignores text-box and stays 1.62 high. */
+.qntns-views__label {
+    text-box: trim-both cap alphabetic;
+}
+
+.qntns-views__glyph {
+    display: flex;
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+/* ---- The row's box (CHECKLIST-25 §2b) ----------------------------------------
+   The bar toggle's square, smaller: navy hairline, the control radius, and the
+   same fill-from-the-bottom as THE DRAIN in sound.css (clip-path, 320ms). 24px
+   is the base-4 step under the 32px row, so it sits 4px in from the row's top
+   and bottom and stays perfectly square.
+
+   THE CHECK IS ALWAYS THERE, in --color-page, the menu's own beige. Unchecked,
+   it is beige on beige and reads as an empty box; checking raises the navy
+   fill BEHIND it, so the fill rises around a check that was there all along.
+   The check is centred: 16 in the 24 box is 4px from the box's outer edge on
+   every side (3 inside the 1px border, the hairline exemption).
+
+   aria-checked is the only switch. paint() only sets it and never rebuilds
+   the box, so the transition runs rather than being replaced. In a linked
+   group (§2d) the row that loses the check drains while the new one fills. */
+.qntns-views__box {
+    --box-level: 100%;
+    display: flex;
+    position: relative;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+    overflow: hidden;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+}
+
+.qntns-views__row[aria-checked="true"] .qntns-views__box {
+    --box-level: 0%;
+}
+
+.qntns-views__box-fill {
+    position: absolute;
+    inset: 0;
+    background: var(--color-ink);
+    clip-path: inset(var(--box-level) 0 0 0);
+    transition: clip-path var(--duration-views) ease;
+}
+
+.qntns-views__box-check {
+    display: block;
+    position: relative;
+    color: var(--color-page);
+}
+
+/* §10, USER-ORDERED EXCEPTION: type.css reserves Gill Sans Ultra for huge
+   display text; the user asked for it as the "Q" View icon. The span fills the
+   16px icon box (same width/height as the lucide icons) and centres the
+   letter; text-box trims it to cap height so it sits on the box's centre. */
+.qntns-views__q {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-family: var(--font-display);
+    font-size: 16px;
+    line-height: 16px;
+    text-box: trim-both cap alphabetic;
+}
+
+.qntns-views__row-icon {
+    display: block;
+}
+
+/* ---- The eye looks around (CHECKLIST-25 §4) ----------------------------------
+   At rest the eye is lucide's glyph, byte for byte: the pupil is drawn with
+   fill-opacity 0 so it matches fill="none" exactly, and nothing is translated
+   or scaled. One run, 2400ms, started by views-menu.js putting .is-looking on
+   the button (idle timer, hover, click) and taken off again on animationend:
+
+       0 -  12%  the pupil fills
+      12 -  24%  it looks left, one pupil-radius (3 user units)
+      40 -  52%  across to the right
+      68 -  80%  back to centre
+      84 -  92%  a blink: lids and pupil squash to a line and reopen
+      92 - 100%  the fill drains
+
+   GEOMETRY, so the pupil never leaves the lids: the two lid arcs are r 10.75
+   on a 19.88 chord, so they bulge 6.66 from y=12 at the centre and 5.9 at
+   x=8, where the pupil stops (centre 9, outer stroke edge 5..13 across, 8..16
+   down). The pupil's outer edge sits 2 units inside the lid there. Units are
+   the viewBox's, which is what px means on an SVG child.
+
+   Both layers' eyes animate together, so the fill colour is whichever layer
+   is showing and the drain never catches a half-moved pupil. */
+.qntns-views__eye path,
+.qntns-views__pupil {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.qntns-views__pupil {
+    fill: currentColor;
+    fill-opacity: 0;
+}
+
+.is-looking .qntns-views__pupil {
+    animation: qntns-views-look 2400ms ease-in-out both;
+}
+
+.is-looking .qntns-views__eye path {
+    animation: qntns-views-blink 2400ms ease-in-out both;
+}
+
+@keyframes qntns-views-look {
+    0%   { fill-opacity: 0; transform: translateX(0) scaleY(1); }
+    12%  { fill-opacity: 1; transform: translateX(0) scaleY(1); }
+    24%  { transform: translateX(-3px) scaleY(1); }
+    40%  { transform: translateX(-3px) scaleY(1); }
+    52%  { transform: translateX(3px) scaleY(1); }
+    68%  { transform: translateX(3px) scaleY(1); }
+    80%  { transform: translateX(0) scaleY(1); }
+    84%  { transform: translateX(0) scaleY(1); }
+    88%  { transform: translateX(0) scaleY(0); }
+    92%  { fill-opacity: 1; transform: translateX(0) scaleY(1); }
+    100% { fill-opacity: 0; transform: translateX(0) scaleY(1); }
+}
+
+/* The lids stay at 0.08, not 0: a zero-height path draws nothing, and the
+   closed eye should still read as a line. */
+@keyframes qntns-views-blink {
+    0%, 84% { transform: scaleY(1); }
+    88%     { transform: scaleY(0.08); }
+    92%, 100% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-views__layer--fill,
+    .qntns-views__box-fill {
+        transition: none;
+    }
+
+    /* No unroll, no rise: the menu just appears (§20). */
+    .qntns-views__menu,
+    .qntns-views__menu > .qntns-views__row {
+        animation: none;
+    }
+
+    /* views-menu.js never adds .is-looking under reduced motion; this is the
+       belt to that brace. */
+    .is-looking .qntns-views__pupil,
+    .is-looking .qntns-views__eye path {
+        animation: none;
+    }
+}
