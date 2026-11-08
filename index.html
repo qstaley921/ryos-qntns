@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-os-theme="macosx" data-os-platform="mac" data-os-mac-chrome="aqua" data-os-aqua-material="glass" style="background-color: #000">
+<html lang="en" data-os-theme="macosx" data-os-platform="mac" data-os-mac-chrome="aqua" data-os-aqua-material="glass" style="background-color: #cdbba4">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -26,31 +26,19 @@
     <!-- Cache control -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 
-    <!-- CJK content can appear independently of the UI locale (lyrics, files,
-         documents), so start its non-blocking font stylesheets at boot. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=Nanum+Gothic:wght@700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-    <link href="https://cdn.jsdelivr.net/npm/chiron-go-round-tc-webfont@1.0.11/css/vf.css" rel="stylesheet" media="print" onload="this.media='all'" />
-    <noscript>
-      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=Nanum+Gothic:wght@700&display=swap" rel="stylesheet" />
-      <link href="https://cdn.jsdelivr.net/npm/chiron-go-round-tc-webfont@1.0.11/css/vf.css" rel="stylesheet" />
-    </noscript>
-
     <!-- Preload critical JSON data -->
     <link rel="preload" href="/data/filesystem.json" as="fetch" type="application/json" crossorigin="use-credentials" />
     <link rel="preload" href="/data/applets.json" as="fetch" type="application/json" crossorigin="use-credentials" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://os.ryo.lu/" />
+    <meta property="og:url" content="https://qntns.com/" />
     <meta property="og:title" content="ryOS" />
     <meta
       property="og:description"
       content="An AI OS experience, made with Cursor"
     />
-    <meta property="og:image" content="https://os.ryo.lu/icons/mac-512.png" />
+    <meta property="og:image" content="https://qntns.com/icons/mac-512.png" />
     <meta property="og:site_name" content="ryOS" />
 
     <!-- Twitter Card -->
@@ -60,9 +48,13 @@
       name="twitter:description"
       content="An AI OS experience, made with Cursor"
     />
-    <meta name="twitter:image" content="https://os.ryo.lu/icons/mac-512.png" />
+    <meta name="twitter:image" content="https://qntns.com/icons/mac-512.png" />
 
     <title>ryOS</title>
+    <style>
+      /* Instant wallpaper (§60). Values = tokens.css --qntns-wall-*; type size is a vw metric (off-grid by exemption). */
+      #qntns-boot{position:fixed;inset:0;display:grid;place-items:center;padding:32px;background:#cdbba4;color:#182952;font:800 16vw/1 "Gill Sans Ultra","Arial Black",sans-serif;white-space:nowrap;user-select:none}
+    </style>
 
     <!-- The iOS shell injects window.ryosDesktop at document start. Content
          insets apply only then; Safari and desktop browsers stay at 0. -->
@@ -263,7 +255,7 @@
       })();
     </script>
   </head>
-  <body style="background-color: #000; margin: 0">
+  <body style="background-color: #cdbba4; margin: 0">
     <script src="/theme-bootstrap-config.js"></script>
     <script>
       (function () {
@@ -279,10 +271,7 @@
             defaultTheme: "macosx",
             defaultAquaMaterial: "glass",
             themes: {
-              system7: { platform: "mac", macChrome: "system7", supportsDarkMode: false },
               macosx: { platform: "mac", macChrome: "aqua", supportsDarkMode: true },
-              xp: { platform: "windows", macChrome: null, supportsDarkMode: false },
-              win98: { platform: "windows", macChrome: null, supportsDarkMode: false },
             },
           };
           var themeConfig = rawTheme && config.themes && config.themes[rawTheme];
@@ -358,21 +347,6 @@
             "/fonts/LucidaGrande.woff2",
             "/fonts/AquaKana.woff2",
           ],
-          system7: [
-            "/fonts/ChicagoKare-Regular.woff2",
-            "/fonts/geneva-12.woff2",
-            "/fonts/fusion-pixel-12px-proportional-ja.woff2",
-          ],
-          xp: [
-            "/fonts/ms_sans_serif.woff2",
-            "/fonts/ms_sans_serif_bold.woff2",
-            "/fonts/fusion-pixel-12px-proportional-ja.woff2",
-          ],
-          win98: [
-            "/fonts/ms_sans_serif.woff2",
-            "/fonts/ms_sans_serif_bold.woff2",
-            "/fonts/fusion-pixel-12px-proportional-ja.woff2",
-          ],
         };
         (fontsByTheme[theme] || fontsByTheme.macosx).forEach(function (href) {
           var link = document.createElement("link");
@@ -385,7 +359,7 @@
         });
       })();
     </script>
-    <div id="root"></div>
+    <div id="root"><div id="qntns-boot" aria-hidden="true">QNTNs</div></div>
     <script src="/app-config.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
