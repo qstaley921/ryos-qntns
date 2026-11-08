@@ -1,3 +1,5 @@
+import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
+import { AppShareItemDialog } from "@/components/shared/menubar/AppShareItemDialog";
 import { MenuBar } from "@/components/layout/MenuBar";
 import {
   AppMenuBarMenus,
@@ -45,7 +47,8 @@ export function CalendarMenuBar({
   instanceId,
 }: CalendarMenuBarProps) {
   const { t } = useTranslation();
-  const { isWindowsTheme } = useAppMenuBarChrome("calendar");
+  const { isWindowsTheme, isShareDialogOpen, setIsShareDialogOpen, appId, appName } =
+    useAppMenuBarChrome("calendar");
   const { canUndo, canRedo, undo, redo } = useInstanceUndoRedo(instanceId || "");
 
   const viewCheckbox = (viewValue: CalendarView, label: string) =>
@@ -84,6 +87,7 @@ export function CalendarMenuBar({
           }),
           onClick: () => requestCloudSyncDomainCheck("calendar"),
         },
+        ...fileSubmenus({ t, onShareApp: () => setIsShareDialogOpen(true) }),
         { type: "separator" },
         {
           type: "action",
@@ -169,8 +173,16 @@ export function CalendarMenuBar({
   ];
 
   return (
-    <MenuBar inWindowFrame={isWindowsTheme}>
-      <AppMenuBarMenus menus={menus} />
-    </MenuBar>
+    <>
+      <MenuBar inWindowFrame={isWindowsTheme}>
+        <AppMenuBarMenus menus={menus} />
+      </MenuBar>
+      <AppShareItemDialog
+        appId={appId}
+        appName={appName}
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+      />
+    </>
   );
 }

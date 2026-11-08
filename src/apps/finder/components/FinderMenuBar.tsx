@@ -5,6 +5,9 @@ import {
   MenubarItem,
   MenubarSeparator,
   MenubarCheckboxItem,
+  MenubarSub,
+  MenubarSubTrigger,
+  MenubarSubContent,
 } from "@/components/ui/menubar";
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { ShortcutHint } from "@/components/shared/menubar/ShortcutHint";
@@ -179,6 +182,17 @@ export function FinderMenuBar({
           >
             {t("apps.finder.menu.emptyTrash")}
           </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <MenubarSub>
+            <MenubarSubTrigger className="text-md h-6 px-3">
+              {t("common.menu.share", { defaultValue: "Share" })}
+            </MenubarSubTrigger>
+            <MenubarSubContent className="px-0">
+              <MenubarItem onClick={() => setIsShareDialogOpen(true)} className="text-md h-6 px-3">
+                {t("common.menu.shareApp")}
+              </MenubarItem>
+            </MenubarSubContent>
+          </MenubarSub>
           <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
           <MenubarItem
             onClick={onClose}

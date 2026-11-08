@@ -91,6 +91,9 @@ export function GhostReaderMenuBar({
                   {label}
                 </MenubarItem>
               ))}
+              <MenubarItem onClick={() => chrome.setIsShareDialogOpen(true)} className={ITEM}>
+                {t("common.menu.shareApp")}
+              </MenubarItem>
             </MenubarSubContent>
           </MenubarSub>
           <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />

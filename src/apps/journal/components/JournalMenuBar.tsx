@@ -1,4 +1,5 @@
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
+import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
 import { AppMenuBarMenus } from "@/components/shared/menubar/AppMenuBarMenus";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 import { JOURNAL_VIEWS } from "../types";
@@ -41,6 +42,9 @@ export function JournalMenuBar({
           {
             label: t("common.menu.file"),
             items: [
+              // The helper leads with a separator; File has nothing above Share.
+              ...fileSubmenus({ t, onShareApp: () => setIsShareDialogOpen(true) }).slice(1),
+              { type: "separator" },
               {
                 type: "action",
                 label: t("common.menu.close"),
@@ -49,7 +53,6 @@ export function JournalMenuBar({
               },
             ],
           },
-          // §57 TODO: Journal has no Edit menu; nest Edit/Share in File once author-A's helper lands.
           {
             label: "Filter",
             items: [

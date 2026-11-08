@@ -30,6 +30,9 @@ export function IpodMenuBarShareMenu({ vm }: { vm: IpodMenuBarViewModel }) {
             {vm.t(key, label)}
           </MenubarItem>
         ))}
+        <MenubarItem onClick={() => vm.setIsShareDialogOpen(true)} className="text-md h-6 px-3 whitespace-nowrap">
+          {vm.t("common.menu.shareApp")}
+        </MenubarItem>
       </MenubarSubContent>
     </MenubarSub>
   );

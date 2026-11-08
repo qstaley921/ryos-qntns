@@ -3,8 +3,10 @@ import { AppWindowShell } from "@/components/shared/AppWindowShell";
 import { AppProps, PaintInitialData } from "../../base/types";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { OS_NATIVE_CHROME_SKIP_CLASS } from "@/lib/themeChrome";
+import { AppShareItemDialog } from "@/components/shared/menubar/AppShareItemDialog";
+import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 import { MenuBar } from "@/components/layout/MenuBar";
-import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from "@/components/ui/menubar";
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from "@/components/ui/menubar";
 import { attachGraffiti, graffitiApi, renderGraffiti, wallOf } from "../wall/qntns/graffiti.js";
 import "../wall/css/tokens.css";
 import "../wall/css/views-menu.css";
@@ -53,11 +55,12 @@ const Item: React.FC<{ host: React.RefObject<HTMLDivElement | null>; text: strin
     </MenubarItem>
   );
 };
-const Menu: React.FC<{ label: string; host: React.RefObject<HTMLDivElement | null>; items: [string, string][] }> = ({ label, host, items }) => (
+const Menu: React.FC<{ label: string; host: React.RefObject<HTMLDivElement | null>; items: [string, string][]; children?: React.ReactNode }> = ({ label, host, items, children }) => (
   <MenubarMenu>
     <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">{label}</MenubarTrigger>
     <MenubarContent align="start" sideOffset={1} className="px-0">
       {items.map(([t, sel]) => <Item key={t} host={host} text={t} sel={sel} />)}
+      {children}
     </MenubarContent>
   </MenubarMenu>
 );
@@ -74,18 +77,27 @@ export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
 }) => {
   const { isWindowsTheme } = useThemeFlags();
   const host = useRef<HTMLDivElement>(null);
+  const { isShareDialogOpen, setIsShareDialogOpen, appId, appName } = useAppMenuBarChrome("paint");
   return (
     <AppWindowShell
       isWindowOpen={isWindowOpen}
       isWindowsTheme={isWindowsTheme}
       isForeground={isForeground}
       menuBar={
+        <>
         <MenuBar inWindowFrame={isWindowsTheme}>
           {/* §63g: every item clicks a control the wall already has; disabled when that control is. */}
           <Menu label="File" host={host} items={[
             ["Postcard…", "[data-graffiti-postcard]"],
-            // §57 TODO: nest Share ▸ here once author-A's helper lands.
-          ]} />
+          ]}>
+            <MenubarSeparator className="my-1" />
+            <MenubarSub>
+              <MenubarSubTrigger className="text-md h-6 px-3">Share</MenubarSubTrigger>
+              <MenubarSubContent className="px-0">
+                <MenubarItem className="text-md h-6 px-3" onClick={() => setIsShareDialogOpen(true)}>Share App…</MenubarItem>
+              </MenubarSubContent>
+            </MenubarSub>
+          </Menu>
           <Menu label="Edit" host={host} items={[
             ["Undo", "[data-graffiti-undo]"],
             ["Redo", "[data-graffiti-redo]"],
@@ -111,6 +123,8 @@ export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
             ["Meme", '[data-graffiti-tool="image"]'],
           ]} />
         </MenuBar>
+        <AppShareItemDialog appId={appId} appName={appName} isOpen={isShareDialogOpen} onClose={() => setIsShareDialogOpen(false)} />
+        </>
       }
       windowFrameProps={{
         title: "Paint",
