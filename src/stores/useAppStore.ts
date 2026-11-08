@@ -29,6 +29,7 @@ import {
   windowSnapEdges,
   type DesktopContentBounds,
 } from "@/utils/desktopContentBounds";
+import { APPLICATIONS_HIDDEN } from "@/components/layout/dock/dockConstants";
 import { readLiveWindowInsets } from "@/utils/windowInsets";
 import { SHORT_VIEWPORT_PX } from "@/components/layout/desktop/desktopConstants";
 export type { AIModel } from "@/types/aiModels";
@@ -1130,6 +1131,10 @@ const createUseAppStore = () =>
         }),
         onRehydrateStorage: () => (state) => {
         if (!state) return;
+        // §62c: hidden apps never come back from a saved session.
+        for (const id of Object.keys(state.instances || {})) {
+          if (APPLICATIONS_HIDDEN.has(state.instances[id].appId)) delete state.instances[id];
+        }
         const migratedModel = migrateStoredAiModel(state.aiModel);
         if (migratedModel !== state.aiModel) {
           state.aiModel = migratedModel;
