@@ -188,18 +188,19 @@ export function ShelfBook({
 }
 
 /**
- * Store's price sash (CHECKLIST-36 §14d): a band laid across the top-right
- * corner and clipped by the cover, as if it wrapped round from inside. Base 4:
- * a 24px band (12px type on a 24px line), 104 long, box at top 16 / right -24,
- * so its centre sits 28px in from both edges (on the corner diagonal); the
- * cover's overflow-hidden trims the ends. The fold
- * shading is a gradient, not a measurement.
+ * Store's price sash (CHECKLIST-36 §14d, moved to the bottom-right by §14m so
+ * it stops covering the title): a band laid across the bottom-right corner and
+ * clipped by the cover, as if it wrapped round from inside. Base 4: a 24px band
+ * (12px type on a 24px line), 104 long, box at bottom 16 / right -24, so its
+ * centre sits 28px in from both edges (on the corner diagonal); the cover's
+ * overflow-hidden trims the ends. The fold shading is a gradient, not a
+ * measurement.
  */
 function PriceRibbon({ price }: { price: string }) {
   return (
     <span
       aria-label={price}
-      className="pointer-events-none absolute right-[-24px] top-[16px] z-[1] block w-[104px] rotate-45 text-center font-os-ui text-[12px] font-bold leading-[24px] text-[#fffaf4] shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
+      className="pointer-events-none absolute right-[-24px] bottom-[16px] z-[1] block w-[104px] -rotate-45 text-center font-os-ui text-[12px] font-bold leading-[24px] text-[#fffaf4] shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
       style={{
         background:
           "linear-gradient(180deg, #a63a33 0%, #8c2f2b 60%, #6e2421 100%)",
