@@ -1,0 +1,48 @@
+/* The slideshow stage, ported from QNTNs-ghost assets/css/qntns/slideshow.css (CHECKLIST-37 §13a).
+   Fixed black over the whole viewport, above every ryOS window. */
+.qntns-slideshow {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  background: #000;
+  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke-linejoin='round'><g stroke='%23000' stroke-width='4'><rect x='6' y='4' width='4' height='16' rx='1'/><rect x='14' y='4' width='4' height='16' rx='1'/></g><g stroke='%23fff' stroke-width='2'><rect x='6' y='4' width='4' height='16' rx='1'/><rect x='14' y='4' width='4' height='16' rx='1'/></g></svg>") 12 12, pointer;
+}
+
+/* One frame, as large as fits, at --frame-aspect (§5b): 16:9 letterboxed, or the portrait viewport. */
+.qntns-slideshow__frame {
+  position: relative;
+  width: min(100vw, 100dvh * var(--frame-aspect, 16 / 9));
+  aspect-ratio: var(--frame-aspect, 16 / 9);
+  overflow: hidden;
+}
+
+/* Stacked, earlier on top; hidden outside its own time (its animation carries visibility: visible). */
+.qntns-slideshow__photo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  max-height: none;
+  transform-origin: 0 0;
+  will-change: transform;
+  visibility: hidden;
+}
+
+/* "building..." while the opening photos decode; slideshow.ts removes it when the clock starts. */
+.qntns-slideshow .qntns-slideshow__gate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.photos-slideshow__label {
+  margin: 0;
+  color: #fff;
+  font: 12px/16px system-ui, sans-serif;
+  opacity: 0;
+  animation: photos-gate-in 0s 400ms forwards; /* the theme's gate shows after 400ms, so a fast start never flashes it */
+}
+@keyframes photos-gate-in { to { opacity: 0.6; } }
