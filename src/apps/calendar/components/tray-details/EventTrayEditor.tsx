@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AquaCheckbox } from "@/components/ui/aqua-checkbox";
@@ -11,6 +11,7 @@ import {
 import { TrayFieldRow } from "./TrayFieldRow";
 import type { TrayThemeProps } from "./types";
 import { normalizeAllDayEndDate } from "@/shared/calendarEventDates";
+import { BOOKED_TITLE, type BookLocation, bookingValid, getLocations, getSlots, parseGuests, postBook } from "../calendar-app/booking";
 
 export function EventTrayEditor({
   event,
@@ -22,7 +23,9 @@ export function EventTrayEditor({
   t,
   onUpdate,
   onDelete,
+  week,
 }: TrayThemeProps & {
+  week: string;
   event: CalendarEvent;
   calendars: CalendarGroup[];
   locale: string;
@@ -38,6 +41,35 @@ export function EventTrayEditor({
   const setDate = (value: string) => dispatch({ type: "setDate", value });
   const setEndDate = (value: string) => dispatch({ type: "setEndDate", value });
   const allDay = !event.startTime;
+
+  // Booking form: same helper and POST /cal/book as BookPanel.
+  const [bName, setBName] = useState("");
+  const [bEmail, setBEmail] = useState("");
+  const [bGuests, setBGuests] = useState("");
+  const [bLoc, setBLoc] = useState(0);
+  const [locations, setLocations] = useState<BookLocation[]>([]);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [sendState, setSendState] = useState<"idle" | "sending" | "done" | "failed">("idle");
+  useEffect(() => { getLocations().then(setLocations); }, []);
+  useEffect(() => {
+    let live = true;
+    getSlots(week).then((l) => live && setSlots(l));
+    return () => { live = false; };
+  }, [week]);
+  const booked = sendState === "done" || event.title.startsWith(BOOKED_TITLE);
+  const startMs = event.startTime ? new Date(`${event.date}T${event.startTime}`).getTime() : NaN;
+  const slot = slots.find((x) => new Date(x).getTime() === startMs);
+  const guestList = parseGuests(bGuests);
+  const canSend = !!slot && bookingValid(bName, bEmail, guestList) && sendState !== "sending";
+  const send = async () => {
+    if (!slot) return;
+    setSendState("sending");
+    const status = await postBook({ name: bName, email: bEmail, start: slot, guests: guestList, location: locations.length ? bLoc : undefined });
+    if (status === 409) getSlots(week).then(setSlots); // slot just taken: refresh the week
+    if (status < 200 || status >= 300) return setSendState("failed");
+    setSendState("done");
+    onUpdate(event.id, { title: BOOKED_TITLE });
+  };
   useEffect(() => {
     dispatch({ type: "resetFromEvent", event });
   }, [
@@ -169,7 +201,7 @@ export function EventTrayEditor({
   );
 
   const deleteButtonClass = cn(
-    "w-full min-w-0 justify-center px-3 py-2 h-auto text-[12px] leading-normal",
+    "flex-1 min-w-0 justify-center px-3 py-2 h-auto text-[12px] leading-normal",
     "text-red-600 hover:text-red-700",
     useGeneva && "font-geneva-12"
   );
@@ -317,6 +349,33 @@ export function EventTrayEditor({
         </TrayFieldRow>
 
         {/* Notes — section label + scrollable area */}
+        {booked ? (
+          <div className={cn("mt-1 pt-1.5 border-t border-black/15 text-[11px]", useGeneva && "font-geneva-12")}>
+            Booked. Check your email for the invite.
+          </div>
+        ) : (
+          <div className={cn("mt-1 pt-1.5 border-t border-black/15 flex flex-col gap-1", isMacOSTheme && "border-black/12")}>
+            <TrayFieldRow label="Name" useGeneva={useGeneva}>
+              <input value={bName} onChange={(e) => setBName(e.target.value)} onKeyDown={(e) => e.stopPropagation()} className={fieldInputClass} />
+            </TrayFieldRow>
+            <TrayFieldRow label="Email" useGeneva={useGeneva}>
+              <input type="email" value={bEmail} onChange={(e) => setBEmail(e.target.value)} onKeyDown={(e) => e.stopPropagation()} className={fieldInputClass} />
+            </TrayFieldRow>
+            <TrayFieldRow label="Guests" useGeneva={useGeneva}>
+              <input value={bGuests} onChange={(e) => setBGuests(e.target.value)} onKeyDown={(e) => e.stopPropagation()} placeholder="Optional, up to 5 emails" className={fieldInputClass} />
+            </TrayFieldRow>
+            {locations.length > 0 && (
+              <TrayFieldRow label="Where" useGeneva={useGeneva}>
+                <select value={bLoc} onChange={(e) => setBLoc(Number(e.target.value))} className={fieldInputClass}>
+                  {locations.map((l, i) => <option key={i} value={i}>{l.label || l.type}</option>)}
+                </select>
+              </TrayFieldRow>
+            )}
+            {!slot && <span className={cn("text-[11px] text-black/50 pl-[60px]", useGeneva && "font-geneva-12")}>Pick a free time</span>}
+            {sendState === "failed" && <span className={cn("text-[11px] text-red-600 pl-[60px]", useGeneva && "font-geneva-12")}>Couldn't send. Try again.</span>}
+          </div>
+        )}
+
         <div
           className={cn(
             "mt-1 pt-1.5 border-t border-black/15 flex flex-col",
@@ -350,6 +409,19 @@ export function EventTrayEditor({
             isMacOSTheme && "border-black/12"
           )}
         >
+          <div className="flex gap-2">
+          {!booked && (
+            <Button
+              type="button"
+              variant={isMacOSTheme ? "aqua" : "retro"}
+              size="sm"
+              disabled={!canSend}
+              onClick={send}
+              className={cn("flex-1 min-w-0 justify-center px-3 py-2 h-auto text-[12px] leading-normal", useGeneva && "font-geneva-12")}
+            >
+              {sendState === "failed" ? "Try again" : "Send"}
+            </Button>
+          )}
           <Button
             type="button"
             variant={isMacOSTheme ? "aqua" : "retro"}
@@ -361,6 +433,7 @@ export function EventTrayEditor({
           >
             {t("apps.calendar.event.delete")}
           </Button>
+          </div>
         </div>
 
         {/* Trailing spacer: ensures the delete button keeps breathing room

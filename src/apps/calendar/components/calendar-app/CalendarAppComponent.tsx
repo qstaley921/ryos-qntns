@@ -232,6 +232,7 @@ export function CalendarAppComponent({
               isWindowsTheme={isWindowsTheme}
               onUpdateEvent={handleUpdateEvent}
               onDeleteEvent={handleDeleteEventFromTray}
+              week={weekDates[0]?.date ?? ""}
             />
           </AppDrawer>
         ),

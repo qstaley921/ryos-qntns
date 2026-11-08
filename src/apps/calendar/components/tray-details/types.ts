@@ -11,6 +11,8 @@ export interface TrayDetailsProps {
   isWindowsTheme: boolean;
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   onDeleteEvent: (id: string) => void;
+  /** First day (YYYY-MM-DD) of the shown week, for GET /cal/slots. */
+  week: string;
 }
 
 export interface TrayThemeProps {

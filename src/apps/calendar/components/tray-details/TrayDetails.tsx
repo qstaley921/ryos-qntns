@@ -11,6 +11,7 @@ export function TrayDetails({
   isWindowsTheme,
   onUpdateEvent,
   onDeleteEvent,
+  week,
 }: TrayDetailsProps) {
   const { t, i18n } = useTranslation();
   const useGeneva = isMacOSTheme || isSystem7Theme;
@@ -30,6 +31,7 @@ export function TrayDetails({
           t={t}
           onUpdate={onUpdateEvent}
           onDelete={onDeleteEvent}
+          week={week}
         />
       </div>
     );

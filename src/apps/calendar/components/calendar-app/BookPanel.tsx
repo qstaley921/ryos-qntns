@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const WORKER = "https://qntns-reads.qstaley921.workers.dev";
-const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+import { type BookLocation, bookingValid, getLocations, getSlots, parseGuests, postBook } from "./booking";
+
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 
@@ -16,49 +16,32 @@ export function BookPanel({ week }: { week: string }) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "failed">("idle");
   const [nonce, setNonce] = useState(0);
   const [guests, setGuests] = useState("");
-  const [locations, setLocations] = useState<{ type: string; label: string }[]>([]);
+  const [locations, setLocations] = useState<BookLocation[]>([]);
   const [loc, setLoc] = useState(0);
 
-  useEffect(() => {
-    fetch(`${WORKER}/cal/event`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setLocations(Array.isArray(j?.locations) ? j.locations : []))
-      .catch(() => {}); // silent: no picker
-  }, []);
+  useEffect(() => { getLocations().then(setLocations); }, []);
 
   useEffect(() => {
     let live = true;
     setSlots([]);
     setPick(null);
-    fetch(`${WORKER}/cal/slots?week=${week}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => live && setSlots(Array.isArray(j?.slots) ? j.slots : []))
-      .catch(() => {}); // silent: empty week
+    getSlots(week).then((l) => live && setSlots(l));
     return () => { live = false; };
   }, [week, nonce]);
 
-  const guestList = guests.split(/[,\s;]+/).filter(Boolean);
+  const guestList = parseGuests(guests);
   const book = async () => {
     setState("sending");
-    try {
-      const r = await fetch(`${WORKER}/cal/book`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), start: pick, timeZone: tz, ...(guestList.length && { guests: guestList }), ...(locations.length && { location: loc }) }),
-      });
-      if (r.status === 409) setNonce((n) => n + 1); // slot just taken: refresh the week
-      if (!r.ok) return setState("failed");
-      setState("done");
-      setPick(null);
-      setNonce((n) => n + 1);
-    } catch {
-      setState("failed");
-    }
+    const status = await postBook({ name, email, start: pick!, guests: guestList, location: locations.length ? loc : undefined });
+    if (status === 409) setNonce((n) => n + 1); // slot just taken: refresh the week
+    if (status < 200 || status >= 300) return setState("failed");
+    setState("done");
+    setPick(null);
+    setNonce((n) => n + 1);
   };
 
   if (!slots.length && state !== "done") return null;
-  const ok = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-  const valid = name.trim() && ok(email.trim()) && guestList.length <= 5 && guestList.every(ok);
+  const valid = bookingValid(name, email, guestList);
   const days = new Map<string, string[]>();
   for (const s of slots) {
     const k = dayFmt.format(new Date(s));
