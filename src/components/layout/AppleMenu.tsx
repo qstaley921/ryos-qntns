@@ -75,7 +75,7 @@ export function AppleMenu() {
   const [aboutFinderOpen, setAboutFinderOpen] = useState(false);
   const [aboutQntnsOpen, setAboutQntnsOpen] = useState(false);
   const launchApp = useLaunchApp();
-  // Site footer pages (footer-bar partial: pages, minus #hidden and "history"), newest first.
+  // Site footer pages (footer-bar partial: pages, minus #hidden, "history" and "meet"), newest first.
   const [sitePages, setSitePages] = useState<GhostDoc[]>([]);
   useEffect(() => {
     let live = true;
@@ -88,6 +88,7 @@ export function AppleMenu() {
               (d) =>
                 d.type === "page" &&
                 d.slug !== "history" &&
+                d.slug !== "meet" &&
                 !d.tags.some((t) => t.slug === "hash-hidden")
             )
             .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
