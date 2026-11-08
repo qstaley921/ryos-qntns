@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CaretLeft, CaretRight, DownloadSimple, FilmStrip } from "@phosphor-icons/react";
 import type { AppProps } from "@/apps/base/types";
 import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
@@ -203,41 +204,53 @@ export function PhotosAppComponent({
           <div className="flex items-center gap-2">
           {big !== null && album && (
             <>
-              <button type="button" className={BAR_BTN} disabled={big <= 0} onClick={() => setBig(big - 1)}>
-                ◀ Previous
-              </button>
-              <button type="button" className={BAR_BTN} disabled={big >= album.photos.length - 1} onClick={() => setBig(big + 1)}>
-                Next ▶
-              </button>
+              {/* §13f: icon-only Aqua toolbar buttons (the fork's metal-inset classes, as Calendar's bottom bar). */}
+              <div className="metal-inset-btn-group">
+                <button type="button" className={BAR_BTN} disabled={big <= 0} onClick={() => setBig(big - 1)} title="Previous" aria-label="Previous">
+                  <CaretLeft size={14} weight="bold" />
+                </button>
+                <button type="button" className={BAR_BTN} disabled={big >= album.photos.length - 1} onClick={() => setBig(big + 1)} title="Next" aria-label="Next">
+                  <CaretRight size={14} weight="bold" />
+                </button>
+              </div>
               {/* Plain link: the image host is another origin, so the browser may open it instead of saving. No fetch/blob (network rule). */}
-              <a className={BAR_BTN} href={album.photos[big]} download target="_blank" rel="noreferrer">
-                Download
-              </a>
-              <button type="button" className={BAR_BTN} onClick={() => setHideStrip((h) => !h)}>
-                {hideStrip ? "Show Filmstrip" : "Hide Filmstrip"}
-              </button>
+              <div className="metal-inset-btn-group">
+                <a className={BAR_BTN} href={album.photos[big]} download target="_blank" rel="noreferrer" title="Download" aria-label="Download">
+                  <DownloadSimple size={14} weight="bold" />
+                </a>
+              </div>
+              <div className="metal-inset-btn-group">
+                <button type="button" className={BAR_BTN} onClick={() => setHideStrip((h) => !h)} data-state={hideStrip ? "off" : "on"}
+                  title={hideStrip ? "Show Filmstrip" : "Hide Filmstrip"} aria-label={hideStrip ? "Show Filmstrip" : "Hide Filmstrip"}>
+                  <FilmStrip size={14} weight="bold" />
+                </button>
+              </div>
             </>
           )}
           {current && (
+            <div className="metal-inset-btn-group">
             <button
               type="button"
-              className="flex h-8 items-center gap-2 rounded px-3 text-os-text-primary hover:bg-black/5"
+              className="metal-inset-btn gap-1 px-2 text-[11px]"
               // §79a: the site's own postcard editor in a Mini window. Own window, so an open Safari is left alone.
               onClick={orderPostcard}
             >
               Order Postcard
             </button>
+            </div>
           )}
           {album?.own && (
+            <div className="metal-inset-btn-group">
             <button
               type="button"
-              className="flex h-8 items-center gap-2 rounded px-3 text-os-text-primary hover:bg-black/5"
+              className="metal-inset-btn gap-1 px-2 text-[11px]"
               // Must stay synchronous: play() starts the sound and full screen in this click's gesture.
               onClick={playShow}
             >
               <span aria-hidden="true">▶</span>
               {spots[sel] ? "Resume" : "Play"}
             </button>
+            </div>
           )}
           </div>
         </div>
@@ -246,8 +259,8 @@ export function PhotosAppComponent({
   );
 }
 
-// Bottom-bar button: 32px tall (base 4), 8px gaps from the row; disabled ones grey out.
-const BAR_BTN = "flex h-8 items-center gap-2 rounded px-3 text-os-text-primary hover:bg-black/5 disabled:opacity-40 disabled:hover:bg-transparent";
+// Viewer toolbar button: the fork's Aqua metal-inset icon button (24px wide, 22px min tall, from aqua.css; disabled dims its icon). Groups sit 8px apart (gap-2).
+const BAR_BTN = "metal-inset-btn metal-inset-icon";
 
 const Status = ({ children }: { children: React.ReactNode }) => (
   <div className="flex h-full items-center justify-center text-sm text-os-text-secondary">{children}</div>
@@ -261,9 +274,9 @@ const Grid = ({ children }: { children: React.ReactNode }) => (
 /*
  * Viewer (§13, 13-opus_high-3): fills the content column only (absolute inset-0 in it), so the
  * source list, menu bar and window chrome stay, and it reflows with the window. The photo is
- * letterboxed (contain on black) above a filmstrip; ← → step and stop at the ends, Esc or × closes.
+ * letterboxed (contain on black) above a filmstrip; ← → step and stop at the ends, Esc closes (as does a click on the current album, §13g: no ×).
  * Budget: column height = photo (flex-1) + filmstrip 16 + 72 + 16 = 104px; each frame 96×72 (4:3),
- * 8px apart; × is 32px, 16px in from the column's top-right.
+ * 8px apart.
  */
 function Viewer({ photos, at, onAt, onClose, active, hideStrip }: { photos: string[]; at: number; onAt: (i: number) => void; onClose: () => void; active: boolean; hideStrip: boolean }) {
   const strip = useRef<HTMLDivElement>(null);
@@ -285,9 +298,9 @@ function Viewer({ photos, at, onAt, onClose, active, hideStrip }: { photos: stri
 
   return (
     <div className="absolute inset-0 flex flex-col bg-black" role="region" aria-label="Photo" onClick={(e) => e.stopPropagation()}>
-      {/* The cached w600 blurs up to the full image. */}
+      {/* §13f: the photo alone on flat black; no blurred copy under it (it bloomed past the letterbox). */}
       <div className="relative min-h-0 w-full flex-1">
-        <BlurUp key={at} src={photos[at]} tiny={thumb(photos[at])} fit="object-contain" />
+        <BlurUp key={at} src={photos[at]} fit="object-contain" />
       </div>
       <div ref={strip} className={cn("flex h-[104px] shrink-0 gap-2 overflow-x-auto p-4", hideStrip && "hidden")}>
         {photos.map((src, i) => (
@@ -303,14 +316,6 @@ function Viewer({ photos, at, onAt, onClose, active, hideStrip }: { photos: stri
           </button>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-lg text-white hover:bg-black/80"
-      >
-        ×
-      </button>
     </div>
   );
 }
@@ -320,14 +325,14 @@ function Viewer({ photos, at, onAt, onClose, active, hideStrip }: { photos: stri
  * The wrapper clips the blur's soft edge; the cover fit scales the tiny copy past it. A failed tiny image hides itself (empty box).
  * Timing 200ms, blur 8px (base 4).
  */
-function BlurUp({ src, tiny, alt = "", fit = "object-cover" }: { src: string; tiny: string; alt?: string; fit?: string }) {
+function BlurUp({ src, tiny, alt = "", fit = "object-cover" }: { src: string; tiny?: string; alt?: string; fit?: string }) {
   const [done, setDone] = useState(false);
   const [bad, setBad] = useState(false);
   // A cached image can finish before React attaches onLoad.
   const ref = (img: HTMLImageElement | null) => { if (img?.complete && img.naturalWidth) setDone(true); };
   return (
     <span className="absolute inset-0 block overflow-hidden">
-      {!bad && (
+      {tiny && !bad && (
         <img src={tiny} alt="" aria-hidden="true" draggable={false} onError={() => setBad(true)}
           className={cn("absolute inset-0 h-full w-full blur-[8px]", fit, fit === "object-cover" && "scale-110")} />
       )}
