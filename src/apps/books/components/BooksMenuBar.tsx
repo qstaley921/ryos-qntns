@@ -18,7 +18,6 @@ import { buildBooksMenuLayout } from "../utils/booksMenuLayout";
 import {
   BOOKS_SPEECH_RATE_OPTIONS,
   normalizeBooksSpeechRate,
-  type BookBookmark,
   type BooksReaderSettings,
 } from "@/stores/useBooksStore";
 import type { BooksNavigationState } from "./BooksReaderPane";
@@ -36,16 +35,10 @@ interface BooksMenuBarProps {
   settings: BooksReaderSettings;
   updateSettings: (partial: Partial<BooksReaderSettings>) => void;
   navigationState: BooksNavigationState;
-  onGoToPreviousPage: () => void;
-  onGoToNextPage: () => void;
   onGoToChapter: (href: string) => void;
   isSpeaking: boolean;
   onStartSpeaking: () => void;
   onStopSpeaking: () => void;
-  bookmarks: BookBookmark[];
-  isCurrentPageBookmarked: boolean;
-  onToggleBookmark: () => void;
-  onGoToBookmark: (cfi: string) => void;
 }
 
 export function BooksMenuBar({
@@ -60,16 +53,10 @@ export function BooksMenuBar({
   settings,
   updateSettings,
   navigationState,
-  onGoToPreviousPage,
-  onGoToNextPage,
   onGoToChapter,
   isSpeaking,
   onStartSpeaking,
   onStopSpeaking,
-  bookmarks,
-  isCurrentPageBookmarked,
-  onToggleBookmark,
-  onGoToBookmark,
 }: BooksMenuBarProps) {
   const { t } = useTranslation();
   const isCompactMenu = useMediaQuery("(max-width: 768px)");
@@ -112,9 +99,46 @@ export function BooksMenuBar({
   const supportsChineseScript =
     isReading && isChineseBookLanguage(bookLanguage);
 
+  const canNavigateReader = isReading && navigationState.isReady;
+  const chapters = navigationState.chapters ?? [];
   const viewMenu: MenuDescriptor = {
       label: t("common.menu.view"),
       items: [
+        // Contents moved here from the dropped Go menu (CHECKLIST-36 §14e, §14f).
+        {
+          type: "submenu",
+          label: "Contents",
+          disabled: !canNavigateReader || chapters.length === 0,
+          contentClassName:
+            "max-w-[260px] sm:max-w-[320px] max-h-[400px] overflow-y-auto",
+          items: [
+            {
+              type: "radioGroup",
+              value:
+                navigationState.currentChapterIndex >= 0
+                  ? String(navigationState.currentChapterIndex)
+                  : "",
+              onValueChange: (value) => {
+                const chapter = chapters[Number(value)];
+                if (chapter) onGoToChapter(chapter.href);
+              },
+              options: chapters.map((chapter, index) => ({
+                value: String(index),
+                label: (
+                  <span
+                    className="truncate min-w-0"
+                    style={{ paddingLeft: `${chapter.depth * 12}px` }}
+                  >
+                    {chapter.label}
+                  </span>
+                ),
+                className:
+                  "text-md h-6 pr-3 truncate max-w-[260px] sm:max-w-[320px]",
+              })),
+            },
+          ],
+        },
+        { type: "separator" },
         {
           type: "submenu",
           label: t("apps.books.menu.font"),
@@ -224,28 +248,6 @@ export function BooksMenuBar({
       ],
     };
 
-  const chapters = navigationState.chapters;
-  const canNavigateReader = isReading && navigationState.isReady;
-
-  // Reading-order list for the Bookmarks submenu (unknown positions last).
-  const sortedBookmarks = [...bookmarks].sort((a, b) => {
-    const pa = typeof a.percentage === "number" ? a.percentage : 2;
-    const pb = typeof b.percentage === "number" ? b.percentage : 2;
-    if (pa !== pb) return pa - pb;
-    return a.createdAt - b.createdAt;
-  });
-
-  const bookmarkLabel = (bookmark: BookBookmark): string => {
-    const pct =
-      typeof bookmark.percentage === "number"
-        ? `${Math.round(bookmark.percentage * 100)}%`
-        : null;
-    const snippet = bookmark.text?.trim();
-    if (snippet) return pct ? `${pct} · ${snippet}` : snippet;
-    if (pct) return pct;
-    return new Date(bookmark.createdAt).toLocaleDateString();
-  };
-
   const speechRateLabels: Record<string, string> = {
     "0.8": t("apps.books.speechRate.slow"),
     "1": t("apps.books.speechRate.normal"),
@@ -291,92 +293,10 @@ export function BooksMenuBar({
     ],
   };
 
-  const goMenu: MenuDescriptor = {
-    label: t("common.menu.go"),
-    items: [
-      {
-        type: "action",
-        label: t("apps.books.menu.previousPage"),
-        onClick: onGoToPreviousPage,
-        disabled: !canNavigateReader || !navigationState.canGoPreviousPage,
-      },
-      {
-        type: "action",
-        label: t("apps.books.menu.nextPage"),
-        onClick: onGoToNextPage,
-        disabled: !canNavigateReader || !navigationState.canGoNextPage,
-      },
-      { type: "separator" },
-      {
-        type: "submenu",
-        label: t("apps.books.menu.chapters"),
-        disabled: !canNavigateReader || chapters.length === 0,
-        className:
-          "data-[state=open]:bg-[var(--os-color-selection-bg)] data-[state=open]:text-[var(--os-color-selection-text)]",
-        contentClassName:
-          "max-w-[260px] sm:max-w-[320px] max-h-[400px] overflow-y-auto",
-        items: [
-          {
-            type: "radioGroup",
-            value:
-              navigationState.currentChapterIndex >= 0
-                ? String(navigationState.currentChapterIndex)
-                : "",
-            onValueChange: (value) => {
-              const index = Number(value);
-              const chapter = chapters[index];
-              if (chapter) onGoToChapter(chapter.href);
-            },
-            options: chapters.map((chapter, index) => ({
-              value: String(index),
-              label: (
-                <span
-                  className="truncate min-w-0"
-                  style={{ paddingLeft: `${chapter.depth * 12}px` }}
-                >
-                  {chapter.label}
-                </span>
-              ),
-              className:
-                "text-md h-6 pr-3 truncate max-w-[260px] sm:max-w-[320px]",
-            })),
-          },
-        ],
-      },
-      { type: "separator" },
-      {
-        type: "action",
-        label: isCurrentPageBookmarked
-          ? t("apps.books.bookmarks.remove")
-          : t("apps.books.bookmarks.add"),
-        onClick: onToggleBookmark,
-        disabled: !canNavigateReader,
-      },
-      {
-        type: "submenu",
-        label: t("apps.books.bookmarks.title"),
-        disabled: !canNavigateReader || sortedBookmarks.length === 0,
-        className:
-          "data-[state=open]:bg-[var(--os-color-selection-bg)] data-[state=open]:text-[var(--os-color-selection-text)]",
-        contentClassName:
-          "max-w-[260px] sm:max-w-[320px] max-h-[400px] overflow-y-auto",
-        items: sortedBookmarks.map((bookmark) => ({
-          type: "action",
-          label: (
-            <span className="truncate min-w-0">{bookmarkLabel(bookmark)}</span>
-          ),
-          onClick: () => onGoToBookmark(bookmark.cfi),
-          className:
-            "text-md h-6 pr-3 truncate max-w-[260px] sm:max-w-[320px]",
-        })),
-      },
-    ],
-  };
   const menus = buildBooksMenuLayout({
     fileMenu,
     viewMenu,
     speechMenu,
-    goMenu,
     isCompact: isCompactMenu,
   });
 

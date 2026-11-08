@@ -138,6 +138,9 @@ const booksLog = createClientLogger("BooksReader");
 
 interface BooksReaderPaneProps {
   entry: BooksLibraryEntry;
+  /** EPUB bytes from somewhere other than the VFS (a qntns.com book built in
+   *  memory, CHECKLIST-36 §14f). Null shows the reader's error screen. */
+  loadBlob?: () => Promise<Blob | null>;
   settings: BooksReaderSettings;
   osIsDark: boolean;
   /** Page-space rect of the clicked shelf cover, to zoom in from. */
@@ -397,10 +400,7 @@ export const ZOOM_EASE = [0.32, 0.72, 0, 1] as const;
 const REVEAL_DELAY_MS = 480;
 const INITIAL_DISPLAY_TIMEOUT_MS = 6500;
 const FALLBACK_DISPLAY_TIMEOUT_MS = 6500;
-const DEFAULT_BOOK_ASSET_BY_PATH: Record<string, string> = {
-  "/Books/Meditations - Marcus Aurelius.epub":
-    "/assets/books/meditations-marcus-aurelius.epub",
-};
+const DEFAULT_BOOK_ASSET_BY_PATH: Record<string, string> = {};
 
 export function createInitialBooksNavigationState(): BooksNavigationState {
   return {
@@ -498,6 +498,7 @@ export const BooksReaderPane = forwardRef<
 >(function BooksReaderPane(
   {
     entry,
+    loadBlob,
     settings,
     osIsDark,
     originRect,
@@ -707,6 +708,7 @@ export const BooksReaderPane = forwardRef<
   );
 
   const readActiveBookBlob = useCallback(async (): Promise<Blob | null> => {
+    if (loadBlob) return loadBlob().catch(() => null);
     const fallbackAssetUrl = DEFAULT_BOOK_ASSET_BY_PATH[entry.path];
     try {
       appendDebugEvent("content:vfs:read", {
@@ -760,7 +762,7 @@ export const BooksReaderPane = forwardRef<
     const blob = await response.blob();
     appendDebugEvent("content:fallbackFetch:success", { blob });
     return blob;
-  }, [appendDebugEvent, entry.modifiedAt, entry.path]);
+  }, [appendDebugEvent, entry.modifiedAt, entry.path, loadBlob]);
 
   const accentBaseHex = useThemeStore((state) => resolveOsAccentBaseHex(state));
   const palette = resolveReadingPalette(settings, osIsDark, accentBaseHex);

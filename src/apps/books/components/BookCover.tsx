@@ -2,6 +2,17 @@ import { useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { colorFromString } from "../utils/booksReader";
 import type { BookCoverInfo } from "../utils/useBookCover";
+import "@/apps/textedit/qntns/fonts.css";
+
+/** Shelf paths of qntns.com books (no EPUB behind them). */
+export const QNTNS_BOOK_PREFIX = "qntns:";
+// The theme's own values (textedit/qntns/tokens.css: --color-text,
+// --color-background, --font-display).
+const QNTNS_COVER = {
+  navy: "#182952",
+  cream: "#fffaf4",
+  display: '"Gill Sans Ultra", "Arial Black", sans-serif',
+};
 
 /**
  * Shelf grid cover is 104×160px with a 14px title — every fallback cover
@@ -108,20 +119,37 @@ export function BookCover({
     );
   }
 
+  const qntns = fileName.startsWith(QNTNS_BOOK_PREFIX);
   const { bg, fg } = colorFromString(fileName);
   // Garamond via inline style, NOT the `font-apple-garamond` class: the Aqua
   // theme forces `font-size: 1.5rem !important` on that class (About dialog
   // styling), which would break the em-based proportional type scale here.
-  const coverStyle = {
-    background: `linear-gradient(135deg, ${bg} 0%, rgba(0,0,0,0.35) 130%)`,
-    color: fg,
-    fontFamily: "var(--font-apple-garamond)",
-  };
+  const coverStyle = qntns
+    ? { background: QNTNS_COVER.cream, color: QNTNS_COVER.navy }
+    : {
+        background: `linear-gradient(135deg, ${bg} 0%, rgba(0,0,0,0.35) 130%)`,
+        color: fg,
+        fontFamily: "var(--font-apple-garamond)",
+      };
 
   // Identical layout at every size: em paddings/margins reproduce the grid
   // cover's 10/16/12px box at 160px height and scale with the type, so the
   // zoom overlay lines up exactly with the shelf cover at the handoff.
-  const content = (
+  const content = qntns ? (
+    // QNTNs typeset cover (CHECKLIST-36 §14f): cream, the title alone, no
+    // author. Base 4 at the 104x160 shelf size, where 1em = 14px: title 20 on
+    // a 24 line (1.429em, 1.2), line box top 40, so its centre sits
+    // at 52 — the top third is 53.3, rounded to the 4 grid. Inset 12 each side.
+    // top/inset are in the title's own em (20px): 2em = 40, 0.6em = 12.
+    <div className="relative h-full w-full overflow-hidden">
+      <div
+        className="absolute inset-x-[0.6em] top-[2em] text-center text-[1.429em] leading-[1.2] line-clamp-3 break-words"
+        style={{ fontFamily: QNTNS_COVER.display }}
+      >
+        {displayTitle}
+      </div>
+    </div>
+  ) : (
     <div className="flex h-full w-full flex-col justify-between overflow-hidden px-[0.714em] pt-[1.143em] pb-[0.857em] text-center">
       <div className="text-[1em] line-clamp-5 font-semibold leading-tight">
         {loading ? "" : displayTitle}

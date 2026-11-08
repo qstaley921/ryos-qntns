@@ -25,6 +25,8 @@ interface ShelfBookProps {
   layoutAnimated?: boolean;
   /** Dim the cover in dark mode (restored on hover). */
   isDark?: boolean;
+  /** Store's price sash across the cover's corner (CHECKLIST-36 §14d). */
+  ribbon?: string;
 }
 
 // Shared-layout transition for the book morph between grid and list views.
@@ -58,6 +60,7 @@ export function BookMorphCover({
   layoutAnimated,
   isDark,
   coverRef,
+  ribbon,
 }: {
   entry: BooksLibraryEntry;
   info: BookCoverInfo | null;
@@ -71,6 +74,7 @@ export function BookMorphCover({
   /** Dim the cover in dark mode (restored to full brightness on hover). */
   isDark?: boolean;
   coverRef?: Ref<HTMLDivElement>;
+  ribbon?: string;
 }) {
   const { t } = useTranslation();
   const isGrid = variant === "grid";
@@ -105,6 +109,7 @@ export function BookMorphCover({
         loading={loading}
         progressInset={isGrid && percent > 0}
       />
+      {isGrid && ribbon && <PriceRibbon price={ribbon} />}
       {/* Spine, hinge, and cover lighting (moves with the book). */}
       <BookSpineOverlay variant={variant} />
       {/* Reading progress badge — grid only; the list row shows it as text. */}
@@ -127,6 +132,7 @@ export function ShelfBook({
   morphLayout,
   layoutAnimated,
   isDark,
+  ribbon,
 }: ShelfBookProps) {
   const { info, loading } = useBookCover(entry.path, entry.modifiedAt);
   const percent = progress ? Math.round(progress.percentage * 100) : 0;
@@ -175,7 +181,31 @@ export function ShelfBook({
         morphLayout={morphLayout}
         layoutAnimated={layoutAnimated}
         isDark={isDark}
+        ribbon={ribbon}
       />
     </motion.button>
+  );
+}
+
+/**
+ * Store's price sash (CHECKLIST-36 §14d): a band laid across the top-right
+ * corner and clipped by the cover, as if it wrapped round from inside. Base 4:
+ * a 24px band (12px type on a 24px line), 104 long, box at top 16 / right -24,
+ * so its centre sits 28px in from both edges (on the corner diagonal); the
+ * cover's overflow-hidden trims the ends. The fold
+ * shading is a gradient, not a measurement.
+ */
+function PriceRibbon({ price }: { price: string }) {
+  return (
+    <span
+      aria-label={price}
+      className="pointer-events-none absolute right-[-24px] top-[16px] z-[1] block w-[104px] rotate-45 text-center font-os-ui text-[12px] font-bold leading-[24px] text-[#fffaf4] shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
+      style={{
+        background:
+          "linear-gradient(180deg, #a63a33 0%, #8c2f2b 60%, #6e2421 100%)",
+      }}
+    >
+      {price}
+    </span>
   );
 }

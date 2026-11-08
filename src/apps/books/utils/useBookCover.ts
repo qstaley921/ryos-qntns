@@ -189,6 +189,12 @@ async function loadCover(
   return promise;
 }
 
+/** Seed a cover for a book that has no EPUB behind it (a qntns.com post), so
+ *  the shelf never tries to parse one. */
+export function primeBookCover(path: string, info: BookCoverInfo): void {
+  coverCache.set(cacheKey(path), info);
+}
+
 export function useBookCover(path: string, modifiedAt?: number) {
   const key = cacheKey(path, modifiedAt);
   const contentKey = useFilesStore(state => getFileContentSyncKey(path, state.items[path]));

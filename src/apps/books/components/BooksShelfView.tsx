@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { LayoutGroup, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { Plus, SquaresFour, Rows } from "@phosphor-icons/react";
+import { SquaresFour, Rows } from "@phosphor-icons/react";
 import {
   ToolbarButton,
   ToolbarButtonGroup,
@@ -30,11 +30,17 @@ interface BooksShelfViewProps {
   shelfView: BooksShelfView;
   onSetShelfView: (view: BooksShelfView) => void;
   onOpenBook: (entry: BooksLibraryEntry, originRect?: BookOriginRect) => void;
-  onImport: () => void;
+  /** Store (for sale) or Library (owned), CHECKLIST-36 §14d. */
+  mode: BooksShelfMode;
+  onSetMode: (mode: BooksShelfMode) => void;
+  /** Price sash per path, Store only. */
+  ribbons?: Map<string, string>;
   onDeleteBook: (entry: BooksLibraryEntry) => void;
   onMoveToTop: (path: string) => void;
   onMoveToBottom: (path: string) => void;
 }
+
+export type BooksShelfMode = "store" | "library";
 
 interface ShelfContextMenu {
   entry: BooksLibraryEntry;
@@ -61,7 +67,9 @@ export function BooksShelfView({
   shelfView,
   onSetShelfView,
   onOpenBook,
-  onImport,
+  mode,
+  onSetMode,
+  ribbons,
   onDeleteBook,
   onMoveToTop,
   onMoveToBottom,
@@ -76,8 +84,9 @@ export function BooksShelfView({
 
   const openContextMenu = useMemo(
     () => (entry: BooksLibraryEntry, x: number, y: number) =>
-      setContextMenu({ entry, x, y }),
-    []
+      // Store books are not the reader's yet: nothing to move or delete.
+      mode !== "store" && setContextMenu({ entry, x, y }),
+    [mode]
   );
 
   const contextMenuItems = useMemo<MenuItem[]>(() => {
@@ -205,10 +214,14 @@ export function BooksShelfView({
             style={{ paddingTop: SHELF_TOOLBAR_CLEARANCE + 24 }}
           >
             <div className="font-os-ui text-sm drop-shadow">
-              {t("apps.books.shelf.emptyTitle")}
+              {mode === "store"
+                ? "Nothing for sale right now"
+                : t("apps.books.shelf.emptyTitle")}
             </div>
             <div className="mt-1 font-os-ui text-xs text-white/65">
-              {t("apps.books.shelf.emptyHint")}
+              {mode === "store"
+                ? "Books you’ve bought are in Library."
+                : t("apps.books.shelf.emptyHint")}
             </div>
           </motion.div>
         ) : (
@@ -247,6 +260,7 @@ export function BooksShelfView({
                           morphLayout
                           layoutAnimated={layoutAnimated}
                           isDark={isDarkMode}
+                          ribbon={ribbons?.get(entry.path)}
                         />
                       ))}
                     </div>
@@ -276,6 +290,7 @@ export function BooksShelfView({
                     morphLayout
                     layoutAnimated={layoutAnimated}
                     isDark={isDarkMode}
+                    price={ribbons?.get(entry.path)}
                   />
                 ))}
               </div>
@@ -292,15 +307,19 @@ export function BooksShelfView({
           {t("apps.books.title")}
         </span>
         <div className="pointer-events-auto flex items-center gap-1.5">
-          <ToolbarButtonGroup>
-            <ToolbarButton
-              icon
-              onClick={onImport}
-              title={t("apps.books.shelf.import")}
-              aria-label={t("apps.books.shelf.import")}
-            >
-              <Plus size={14} weight="bold" />
-            </ToolbarButton>
+          {/* Store | Library replaces Import's + (File ▸ Import still imports). */}
+          <ToolbarButtonGroup role="radiogroup" aria-label="Show">
+            {(["store", "library"] as const).map((m) => (
+              <ToolbarButton
+                key={m}
+                role="radio"
+                aria-checked={mode === m}
+                data-state={mode === m ? "on" : "off"}
+                onClick={() => onSetMode(m)}
+              >
+                {m === "store" ? "Store" : "Library"}
+              </ToolbarButton>
+            ))}
           </ToolbarButtonGroup>
           <ToolbarButtonGroup>
             <ToolbarButton
@@ -350,6 +369,7 @@ function BookListRow({
   morphLayout,
   layoutAnimated,
   isDark,
+  price,
 }: {
   entry: BooksLibraryEntry;
   progress?: BookProgress;
@@ -358,6 +378,7 @@ function BookListRow({
   morphLayout?: boolean;
   layoutAnimated?: boolean;
   isDark?: boolean;
+  price?: string;
 }) {
   const { t } = useTranslation();
   const { info, loading } = useBookCover(entry.path, entry.modifiedAt);
@@ -411,6 +432,11 @@ function BookListRow({
           </div>
         )}
       </div>
+      {price && (
+        <span className="shrink-0 rounded-[4px] bg-[#8c2f2b] px-2 font-os-ui text-[12px] font-bold leading-[20px] text-[#fffaf4]">
+          {price}
+        </span>
+      )}
       {percent > 0 && (
         <span className="shrink-0 font-os-ui text-[10px] text-white/80">
           {percent >= 100

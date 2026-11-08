@@ -87,7 +87,8 @@ export function buildBooksMenuLayout({
   fileMenu: MenuDescriptor;
   viewMenu: MenuDescriptor;
   speechMenu: MenuDescriptor;
-  goMenu: MenuDescriptor;
+  /** Optional: Books dropped its Go menu (CHECKLIST-36 §14e). */
+  goMenu?: MenuDescriptor;
   isCompact: boolean;
 }): MenuDescriptor[] {
   return [
@@ -99,12 +100,12 @@ export function buildBooksMenuLayout({
           items: flattenBooksMenuSubmenus(speechMenu.items),
         }
       : speechMenu,
-    isCompact
+    ...(!goMenu ? [] : [isCompact
       ? {
           ...goMenu,
           items: flattenBooksMenuSubmenus(goMenu.items),
           contentClassName: COMPACT_GO_MENU_CLASS,
         }
-      : goMenu,
+      : goMenu]),
   ];
 }

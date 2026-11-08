@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { BookmarkSimple, Highlighter, SquaresFour } from "@phosphor-icons/react";
 import type {
@@ -13,7 +13,7 @@ import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
 import { appMetadata } from "../../metadata";
 import { useBooksLogic } from "../../hooks/useBooksLogic";
 import { BooksMenuBar } from "../BooksMenuBar";
-import { BooksShelfView } from "../BooksShelfView";
+import { BooksShelfView, type BooksShelfMode } from "../BooksShelfView";
 import {
   BooksReaderPane,
   createInitialBooksNavigationState,
@@ -23,6 +23,13 @@ import {
 import { BookCloseZoom } from "../BookCloseZoom";
 import { BooksCustomizePanel } from "../BooksCustomizePanel";
 import { BooksHighlightsDrawer } from "../BooksHighlightsDrawer";
+import {
+  StoreCallout,
+  useQntnsShelf,
+  type ForSale,
+} from "../QntnsBook";
+import { buildQntnsEpub } from "../../utils/qntnsEpub";
+import type { BookOriginRect } from "../../hooks/useBooksLogic";
 
 export function BooksAppComponent({
   isWindowOpen,
@@ -34,6 +41,9 @@ export function BooksAppComponent({
   onNavigateNext,
   onNavigatePrevious,
 }: AppProps<BooksInitialData>) {
+  // qntns.com books stand on the shelf with the EPUBs and open in their own
+  // reader, as EPUBs built in memory (CHECKLIST-36 §14, §14b, §14f).
+  const qntnsShelf = useQntnsShelf();
   const {
     t,
     translatedHelpItems,
@@ -73,12 +83,47 @@ export function BooksAppComponent({
     handleImport,
     fileInputRef,
     handleFileInputChange,
-  } = useBooksLogic({ isWindowOpen, isForeground, instanceId, initialData });
+  } = useBooksLogic({
+    extraLibrary: qntnsShelf.all,
+    isWindowOpen,
+    isForeground,
+    instanceId,
+    initialData,
+  });
 
   // Positioning box for the transient closing-zoom overlay.
   const contentRef = useRef<HTMLDivElement>(null);
   const readerRef = useRef<BooksReaderPaneHandle>(null);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  // Store | Library (CHECKLIST-36 §14d); Store first, each time Books opens.
+  const [shelfMode, setShelfMode] = useState<BooksShelfMode>("store");
+  const [callout, setCallout] = useState<{
+    sale: ForSale;
+    anchor: BookOriginRect;
+  } | null>(null);
+  const closeCallout = useCallback(() => setCallout(null), []);
+  // A post opens as an EPUB built from its HTML; afterwards the shelf is
+  // re-sorted, since a refused phrase sends the book back to Store.
+  const activeQntns = activeBook && qntnsShelf.byPath.get(activeBook.path);
+  const { markOwned } = qntnsShelf;
+  const loadQntnsBlob = useMemo(
+    () =>
+      activeQntns
+        ? () => buildQntnsEpub(activeQntns).finally(markOwned)
+        : undefined,
+    [activeQntns, markOwned]
+  );
+  const shelfLibrary =
+    shelfMode === "store"
+      ? qntnsShelf.store
+      : qntnsShelf.library.length
+        ? [...qntnsShelf.library, ...library]
+        : library;
+  const ribbons = useMemo(
+    () =>
+      new Map([...qntnsShelf.sale].map(([path, s]) => [path, s.price])),
+    [qntnsShelf.sale]
+  );
   const [highlightsOpen, setHighlightsOpen] = useState(false);
   // Narrow windows (mobile / small desktop windows) get a bottom-sheet
   // Customize panel instead of the floating top-right card.
@@ -174,16 +219,10 @@ export function BooksAppComponent({
       settings={settings}
       updateSettings={updateSettings}
       navigationState={readerNavigationState}
-      onGoToPreviousPage={() => readerRef.current?.goToPreviousPage()}
-      onGoToNextPage={() => readerRef.current?.goToNextPage()}
       onGoToChapter={(href) => readerRef.current?.goToChapter(href)}
       isSpeaking={isSpeaking}
       onStartSpeaking={() => readerRef.current?.startSpeaking()}
       onStopSpeaking={() => readerRef.current?.stopSpeaking()}
-      bookmarks={activeBookBookmarks}
-      isCurrentPageBookmarked={isCurrentPageBookmarked}
-      onToggleBookmark={() => readerRef.current?.toggleBookmark()}
-      onGoToBookmark={(cfi) => readerRef.current?.goToCfi(cfi)}
     />
   );
 
@@ -298,7 +337,9 @@ export function BooksAppComponent({
       windowFrameProps={{
         // Shelf has its own header, so the window titlebar shows nothing there;
         // while reading, the book title appears in hover-revealed chrome.
-        title: isReading && activeBook ? activeBookTitle || activeBook.name : "",
+        title: isReading && activeBook
+            ? activeBookTitle || activeBook.name
+            : "",
         onClose,
         isForeground,
         appId: "books",
@@ -357,6 +398,7 @@ export function BooksAppComponent({
             ref={readerRef}
             key={activeBook.path}
             entry={activeBook}
+            loadBlob={loadQntnsBlob}
             settings={settings}
             osIsDark={isDarkMode}
             originRect={openOriginRect}
@@ -387,17 +429,43 @@ export function BooksAppComponent({
           />
         ) : (
           <BooksShelfView
-            library={library}
+            library={shelfLibrary}
             progressByPath={progressByPath}
             shelfView={shelfView}
             onSetShelfView={setShelfView}
-            onOpenBook={(entry, originRect) =>
-              openBook(entry.path, originRect)
+            mode={shelfMode}
+            onSetMode={(m) => {
+              setCallout(null);
+              setShelfMode(m);
+            }}
+            ribbons={shelfMode === "store" ? ribbons : undefined}
+            onOpenBook={(entry, originRect) => {
+              const sale = qntnsShelf.sale.get(entry.path);
+              if (shelfMode === "store" && sale && originRect) {
+                return setCallout({ sale, anchor: originRect });
+              }
+              openBook(entry.path, originRect);
+            }}
+            // A post is not a file: nothing to trash or reorder.
+            onDeleteBook={(entry) =>
+              qntnsShelf.byPath.has(entry.path) || deleteBook(entry)
             }
-            onImport={handleImport}
-            onDeleteBook={deleteBook}
             onMoveToTop={moveBookToTop}
             onMoveToBottom={moveBookToBottom}
+          />
+        )}
+        {callout && viewMode === "shelf" && (
+          <StoreCallout
+            key={callout.sale.book.slug}
+            sale={callout.sale}
+            anchor={callout.anchor}
+            host={contentRef.current}
+            onClose={closeCallout}
+            onRestored={() => {
+              setCallout(null);
+              qntnsShelf.markOwned();
+              setShelfMode("library");
+            }}
           />
         )}
         {/* Floating reading-appearance customization panel (View ▸ Theme ▸ Customize…). */}

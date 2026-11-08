@@ -69,6 +69,9 @@ export interface BookOriginRect {
 }
 
 interface UseBooksLogicProps {
+  /** Books with no file behind them (qntns.com posts, CHECKLIST-36 §14f):
+   *  openable like an EPUB, never dropped for a missing VFS item. */
+  extraLibrary?: BooksLibraryEntry[];
   isWindowOpen: boolean;
   isForeground?: boolean;
   instanceId: string;
@@ -76,6 +79,7 @@ interface UseBooksLogicProps {
 }
 
 export function useBooksLogic({
+  extraLibrary,
   isWindowOpen,
   instanceId,
   initialData,
@@ -477,8 +481,11 @@ export function useBooksLogic({
   );
 
   const activeBook = useMemo(
-    () => library.find((b) => b.path === activeBookPath) ?? null,
-    [library, activeBookPath]
+    () =>
+      library.find((b) => b.path === activeBookPath) ??
+      extraLibrary?.find((b) => b.path === activeBookPath) ??
+      null,
+    [library, extraLibrary, activeBookPath]
   );
   activeBookRef.current = activeBook;
 
@@ -502,6 +509,7 @@ export function useBooksLogic({
   useEffect(() => {
     if (!activeBookPath) return;
     if (!hasFilesHydrated) return;
+    if (extraLibrary?.some((b) => b.path === activeBookPath)) return;
     const item = items[activeBookPath];
     if (!item || item.status !== "active") {
       const droppedPath = activeBookPath;
@@ -525,7 +533,7 @@ export function useBooksLogic({
         }, 3000);
       }
     }
-  }, [activeBookPath, items, hasFilesHydrated, setOpenPath]);
+  }, [activeBookPath, items, hasFilesHydrated, setOpenPath, extraLibrary]);
 
   // Migrate cached reading progress when an EPUB under /Books is renamed (the
   // VFS rename emits `fileRenamed`; moves don't emit it, so only renames are
