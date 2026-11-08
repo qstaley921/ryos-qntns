@@ -1,5 +1,7 @@
 import { useLayoutEffect } from "react";
 import { App } from "@/App";
+import { useAppStore } from "@/stores/useAppStore";
+import { useStickiesStore, WELCOME_NOTE } from "@/stores/useStickiesStore";
 import { useDisplaySettingsStore } from "@/stores/useDisplaySettingsStore";
 import { AQUA_BLUE_ALTS, setAquaDefaultBlue } from "@/stores/useThemeStore";
 import { QNTNS_WALLPAPER } from "@/utils/wallpapers";
@@ -15,6 +17,13 @@ history.replaceState = (data, unused, url) => {
 export default { title: "Desktop", component: App };
 export const Default = () => {
   setAquaDefaultBlue(AQUA_BLUE_ALTS.nudge30);
+  // §62: storybook keeps persisted stores, so isFirstBoot never fires; show the welcome note every load.
+  useLayoutEffect(() => {
+    const { notes } = useStickiesStore.getState();
+    if (!notes.some((n) => n.id === WELCOME_NOTE.id))
+      useStickiesStore.setState({ notes: [WELCOME_NOTE, ...notes] });
+    useAppStore.getState().launchApp("stickies");
+  }, []);
   return <App />;
 };
 
