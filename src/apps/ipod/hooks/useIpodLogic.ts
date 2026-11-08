@@ -3908,8 +3908,11 @@ export function useIpodLogic({
     if (!isWindowOpen || !id || !tracks.some((t) => t.id === id)) return;
     useIpodStore.getState().setCurrentSongId(id);
     setIsPlaying(true);
+    setMenuDirection("forward");
+    setMenuMode(false); // Now Playing, as a menu track pick does
+    setCameFromNowPlayingMenuItem(false);
     if (instanceId) clearIpodInitialData(instanceId);
-  }, [isWindowOpen, initialData, tracks, setIsPlaying, clearIpodInitialData, instanceId]);
+  }, [isWindowOpen, initialData, tracks, setIsPlaying, setMenuMode, setCameFromNowPlayingMenuItem, clearIpodInitialData, instanceId]);
 
   // Initial data handling
   useEffect(() => {
