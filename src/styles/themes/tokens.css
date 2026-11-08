@@ -139,6 +139,8 @@
   --os-metrics-border-width: 0.5px;
   --os-metrics-titlebar-border-width: 1px;
   --os-metrics-radius: 0.45rem;
+  /* Tiger window corner: small (base 4). Window + title bar only; --os-metrics-radius stays for controls/dialogs. */
+  --os-metrics-window-radius: 4px;
   --os-metrics-titlebar-height: 1.375rem;
   --os-metrics-menubar-height: 25px;
   --os-window-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);

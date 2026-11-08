@@ -72,7 +72,7 @@ export function WindowFrameTitleBar({
             effectiveTransparentBackground && !isNoTitlebar && "mt-0"
           )}
           style={{
-            borderRadius: isNoTitlebar ? "8px 8px 0px 0px" : "8px 8px 0px 0px",
+            borderRadius: "var(--os-metrics-window-radius, 8px) var(--os-metrics-window-radius, 8px) 0 0",
             // For notitlebar: gradient background for visibility, opacity based on hover
             ...(isNoTitlebar
               ? {

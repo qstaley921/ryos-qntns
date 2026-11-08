@@ -24,7 +24,7 @@
 :root[data-os-theme="macosx"] .window-material-brushedmetal {
   background: none !important;
   position: relative;
-  border-radius: 0.6rem !important;
+  border-radius: var(--os-metrics-window-radius) !important;
 }
 
 :root[data-os-theme="macosx"] .window-material-brushedmetal::before {
@@ -1370,6 +1370,12 @@
 
 :root[data-os-theme="macosx"] .window {
   border: var(--os-metrics-border-width) solid var(--os-color-window-border) !important;
+  /* Tiger: small rounded top corners, square bottom. Brushed metal rounds all four (rule below). */
+  border-radius: var(--os-metrics-window-radius) var(--os-metrics-window-radius) 0 0 !important;
+}
+
+:root[data-os-theme="macosx"] .window.window-material-brushedmetal {
+  border-radius: var(--os-metrics-window-radius) !important;
 }
 
 :root[data-os-theme="macosx"] .window:not(.is-foreground) {
