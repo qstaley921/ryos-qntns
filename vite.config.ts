@@ -18,7 +18,6 @@ const __dirname = path.dirname(__filename);
 // config before NODE_ENV is set to "production", so also key off the command.
 const isBuildCommand = process.argv.includes("build");
 const isDev = !isBuildCommand && process.env.NODE_ENV !== 'production';
-const standaloneApiProxyTarget = process.env.STANDALONE_API_PROXY_TARGET?.trim();
 
 // Browserslist warns if caniuse-lite is stale; suppress when up-to-date
 process.env.BROWSERSLIST_IGNORE_OLD_DATA ??= "1";
@@ -146,20 +145,6 @@ export default defineConfig({
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,
     cors: { origin: ["*"] },
-    ...(standaloneApiProxyTarget
-      ? {
-          proxy: {
-            "/api": {
-              target: standaloneApiProxyTarget,
-              changeOrigin: true,
-            },
-            "/ws": {
-              target: standaloneApiProxyTarget,
-              ws: true,
-            },
-          },
-        }
-      : {}),
     // Pre-transform requests for faster page loads
     preTransformRequests: true,
     watch: {
@@ -311,41 +296,6 @@ export default defineConfig({
           },
         ]
       : []),
-    // Mirror the standalone server's baseline security headers in dev
-    // (proxied /api responses keep whatever the API server sends).
-    {
-      name: 'ryos-security-headers',
-      configureServer(server) {
-        const headersPromise = import('./api/_utils/_security-headers.ts').then(
-          (mod) => ({
-            frameAncestors: mod.buildFrameAncestorsDirective([
-              ...mod.getDocumentFrameAncestors(),
-              'http://localhost:*',
-              'http://127.0.0.1:*',
-            ]),
-            referrerPolicy: mod.REFERRER_POLICY_VALUE,
-          })
-        );
-        server.middlewares.use((req, res, next) => {
-          // The standalone API sets its own headers, including the IE proxy's
-          // sandbox CSP, which this blanket CSP would otherwise replace.
-          const pathPart = (req.url || '').split('?')[0];
-          if (pathPart === '/api' || pathPart.startsWith('/api/') || pathPart.startsWith('/ws')) {
-            next();
-            return;
-          }
-          void headersPromise.then(
-            ({ frameAncestors, referrerPolicy }) => {
-              res.setHeader('X-Content-Type-Options', 'nosniff');
-              res.setHeader('Referrer-Policy', referrerPolicy);
-              res.setHeader('Content-Security-Policy', frameAncestors);
-              next();
-            },
-            (error: unknown) => next(error)
-          );
-        });
-      },
-    },
     // Serve static docs HTML files (before SPA fallback kicks in)
     {
       name: 'block-removed-legacy-routes',
@@ -436,71 +386,6 @@ export default defineConfig({
         });
       },
     },
-    // Mirror production OG share HTML in Vite dev so /finder, /ipod/…, etc.
-    // return crawler-friendly meta instead of the SPA shell's default tags.
-    // Browsers still redirect to ?_ryo=1 and load the app as usual.
-    ...(isDev
-      ? [
-          {
-            name: "serve-og-share-dev",
-            configureServer(server: ViteDevServer) {
-              server.middlewares.use((
-                req: IncomingMessage,
-                res: ServerResponse,
-                next: (err?: unknown) => void
-              ) => {
-                if (req.method !== "GET" && req.method !== "HEAD") {
-                  next();
-                  return;
-                }
-
-                const host = req.headers.host || "localhost:5173";
-                const requestUrl = new URL(req.url || "/", `http://${host}`);
-                if (requestUrl.searchParams.has("_ryo")) {
-                  next();
-                  return;
-                }
-                if (
-                  requestUrl.pathname.startsWith("/api") ||
-                  requestUrl.pathname.startsWith("/@") ||
-                  requestUrl.pathname.startsWith("/src") ||
-                  requestUrl.pathname.startsWith("/node_modules") ||
-                  requestUrl.pathname.includes(".")
-                ) {
-                  next();
-                  return;
-                }
-
-                void import("./api/_utils/og-share.ts")
-                  .then(async ({ createOgShareResponse }) => {
-                    const response = await createOgShareResponse(
-                      new Request(requestUrl.toString(), {
-                        method: req.method || "GET",
-                      })
-                    );
-                    if (!response) {
-                      next();
-                      return;
-                    }
-
-                    res.statusCode = response.status;
-                    response.headers.forEach((value, key) => {
-                      res.setHeader(key, value);
-                    });
-                    if (req.method === "HEAD") {
-                      res.end();
-                      return;
-                    }
-                    res.end(Buffer.from(await response.arrayBuffer()));
-                  })
-                  .catch((error: unknown) => {
-                    next(error);
-                  });
-              });
-            },
-          },
-        ]
-      : []),
     react(),
     tailwindcss(),
     // Only include PWA plugin in production builds (not dev)

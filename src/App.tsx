@@ -26,10 +26,7 @@ import {
 } from "./utils/desktopDownload";
 import { DownloadSimple } from "@phosphor-icons/react";
 import { ScreenSaverOverlay } from "./components/screensavers/ScreenSaverOverlay";
-import { DeferredBackgroundChatNotifications } from "./hooks/DeferredBackgroundChatNotifications";
 import { DesktopErrorBoundary } from "@/components/errors/ErrorBoundaries";
-import { DeferredAutoCloudSync } from "@/hooks/useDeferredAutoCloudSync";
-import { DeferredAirDropListener } from "@/components/DeferredAirDropListener";
 import { WallpaperAccentRunner } from "@/hooks/WallpaperAccentRunner";
 import { MediaCoreRunner } from "@/hooks/MediaCoreRunner";
 import { DesktopCornerMask } from "@/components/layout/desktop/DesktopCornerMask";
@@ -311,9 +308,6 @@ export function App() {
       <Toaster position={toastConfig.position} offset={toastConfig.offset} />
       <DeepLinkHost />
       <SignInRequestHost />
-      <DeferredAirDropListener />
-      <DeferredAutoCloudSync />
-      <DeferredBackgroundChatNotifications />
       <WallpaperAccentRunner />
       <MediaCoreRunner />
       <ScreenSaverOverlay />

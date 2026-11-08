@@ -5,7 +5,6 @@ import {
   hasHorizontalContentInset,
   maximizedWindowFrame,
   mobileFullWidthFrame,
-  windowDragLimits,
   windowResizeMaxWidth,
   windowResizeMinLeft,
   windowFrameMinWidth,
@@ -78,9 +77,6 @@ describe("desktop content bounds", () => {
       })
     ).toEqual({ x: 840, width: 600 });
     expect(
-      windowDragLimits({ windowWidth: 600, viewportWidth: 1440, bounds })
-    ).toEqual({ minX: -(600 - 80), maxX: 1440 - 80 });
-    expect(
       windowSnapGeometry({ viewportWidth: 1440, bounds, zone: "left" })
     ).toEqual({ x: 0, width: 720 });
     expect(
@@ -135,9 +131,6 @@ describe("desktop content bounds", () => {
         mobile: false,
       })
     ).toEqual({ x: 12, width: 1180 - 12 - 84 });
-    expect(
-      windowDragLimits({ windowWidth: 400, viewportWidth: 1180, bounds }).minX
-    ).toBe(12);
     expect(
       windowSnapGeometry({ viewportWidth: 1180, bounds, zone: "right" })
     ).toEqual({

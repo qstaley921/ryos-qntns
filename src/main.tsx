@@ -1,3 +1,4 @@
+import "./utils/networkAllowlist"; // §6: first, so it gates every module below
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";

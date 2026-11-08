@@ -129,20 +129,6 @@ export function clampWindowToContentBounds(input: {
   return { x, width };
 }
 
-export function windowDragLimits(input: {
-  windowWidth: number;
-  viewportWidth: number;
-  bounds: DesktopContentBounds;
-}): { minX: number; maxX: number } {
-  const right = hasHorizontalContentInset(input.bounds, input.viewportWidth)
-    ? input.bounds.right
-    : input.viewportWidth;
-  return {
-    minX: input.bounds.x > 0 ? input.bounds.x : -(input.windowWidth - 80),
-    maxX: right - 80,
-  };
-}
-
 export function windowSnapEdges(
   viewportWidth: number,
   bounds: DesktopContentBounds,

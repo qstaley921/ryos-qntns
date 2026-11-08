@@ -1,9 +1,7 @@
 import {
-  abortableFetch,
   type AbortableFetchDependencies,
   type AbortableFetchOptions,
 } from "@/utils/abortableFetch";
-import { getApiUrl } from "@/utils/platform";
 import { getEffectiveTimezone } from "@/lib/timezoneConfig";
 
 export interface ApiErrorPayload {
@@ -57,38 +55,6 @@ export function getBrowserTimeZoneHeaders(): Record<string, string> {
   return timeZone ? { "X-User-Timezone": timeZone } : {};
 }
 
-function buildUrl(
-  path: string,
-  query?: Record<string, string | number | boolean | null | undefined>
-): string {
-  const relativePath = path.startsWith("/") ? path : `/${path}`;
-  if (!query) return getApiUrl(relativePath);
-
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value === undefined || value === null) continue;
-    params.set(key, String(value));
-  }
-
-  const queryString = params.toString();
-  return getApiUrl(queryString ? `${relativePath}?${queryString}` : relativePath);
-}
-
-function buildHeaders(
-  headers: HeadersInit | undefined,
-  hasBody: boolean
-): Headers {
-  const merged = new Headers(headers);
-  const timeZone = getBrowserTimeZone();
-  if (timeZone && !merged.has("X-User-Timezone")) {
-    merged.set("X-User-Timezone", timeZone);
-  }
-  if (hasBody && !merged.has("Content-Type")) {
-    merged.set("Content-Type", "application/json");
-  }
-  return merged;
-}
-
 async function parseErrorPayload(response: Response): Promise<ApiErrorPayload> {
   try {
     const data = (await response.json()) as ApiErrorPayload;
@@ -98,42 +64,13 @@ async function parseErrorPayload(response: Response): Promise<ApiErrorPayload> {
   }
 }
 
+// §6: ryOS's own server is gone. Every apiRequest fails the way an offline
+// fetch does, so callers take their existing offline path.
 async function performApiRequest<TBody = unknown>(
-  options: ApiRequestOptions<TBody>,
-  dependencies: AbortableFetchDependencies
+  _options: ApiRequestOptions<TBody>,
+  _dependencies: AbortableFetchDependencies
 ): Promise<Response> {
-  const {
-    path,
-    method = "GET",
-    query,
-    body,
-    headers,
-    signal,
-    timeout = 15000,
-    retry,
-  } = options;
-
-  const hasBody = body !== undefined;
-  const normalizedMethod = method.toUpperCase();
-  const retryConfig =
-    retry ??
-    (normalizedMethod === "GET"
-      ? { maxAttempts: 2, initialDelayMs: 500 }
-      : { maxAttempts: 1, initialDelayMs: 250 });
-
-  return abortableFetch(
-    buildUrl(path, query),
-    {
-      method,
-      headers: buildHeaders(headers, hasBody),
-      body: hasBody ? JSON.stringify(body) : undefined,
-      signal,
-      timeout,
-      throwOnHttpError: false,
-      retry: retryConfig,
-    },
-    dependencies
-  );
+  throw new TypeError("Failed to fetch");
 }
 
 const DEFAULT_API_REQUEST_DEPENDENCIES: AbortableFetchDependencies = {

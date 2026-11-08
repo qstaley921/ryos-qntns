@@ -1,8 +1,4 @@
-import { preconnect, preload, preinit } from "react-dom";
-import {
-  getRealtimeProvider,
-  getRealtimeWebSocketUrl,
-} from "@/utils/runtimeConfig";
+import { preload, preinit } from "react-dom";
 
 type FetchResource = {
   href: string;
@@ -15,21 +11,6 @@ const FETCH_RESOURCES: FetchResource[] = [
   { href: "/data/filesystem.json", priority: "high" },
   { href: "/data/applets.json" },
 ];
-
-function getPreconnectResources(): string[] {
-  if (getRealtimeProvider() === "local") {
-    try {
-      const websocketUrl = new URL(getRealtimeWebSocketUrl());
-      websocketUrl.protocol =
-        websocketUrl.protocol === "wss:" ? "https:" : "http:";
-      return [websocketUrl.origin];
-    } catch {
-      return [];
-    }
-  }
-
-  return ["https://ws-us3.pusher.com", "https://sockjs-us3.pusher.com"];
-}
 
 let primed = false;
 
@@ -55,14 +36,6 @@ export function primeReactResources(): void {
         as: "fetch",
         crossOrigin: "use-credentials",
         fetchPriority: resource.priority ?? "low",
-      })
-    )
-  );
-
-  getPreconnectResources().forEach((href) =>
-    safely(() =>
-      preconnect(href, {
-        crossOrigin: "anonymous",
       })
     )
   );
