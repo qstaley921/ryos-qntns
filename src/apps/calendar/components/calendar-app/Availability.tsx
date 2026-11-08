@@ -74,7 +74,7 @@ export function Availability({ date, bookable, hourHeight, gridStart, onSlot, on
   return (
     <>
       {free.map((f) => (
-        <button key={f.s} type="button" aria-label="Book this time" onClick={() => onSlot(f.s, bookable.minutes)}
+        <button key={f.s} type="button" aria-label="Book this time" onClick={() => (Date.parse(f.s) < Date.now() ? onPast() : onSlot(f.s, bookable.minutes))}
           className="absolute left-0 right-0 hover:bg-black/[0.04] transition-colors" style={{ top: y(f.a), height: y(f.b) - y(f.a) }} />
       ))}
       {busy.map(([a, b]) => (

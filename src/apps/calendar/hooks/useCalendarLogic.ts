@@ -454,6 +454,7 @@ export function useCalendarLogic() {
   const unsentSlotEvent = useRef<string | null>(null);
   const handleNewEventAtSlot = useCallback(
     (slot: string, minutes: number) => {
+      if (Date.parse(slot) < Date.now()) return setTimeTravel(true); // no path opens a past slot
       // at most one unsent booking event: the previous one (not yet Booked) is replaced
       const prev = useCalendarStore.getState().events.find((e) => e.id === unsentSlotEvent.current);
       if (prev && !prev.title.startsWith(BOOKED_TITLE)) deleteEvent(prev.id);
