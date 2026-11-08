@@ -10,7 +10,7 @@ import type { AppId } from "@/config/appRegistry";
 import { requestCloseWindow } from "@/utils/windowUtils";
 import { SpotlightSearch } from "@/components/layout/SpotlightSearch";
 import { AppSwitcher } from "@/components/layout/AppSwitcher";
-import { DeferredAssistantOverlay } from "@/components/assistant/DeferredAssistantOverlay";
+// import { DeferredAssistantOverlay } from "@/components/assistant/DeferredAssistantOverlay"; // §37 parked
 import { AppErrorBoundary } from "@/components/errors/ErrorBoundaries";
 import { DialogParentWindowContext } from "@/components/shared/DialogParentWindowContext";
 import { getTranslatedAppName } from "@/utils/i18n";
@@ -88,7 +88,7 @@ export function AppManagerView({
         apps={switcherApps}
         selectedIndex={switcherIndex}
       />
-      <DeferredAssistantOverlay />
+      {/* §37: AI dog parked ("that can come later"); code stays, mount off. */}
       <DesktopCornerMask />
     </>
   );
