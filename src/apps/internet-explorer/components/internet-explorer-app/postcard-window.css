@@ -1,122 +1,45 @@
 /* CHECKLIST-37 §79d: the site's postcard popover, held inside a window instead of
-   over the screen. It sizes itself from the viewport (vw/vh); here the window's
-   content box is the container, so cqw/cqh stand in for them. Same arithmetic as
-   postcard.css's --postcard-w: 32px side room + 24px, 160px of toolbar and actions.
-   No scrim: there is no page behind it to dim, and a press on it would close it. */
+   over the screen. No scrim: there is no page behind it to dim, and a press on it
+   would close it. */
 .ryos-postcard-window {
-  position: relative;
-  container-type: size;
   /* §79g: the site's page body under the card (theme tokens.css --color-page, #d9cdbf). */
   background: var(--color-page);
+  /* §79h: below the 300px floor the scaled popover outgrows the window and this
+     scrolls, both axes, with the Tiger bars (.aqua-scrollbars, CHECKLIST-35 §64).
+     Grid + margin:auto centres the box while it fits and still scrolls from its
+     top-left edge when it does not (justify-content:center would clip it). */
+  overflow: auto;
+  display: grid;
 }
 
-/* §79h: THE FLOOR IS 320. The actions row is the widest thing that has to hold:
-   3 settings squares (96) + their 2 gaps (16) + 8 + share 32 + 8 + download 32
-   + 8 + "$4 · Mail" (24px padding each side around ~62px of 14px bold text, ~110) = ~310,
-   so 320 is the next base-4 width at which every 32px control still sits on one
-   line beside the card. The text fit (§79g) is in trim units and holds at any
-   width. Below 320 the card stops shrinking and the window body scrolls: the
-   popover keeps its floor size (card 320 x 480, + 56 across and 160 down, the
-   same room as --postcard-w's own sums) and overflows the host. */
-.ryos-postcard-window {
-  overflow: auto;
+/* §79h: THE POPOVER IS LAID OUT ONCE, AT ITS SITE SIZE, AND SCALED.
+   Card 440 wide (4 x 110; the theme's old 440 footprint, a desktop-viewport size;
+   the theme's own --postcard-w has no ceiling, at 1440 x 900 it is 493), 660 tall.
+   Layout box, from postcard.css: 16 pad + 24 track room + 440 + 16 pad = 496 across;
+   16 + 32 toolbar + 16 + 660 + 16 + 32 actions + 16 = 788 down (PostcardWindow
+   reads the real offsetWidth/Height rather than trusting these sums).
+   PostcardWindow.tsx sets --k = max(300/440, min(1, room w / 496, room h / 788)) and
+   sizes this wrapper to the scaled box, so the scroll extent is the real footprint.
+   postcard.css says never to scale the card: that is about a bitmap resampled UP
+   after drawing. Here the canvas is drawn at 440 (clientWidth is layout px) and
+   only ever scaled DOWN (k <= 1). */
+.ryos-postcard-window__fit {
+  position: relative;
+  margin: auto;
 }
 
 .ryos-postcard-window .qntns-postcard {
+  --postcard-w: 440px;
   position: absolute;
-  --postcard-w: max(320px, min(calc(100cqw - 56px), calc((100cqh - 160px) * 2 / 3)));
-  min-width: calc(320px + 56px);
-  min-height: calc(480px + 160px);
+  inset: auto;
+  top: 0;
+  left: 0;
+  width: max-content;
+  height: max-content;
+  transform: scale(var(--k, 1));
+  transform-origin: 0 0;
 }
 
 .ryos-postcard-window .qntns-postcard__scrim {
   display: none;
-}
-
-/* §79h: THE TIGER AQUA SCROLL BAR, on any box with .ryos-aqua-scroll (only the
-   postcard window for now; written to be lifted into the theme-wide sheet,
-   CHECKLIST-35). Both axes; a blue gel thumb the length of the visible
-   fraction (the browser sizes it); both arrows paired at the far end, Tiger's
-   default. 16px, not Aqua's 15: the control metric rounded to base 4. The 1px
-   borders and the 1px/2px track stripes are hairlines and texture, not spacing
-   (the CLAUDE.md hairline exemption). WebKit/Blink only; anything without
-   ::-webkit-scrollbar gets its own native bar. Nothing here sets scrollbar-width
-   or scrollbar-color: in Chrome either one switches these rules off. */
-.ryos-aqua-scroll::-webkit-scrollbar {
-  width: 16px;
-  height: 16px;
-}
-
-/* The groove: a pale pinstriped trough, darker at its edges. */
-.ryos-aqua-scroll::-webkit-scrollbar-track:vertical {
-  background:
-    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.035) 0 1px, transparent 1px 2px),
-    linear-gradient(to right, #b8b8b8, #e4e4e4 25%, #f8f8f8 55%, #ececec 85%, #cfcfcf);
-  border-left: 1px solid #a6a6a6;
-}
-.ryos-aqua-scroll::-webkit-scrollbar-track:horizontal {
-  background:
-    repeating-linear-gradient(to right, rgba(0, 0, 0, 0.035) 0 1px, transparent 1px 2px),
-    linear-gradient(to bottom, #b8b8b8, #e4e4e4 25%, #f8f8f8 55%, #ececec 85%, #cfcfcf);
-  border-top: 1px solid #a6a6a6;
-}
-
-/* The gel: the primary aqua-button's blue (aqua.css .aqua-button.primary), lit
-   across its width like a capsule, with a highlight band near the leading edge. */
-.ryos-aqua-scroll::-webkit-scrollbar-thumb {
-  border: 1px solid #1d4f9e;
-  border-radius: 8px;
-}
-.ryos-aqua-scroll::-webkit-scrollbar-thumb:vertical {
-  background: linear-gradient(to right, #2a62bf, #9cc4f4 22%, #d6e8fb 34%, #5c9be6 52%, #3a83e2 72%, #7fb6f2 92%, #4f8fe0);
-}
-.ryos-aqua-scroll::-webkit-scrollbar-thumb:horizontal {
-  background: linear-gradient(to bottom, #2a62bf, #9cc4f4 22%, #d6e8fb 34%, #5c9be6 52%, #3a83e2 72%, #7fb6f2 92%, #4f8fe0);
-}
-.ryos-aqua-scroll::-webkit-scrollbar-thumb:active {
-  filter: brightness(0.9);
-}
-
-/* Both arrows at the end, none at the start. */
-.ryos-aqua-scroll::-webkit-scrollbar-button:start {
-  display: none;
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:end:decrement,
-.ryos-aqua-scroll::-webkit-scrollbar-button:end:increment {
-  display: block;
-  width: 16px;
-  height: 16px;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:vertical:end {
-  border-left: 1px solid #a6a6a6;
-  background-color: #ececec;
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:horizontal:end {
-  border-top: 1px solid #a6a6a6;
-  background-color: #ececec;
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:end:active {
-  background-color: #c4c4c4;
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:vertical:end:decrement {
-  border-top: 1px solid #a6a6a6;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M4 1 8 7H0z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to right, #d4d4d4, #f6f6f6 50%, #dcdcdc);
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:vertical:end:increment {
-  border-top: 1px solid #a6a6a6;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M4 7 8 1H0z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to right, #d4d4d4, #f6f6f6 50%, #dcdcdc);
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:horizontal:end:decrement {
-  border-left: 1px solid #a6a6a6;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 4 7 0V8z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to bottom, #d4d4d4, #f6f6f6 50%, #dcdcdc);
-}
-.ryos-aqua-scroll::-webkit-scrollbar-button:horizontal:end:increment {
-  border-left: 1px solid #a6a6a6;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M7 4 1 0V8z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to bottom, #d4d4d4, #f6f6f6 50%, #dcdcdc);
-}
-
-.ryos-aqua-scroll::-webkit-scrollbar-corner {
-  background: #ececec;
 }

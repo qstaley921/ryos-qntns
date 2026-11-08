@@ -4643,6 +4643,12 @@ export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose, isF
        track is worth without reaching back into paint()'s locals. */
     let trackWin = { total: 1, size: 1, from: 0 };
 
+    /* §79h: screen px per layout px. A host may draw the popover under a CSS
+       scale (the ryOS Postcard window), and pointer clientX/Y are screen px
+       while clientHeight is layout px, so any drag that counts layout px in
+       pointer travel multiplies by this. 1 on the site. */
+    const onScreen = (node) => (node.offsetHeight ? node.getBoundingClientRect().height / node.offsetHeight : 1);
+
     const layoutTrack = ({ total, size, from }) => {
         trackWin = { total, size, from };
         const trackH = track?.clientHeight;
@@ -4854,7 +4860,8 @@ export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose, isF
     const measureNub = () => {
         const range = trackWin.total - trackWin.size;
         // Nothing is hidden: the nub fills the track and the divisor is zero.
-        nubPerStep = range > 0 ? (track.clientHeight - nub.offsetHeight) / range : 0;
+        // × onScreen: clientY is screen px, the track's height is layout px (§79h).
+        nubPerStep = range > 0 ? ((track.clientHeight - nub.offsetHeight) * onScreen(track)) / range : 0;
         return nubPerStep > 0;
     };
 
@@ -5076,7 +5083,7 @@ export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose, isF
      * card, which paintFront never steps either.
      */
     const linePx = () =>
-        (canvas.clientHeight * withTextStep(state.quote ? 0 : state.textStep, () => LAYOUT.bodyLead)) / TRIM_H || 24;
+        (canvas.clientHeight * onScreen(canvas) * withTextStep(state.quote ? 0 : state.textStep, () => LAYOUT.bodyLead)) / TRIM_H || 24;
 
     const onStagePointerMove = (event) => {
         if (!swipe || event.pointerId !== swipe.id) return;

@@ -21,6 +21,12 @@ export type PostcardDoc = Pick<GhostDoc, "id" | "type"> & Partial<GhostDoc> & { 
 
 const NAME = "Postcard";
 
+// §79h: the popover is laid out once at its site size (postcard-window.css, card 440 wide)
+// and fitted to the window with a scale, k = min(1, room ÷ layout) on both axes, never
+// under 300/440 (the card 300px across). Below that the window scrolls.
+const CARD_W = 440;
+const FLOOR_W = 300;
+
 export function PostcardWindow({
   isWindowOpen,
   onClose,
@@ -36,6 +42,7 @@ export function PostcardWindow({
   const [doc, setDoc] = useState<PostcardDoc | null>(post.html ? post : null);
   const [failed, setFailed] = useState(false);
   const hostRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // The window's own close, with its animation (as TextEdit's close()).
   const close = () =>
@@ -61,6 +68,7 @@ export function PostcardWindow({
     if (!host || doc?.html == null) return;
     let gone = false;
     let card: { open(): void; close(): void; destroy(): void } | null = null;
+    let ro: ResizeObserver | null = null;
     import("@/apps/paint/wall/qntns/postcard.js").then((pc) => {
       if (gone) return;
       const poem = doc.tags?.some((t) => t.slug === "hash-fixed-lines");
@@ -75,9 +83,27 @@ export function PostcardWindow({
       host.innerHTML = pc.renderPostcard(data);
       card = pc.attachPostcard(host, data, { onClose: () => !gone && closeRef.current(), isFront: () => !!frontRef.current, fit: true });
       card!.open();
+      const pop = host.querySelector<HTMLElement>("[data-postcard]");
+      const room = scrollRef.current;
+      if (!pop || !room) return;
+      // offsetWidth/Height are layout px, so the scale never feeds back into what it reads.
+      const fit = () => {
+        const w = pop.offsetWidth;
+        const h = pop.offsetHeight;
+        if (!w || !h) return;
+        const k = Math.max(FLOOR_W / CARD_W, Math.min(1, room.clientWidth / w, room.clientHeight / h));
+        pop.style.setProperty("--k", String(k));
+        host.style.width = `${w * k}px`;
+        host.style.height = `${h * k}px`;
+      };
+      ro = new ResizeObserver(fit);
+      ro.observe(pop);
+      ro.observe(room);
     });
     return () => {
       gone = true;
+      ro?.disconnect();
+      host.style.width = host.style.height = "";
       card?.close();
       card?.destroy();
       host.replaceChildren();
@@ -117,7 +143,9 @@ export function PostcardWindow({
         {failed ? (
           <p className="m-auto text-os-text-secondary">-</p>
         ) : (
-          <div ref={hostRef} className="ryos-postcard-window ryos-aqua-scroll min-h-0 flex-1" />
+          <div ref={scrollRef} className="ryos-postcard-window aqua-scrollbars min-h-0 flex-1">
+            <div ref={hostRef} className="ryos-postcard-window__fit" />
+          </div>
         )}
       </div>
     </AppWindowShell>
