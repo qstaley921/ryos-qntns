@@ -124,6 +124,8 @@ function collectPrecacheExclusionsPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // CHECKLIST-35 §8: the Ghost theme serves the build from /assets/r-<stamp>/ (scripts/ghost-zip.mjs); dev stays at /.
+  base: process.env.RYOS_BASE || "/",
   envPrefix: ['VITE_'],
   define: {
     'import.meta.env.VITE_BUILD_NUMBER': JSON.stringify(ryosBuildNumber),

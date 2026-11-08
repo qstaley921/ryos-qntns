@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+{{!-- scripts/ghost-zip.mjs fills each marker below from the Vite build's index.html (CHECKLIST-35 §8). --}}
+{{!-- ryos:html --}}
+<head>
+<script>
+  // §8a: ?window (any value) is the plain page, no desktop. Read before the bundle tags below.
+  (function () {
+    var plain = new URLSearchParams(location.search).has("window");
+    window.__ryosPlain = plain;
+    document.documentElement.setAttribute(plain ? "data-window" : "data-desktop", "");
+    if (!plain) return;
+    // Links inside a ?window page keep ?window.
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("a[href]").forEach(function (a) {
+        if (a.origin !== location.origin) return;
+        var u = new URL(a.href);
+        if (u.searchParams.has("window")) return;
+        u.searchParams.set("window", "");
+        a.href = u.href;
+      });
+    });
+  })();
+</script>
+{{!-- ryos:head --}}
+<title>{{meta_title}}</title>
+<style>
+  /* The server page shows unless the desktop boots; no JS (a crawler) gets the page. */
+  [data-desktop] .ryos-page { display: none }
+  html:not([data-desktop]) #root { display: none }
+  html:not([data-desktop]), html:not([data-desktop]) body { background: #fff !important; color: #111 }
+  .ryos-page { max-width: 720px; margin: 0 auto; padding: 32px 16px; font: 16px/1.5 system-ui, sans-serif }
+  .ryos-page img, .ryos-page iframe, .ryos-page video { max-width: 100%; height: auto }
+  .kg-width-wide, .kg-width-full { width: 100% }
+</style>
+{{ghost_head}}
+</head>
+{{!-- ryos:body --}}
+<main class="ryos-page">{{{body}}}</main>
+{{> ryos-data}}
+{{!-- ryos:body-inner --}}
+{{ghost_foot}}
+</body>
+</html>

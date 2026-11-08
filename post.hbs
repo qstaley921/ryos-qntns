@@ -1,0 +1,9 @@
+{{!< default}}
+{{!-- Posts and pages (page.hbs falls back here): the body as real HTML for search and link previews; the desktop then opens it (DeepLinkHost). --}}
+{{#post}}
+<article class="{{post_class}}">
+  <h1>{{title}}</h1>
+  {{#if feature_image}}<img src="{{img_url feature_image}}" alt="{{feature_image_alt}}">{{/if}}
+  {{content}}
+</article>
+{{/post}}
