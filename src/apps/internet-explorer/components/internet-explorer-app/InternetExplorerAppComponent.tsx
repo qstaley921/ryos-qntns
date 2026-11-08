@@ -1,7 +1,8 @@
 // Safari (CHECKLIST-37 §28). Keeps the `internet-explorer` app id (the registry
 // is CHECKLIST-35's); everything a visitor sees is Safari. Bookmarks bar = two
-// folders, Friends and Portfolio, from Ghost pages. A site opens in a frame if
-// the Worker's /frame-ok says it allows framing, else a card that links out.
+// folders, Friends and Portfolio, hardcoded (bookmarks.ts). A site's home page opens in
+// a frame through the Worker's /site/ proxy (§28c); any click opens the real site in a
+// new tab. A proxy error or timeout = a card that links out.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CaretLeft, CaretRight, ArrowSquareOut } from "@phosphor-icons/react";
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemedIcon } from "@/components/shared/ThemedIcon";
 import { appMetadata, helpItems } from "../../metadata";
-import { canFrame, loadBookmarks, type Bookmark, type Bookmarks } from "../../bookmarks";
+import { proxied, proxyOk, loadBookmarks, type Bookmark, type Bookmarks } from "../../bookmarks";
 
 const NAME = "Safari";
 const FOLDERS = [
@@ -44,7 +45,7 @@ export function InternetExplorerAppComponent(props: AppProps<InternetExplorerIni
 }
 
 // The page itself, same origin, loaded with ?window (CHECKLIST-35 §8: no desktop inside).
-// Title bar shows the page's title, one Done button closes; no address bar, tabs or bookmarks.
+// Title bar shows the page's title, the window's close button closes it; no address bar, tabs or bookmarks.
 function Mini({
   isWindowOpen,
   onClose,
@@ -58,9 +59,13 @@ function Mini({
   const { t } = useTranslation();
   const chrome = useAppMenuBarChrome("internet-explorer", NAME);
   const [title, setTitle] = useState("");
-  const u = new URL(path, location.origin);
-  // our own page only; any other origin never loads here
-  const src = u.origin === location.origin ? `${u.pathname}${u.search ? `${u.search}&` : "?"}window${u.hash}` : null;
+  // off qntns.com (Storybook, dev) the page's own origin has no site pages, so frame the live www site
+  const onSite = /^(www\.)?qntns\.com$/.test(location.hostname);
+  const base = onSite ? location.origin : "https://www.qntns.com";
+  const u = new URL(path, base);
+  // our own pages only; any other origin never loads here
+  const ours = u.origin === base || u.origin === "https://qntns.com" || u.origin === "https://www.qntns.com";
+  const src = ours ? `${base}${u.pathname}${u.search ? `${u.search}&` : "?"}window${u.hash}` : null;
 
   return (
     <AppWindowShell
@@ -77,7 +82,7 @@ function Mini({
           setIsShareDialogOpen={chrome.setIsShareDialogOpen}
           aboutItemLabel={`About ${NAME}`}
         >
-          <AppMenuBarMenus menus={[{ label: "File", items: [{ type: "action", label: "Done", onClick: onClose, shortcutId: "close" }, ...fileSubmenus({ t, onShareApp: () => chrome.setIsShareDialogOpen(true) })] }]} />
+          <AppMenuBarMenus menus={[{ label: "File", items: [{ type: "action", label: "Close", onClick: onClose, shortcutId: "close" }, ...fileSubmenus({ t, onShareApp: () => chrome.setIsShareDialogOpen(true) })] }]} />
         </AppMenuBarShell>
       }
       windowFrameProps={{
@@ -98,14 +103,12 @@ function Mini({
               src={src}
               title={title || "Page"}
               className="size-full border-0"
-              onLoad={(e) => setTitle(e.currentTarget.contentDocument?.title ?? "")}
+              onLoad={(e) => {
+                // cross-origin (Storybook): the title is unreadable, keep the default
+                try { setTitle(e.currentTarget.contentDocument?.title ?? ""); } catch { setTitle(""); }
+              }}
             />
           )}
-        </div>
-        <div className="flex justify-end border-t border-os-window px-4 py-2">
-          <Button size="sm" onClick={onClose}>
-            Done
-          </Button>
         </div>
       </div>
     </AppWindowShell>
@@ -128,7 +131,7 @@ function Safari({
   const [trail, setTrail] = useState<(Bookmark | null)[]>([null]);
   const [at, setAt] = useState(0);
   const [reload, setReload] = useState(0);
-  const [framed, setFramed] = useState<boolean | null>(null); // null = asking the Worker
+  const [framed, setFramed] = useState<boolean | null>(null); // null = asking the proxy
   const [aboutOpen, setAboutOpen] = useState(false);
   const site = trail[at];
 
@@ -140,13 +143,11 @@ function Safari({
     if (!site) return;
     let live = true;
     setFramed(null);
-    // a same-origin page with allow-scripts + allow-same-origin escapes the sandbox: always link out
-    if (new URL(site.url).origin === location.origin) { setFramed(false); return; }
-    canFrame(site.url).then((ok) => live && setFramed(ok));
+    proxyOk(site.url).then((ok) => live && setFramed(ok));
     return () => {
       live = false;
     };
-  }, [site]);
+  }, [site, reload]);
 
   const open = (b: Bookmark) => {
     setTrail([...trail.slice(0, at + 1), b]);
@@ -181,7 +182,7 @@ function Safari({
             items: [
               { type: "action", label: "Back", onClick: () => setAt(at - 1), disabled: at === 0 },
               { type: "action", label: "Forward", onClick: () => setAt(at + 1), disabled: at === trail.length - 1 },
-              { type: "action", label: "Reload", onClick: () => setReload((n) => n + 1), disabled: !site || !framed },
+              { type: "action", label: "Reload", onClick: () => setReload((n) => n + 1), disabled: !site },
             ],
           },
           {
@@ -266,11 +267,11 @@ function Safari({
           ) : framed ? (
             <iframe
               key={`${site.url}#${reload}`}
-              src={site.url}
+              src={proxied(site.url)}
               title={site.title}
               className="size-full border-0"
-              // the site keeps its own origin; never ours
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              // no allow-same-origin: the page runs in an opaque origin, never the Worker's (the Worker's CSP says the same)
+              sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
               referrerPolicy="strict-origin-when-cross-origin"
             />
           ) : (

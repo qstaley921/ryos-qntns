@@ -22,11 +22,16 @@ const LIST: Bookmarks = {
 
 export const loadBookmarks = (): Promise<Bookmarks> => Promise.resolve(LIST);
 
-// Whether the site lets www.qntns.com frame it. Any failure or a 4 s wait = no (link-out card).
-export async function canFrame(url: string): Promise<boolean> {
+// The bookmark's home page through the Worker's /site/ proxy (CHECKLIST-37 §28c): the
+// sites refuse framing, so the Worker serves their home page's HTML; every click opens
+// the real site in a new tab.
+export const proxied = (url: string) => `${WORKER}/site/${new URL(url).host}/`;
+
+// Whether the proxy answers 2xx (Safari then frames it; anything else = the link-out card).
+// Read first because a frame cannot tell an error page from a page; the second load is a memo hit only on the same isolate (Vary: Origin misses the browser cache).
+export async function proxyOk(url: string): Promise<boolean> {
   try {
-    const r = await fetch(`${WORKER}/frame-ok?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(4000) });
-    return r.ok && (await r.json()).ok === true;
+    return (await fetch(proxied(url), { signal: AbortSignal.timeout(10000) })).ok;
   } catch {
     return false;
   }
