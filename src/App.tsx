@@ -4,7 +4,7 @@ import { Suspense, lazy, useEffect, useMemo, useReducer, useCallback } from "rea
 import { applyDisplayMode } from "./utils/displayMode";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "@/hooks/useToast";
-import { useAppStore, useAppStoreShallow } from "@/stores/useAppStore";
+import { useAppStoreShallow } from "@/stores/useAppStore";
 import { useDisplaySettingsStoreShallow } from "@/stores/useDisplaySettingsStore";
 import { BootScreen } from "./components/dialogs/BootScreen";
 import { getNextBootMessage, clearNextBootMessage, isBootDebugMode } from "./utils/bootMessage";
@@ -180,8 +180,6 @@ export function App() {
     if (isFirstBoot) {
       appShellLog.debug("Marking first boot complete");
       setHasBooted();
-      // §62: open the welcome sticky once, on first launch only.
-      useAppStore.getState().launchApp("stickies");
     }
   }, [
     isFirstBoot,
