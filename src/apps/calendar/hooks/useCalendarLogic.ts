@@ -79,8 +79,6 @@ export function useCalendarLogic() {
   const {
     events,
     calendars,
-    todos,
-    showTodoSidebar,
     selectedDate,
     currentMonth,
     currentYear,
@@ -90,11 +88,6 @@ export function useCalendarLogic() {
     deleteEvent,
     addCalendar,
     toggleCalendarVisibility,
-    addTodo,
-    toggleTodo,
-    updateTodo,
-    deleteTodo,
-    setShowTodoSidebar,
     setSelectedDate,
     setView,
     navigateMonth,
@@ -104,8 +97,6 @@ export function useCalendarLogic() {
     useShallow((state) => ({
       events: state.events,
       calendars: state.calendars,
-      todos: state.todos,
-      showTodoSidebar: state.showTodoSidebar,
       selectedDate: state.selectedDate,
       currentMonth: state.currentMonth,
       currentYear: state.currentYear,
@@ -115,11 +106,6 @@ export function useCalendarLogic() {
       deleteEvent: state.deleteEvent,
       addCalendar: state.addCalendar,
       toggleCalendarVisibility: state.toggleCalendarVisibility,
-      addTodo: state.addTodo,
-      toggleTodo: state.toggleTodo,
-      updateTodo: state.updateTodo,
-      deleteTodo: state.deleteTodo,
-      setShowTodoSidebar: state.setShowTodoSidebar,
       setSelectedDate: state.setSelectedDate,
       setView: state.setView,
       navigateMonth: state.navigateMonth,
@@ -621,15 +607,6 @@ export function useCalendarLogic() {
     calendars,
     toggleCalendarVisibility,
     addCalendar,
-
-    // Todos
-    todos,
-    addTodo,
-    toggleTodo,
-    updateTodo,
-    deleteTodo,
-    showTodoSidebar,
-    setShowTodoSidebar,
 
     // Locale-aware labels
     narrowDayNames,

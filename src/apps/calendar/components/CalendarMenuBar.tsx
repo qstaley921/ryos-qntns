@@ -1,4 +1,4 @@
-import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
+import { MenuBar } from "@/components/layout/MenuBar";
 import {
   AppMenuBarMenus,
   type MenuDescriptor,
@@ -11,8 +11,6 @@ import { useInstanceUndoRedo } from "@/hooks/useUndoRedo";
 
 interface CalendarMenuBarProps {
   onClose: () => void;
-  onShowHelp: () => void;
-  onShowAbout: () => void;
   onNewEvent: () => void;
   onImport: () => void;
   onExport: () => void;
@@ -22,15 +20,11 @@ interface CalendarMenuBarProps {
   view: CalendarView;
   onSetView: (view: CalendarView) => void;
   onGoToToday: () => void;
-  showTodoSidebar: boolean;
-  onToggleTodoSidebar: () => void;
   instanceId?: string;
 }
 
 export function CalendarMenuBar({
   onClose,
-  onShowHelp,
-  onShowAbout,
   onNewEvent,
   onImport,
   onExport,
@@ -40,19 +34,10 @@ export function CalendarMenuBar({
   view,
   onSetView,
   onGoToToday,
-  showTodoSidebar,
-  onToggleTodoSidebar,
   instanceId,
 }: CalendarMenuBarProps) {
   const { t } = useTranslation();
-  const {
-    isShareDialogOpen,
-    setIsShareDialogOpen,
-    isWindowsTheme,
-    isMacOSTheme,
-    appId,
-    appName,
-  } = useAppMenuBarChrome("calendar");
+  const { isWindowsTheme } = useAppMenuBarChrome("calendar");
   const { canUndo, canRedo, undo, redo } = useInstanceUndoRedo(instanceId || "");
 
   const viewCheckbox = (viewValue: CalendarView, label: string) =>
@@ -142,13 +127,6 @@ export function CalendarMenuBar({
         viewCheckbox("month", t("apps.calendar.menu.monthView")),
         { type: "separator" },
         {
-          type: "checkbox",
-          label: t("apps.calendar.menu.showToDoItems"),
-          checked: showTodoSidebar,
-          onChange: () => onToggleTodoSidebar(),
-        },
-        { type: "separator" },
-        {
           type: "action",
           label: t("apps.calendar.menu.goToToday"),
           onClick: onGoToToday,
@@ -158,19 +136,8 @@ export function CalendarMenuBar({
   ];
 
   return (
-    <AppMenuBarShell
-      isWindowsTheme={isWindowsTheme}
-      isMacOSTheme={isMacOSTheme}
-      appId={appId}
-      appName={appName}
-      isShareDialogOpen={isShareDialogOpen}
-      setIsShareDialogOpen={setIsShareDialogOpen}
-      helpItemLabel={t("apps.calendar.menu.help")}
-      aboutItemLabel={t("apps.calendar.menu.about")}
-      onShowHelp={onShowHelp}
-      onShowAbout={onShowAbout}
-    >
+    <MenuBar inWindowFrame={isWindowsTheme}>
       <AppMenuBarMenus menus={menus} />
-    </AppMenuBarShell>
+    </MenuBar>
   );
 }

@@ -1,4 +1,4 @@
-import { CaretLeft, CaretRight, Plus, ListChecks, SidebarSimple, CalendarBlank } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, Plus, SidebarSimple, CalendarBlank } from "@phosphor-icons/react";
 import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,6 @@ export function BottomToolbar({
   view, onSetView, onGoToToday, onNewEvent, onPrev, onNext,
   showCalendarSidebar, onToggleCalendarSidebar,
   showMiniCalendar, onToggleMiniCalendar,
-  showTodoSidebar, onToggleTodoSidebar,
   searchQuery, onSearchQueryChange, showSearch,
   isNarrow,
   isWindowsTheme, isMacOSTheme, isSystem7Theme, t,
@@ -17,7 +16,6 @@ export function BottomToolbar({
   onPrev: () => void; onNext: () => void;
   showCalendarSidebar: boolean; onToggleCalendarSidebar: () => void;
   showMiniCalendar: boolean; onToggleMiniCalendar: () => void;
-  showTodoSidebar: boolean; onToggleTodoSidebar: () => void;
   searchQuery: string; onSearchQueryChange: (value: string) => void; showSearch: boolean;
   isNarrow: boolean;
   isWindowsTheme: boolean; isMacOSTheme: boolean; isSystem7Theme: boolean; t: (key: string) => string;
@@ -118,15 +116,6 @@ export function BottomToolbar({
               <button type="button" className="metal-inset-btn metal-inset-icon" onClick={onNewEvent} title={t("apps.calendar.menu.newEvent")}>
                 <Plus size={12} weight="bold" />
               </button>
-              <button
-                type="button"
-                className="metal-inset-btn metal-inset-icon"
-                onClick={onToggleTodoSidebar}
-                data-state={showTodoSidebar ? "on" : "off"}
-                title={t("apps.calendar.sidebar.toDoItems")}
-              >
-                <ListChecks size={12} weight="bold" />
-              </button>
             </div>
           </div>
         </>
@@ -187,11 +176,6 @@ export function BottomToolbar({
             <Button variant={isSystem7Theme ? "player" : "ghost"} onClick={onNewEvent}
               className={cn("size-6", isWindowsTheme && "text-black")} title={t("apps.calendar.menu.newEvent")}>
               <Plus size={12} weight="bold" />
-            </Button>
-            <Button variant={isSystem7Theme ? "player" : "ghost"}
-              onClick={onToggleTodoSidebar} data-state={showTodoSidebar ? "on" : "off"}
-              className={cn("size-6", isWindowsTheme && "text-black")} title={t("apps.calendar.sidebar.toDoItems")}>
-              <ListChecks size={12} weight="bold" />
             </Button>
           </div>
         </>

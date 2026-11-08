@@ -21,7 +21,7 @@ import { CalendarList } from "./CalendarList";
 import { DayTimeGrid } from "./DayTimeGrid";
 import { MiniCalendar } from "./MiniCalendar";
 import { MonthGrid } from "./MonthGrid";
-import { TodoSidebar } from "./TodoSidebar";
+import { BookPanel } from "./BookPanel";
 import { WeekTimeGrid } from "./WeekTimeGrid";
 import { isKeyboardDeleteTargetEditable } from "./calendarAppUtils";
 import { usePersistHydrated } from "@/hooks/usePersistHydrated";
@@ -54,7 +54,6 @@ export function CalendarAppComponent({
     narrowDayNames, hourLabels, weekDates, weekLabel,
     selectedEventId, setSelectedEventId,
     calendars, toggleCalendarVisibility,
-    todos, addTodo, toggleTodo, updateTodo, deleteTodo, showTodoSidebar, setShowTodoSidebar,
     navigateMonth, navigateWeek, goToToday, setView, setSelectedDate,
     handleDateClick, handleDateDoubleClick, handleNewEvent, handleNewEventAtTime, handleEditSelectedEvent, handleDeleteSelectedEvent, handleUpdateEvent,
     fileInputRef, handleImport, handleFileSelected, handleExport,
@@ -70,27 +69,16 @@ export function CalendarAppComponent({
     canRedo,
   });
 
-  // Selected todo (mirrors selectedEventId — drives the details tray).
-  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
-
-  // Resolve currently-selected event/todo for the tray.
+  // Resolve currently-selected event for the tray.
   const selectedEvent = useMemo(
     () => (selectedEventId ? events.find((e) => e.id === selectedEventId) || null : null),
     [selectedEventId, events]
   );
-  const selectedTodo = useMemo(
-    () => (selectedTodoId ? todos.find((t) => t.id === selectedTodoId) || null : null),
-    [selectedTodoId, todos]
-  );
-
   // Open the details tray whenever something is selected; close otherwise.
-  const showTrayDrawer = !!(selectedEvent || selectedTodo);
+  const showTrayDrawer = !!selectedEvent;
 
-  // Selecting an event clears any selected todo and vice versa so only one
-  // detail panel shows at a time.
   const handleSelectEvent = useCallback(
     (id: string, options?: { toggle?: boolean }) => {
-      setSelectedTodoId(null);
       if (options?.toggle === false) {
         setSelectedEventId(id);
         return;
@@ -100,31 +88,16 @@ export function CalendarAppComponent({
     [setSelectedEventId]
   );
 
-  const handleSelectTodo = useCallback((id: string) => {
-    setSelectedEventId(null);
-    setSelectedTodoId(id);
-  }, [setSelectedEventId]);
-
   const handleDeleteEventFromTray = useCallback((id: string) => {
     if (id === selectedEventId) {
       handleDeleteSelectedEvent();
     }
   }, [selectedEventId, handleDeleteSelectedEvent]);
 
-  const handleDeleteTodoFromTray = useCallback((id: string) => {
-    deleteTodo(id);
-    if (id === selectedTodoId) setSelectedTodoId(null);
-  }, [deleteTodo, selectedTodoId]);
-
-  /** New events open in the tray; clear to-do selection so the drawer targets the event. */
-  const onNewEvent = useCallback(() => {
-    setSelectedTodoId(null);
-    handleNewEvent();
-  }, [handleNewEvent]);
+  const onNewEvent = handleNewEvent;
 
   const onNewEventAtTime = useCallback(
     (date: string, hour: number) => {
-      setSelectedTodoId(null);
       handleNewEventAtTime(date, hour);
     },
     [handleNewEventAtTime]
@@ -132,7 +105,6 @@ export function CalendarAppComponent({
 
   const onDateDoubleClick = useCallback(
     (date: string) => {
-      setSelectedTodoId(null);
       handleDateDoubleClick(date);
     },
     [handleDateDoubleClick]
@@ -167,8 +139,6 @@ export function CalendarAppComponent({
 
   const isNarrow = containerWidth < 600;
   const showSidebar = containerWidth >= 540 && showCalendarSidebar;
-  const showTodo = showTodoSidebar && !isNarrow;
-  const showTodoFullWidth = showTodoSidebar && isNarrow;
   const effectiveView = view;
   const safeSearchQuery = searchQuery ?? "";
   const normalizedSearchQuery = useMemo(() => safeSearchQuery.trim().toLocaleLowerCase(), [safeSearchQuery]);
@@ -193,15 +163,11 @@ export function CalendarAppComponent({
     }
   }, [effectiveView, navigateWeek, navigateMonth, selectedDate, setSelectedDate]);
 
-  const headerLabel = showTodoFullWidth
-    ? t("apps.calendar.sidebar.toDoItems")
-    : effectiveView === "week" ? weekLabel : effectiveView === "day" ? selectedDateLabel : monthYearLabel;
+  const headerLabel = effectiveView === "week" ? weekLabel : effectiveView === "day" ? selectedDateLabel : monthYearLabel;
 
   const menuBar = (
     <CalendarMenuBar
       onClose={onClose}
-      onShowHelp={() => setIsHelpDialogOpen(true)}
-      onShowAbout={() => setIsAboutDialogOpen(true)}
       onNewEvent={onNewEvent}
       onImport={handleImport}
       onExport={handleExport}
@@ -211,8 +177,6 @@ export function CalendarAppComponent({
       view={view}
       onSetView={setView}
       onGoToToday={goToToday}
-      showTodoSidebar={showTodoSidebar}
-      onToggleTodoSidebar={() => setShowTodoSidebar(!showTodoSidebar)}
       instanceId={instanceId}
     />
   );
@@ -223,13 +187,9 @@ export function CalendarAppComponent({
       if (e.key !== "Delete" && e.key !== "Backspace") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isKeyboardDeleteTargetEditable(e.target)) return;
-      if (!selectedEventId && !selectedTodoId) return;
+      if (!selectedEventId) return;
       e.preventDefault();
-      if (selectedEventId) {
-        handleDeleteSelectedEvent();
-      } else if (selectedTodoId) {
-        handleDeleteTodoFromTray(selectedTodoId);
-      }
+      handleDeleteSelectedEvent();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
@@ -238,9 +198,7 @@ export function CalendarAppComponent({
     isForeground,
     hasHydrated,
     selectedEventId,
-    selectedTodoId,
     handleDeleteSelectedEvent,
-    handleDeleteTodoFromTray,
   ]);
 
   return (
@@ -264,16 +222,12 @@ export function CalendarAppComponent({
           <AppDrawer isOpen={showTrayDrawer}>
             <TrayDetails
               selectedEvent={selectedEvent}
-              selectedTodo={selectedTodo}
               calendars={calendars}
               isMacOSTheme={isMacOSTheme}
               isSystem7Theme={isSystem7Theme}
               isWindowsTheme={isWindowsTheme}
               onUpdateEvent={handleUpdateEvent}
               onDeleteEvent={handleDeleteEventFromTray}
-              onUpdateTodo={updateTodo}
-              onToggleTodo={toggleTodo}
-              onDeleteTodo={handleDeleteTodoFromTray}
             />
           </AppDrawer>
         ),
@@ -382,15 +336,15 @@ export function CalendarAppComponent({
               )
             )}
 
-            {/* Main view area — hidden when todo is full-width on narrow screens */}
-            {!showTodoFullWidth && (
+            {(
               <div
-                className={cn("flex-1 flex overflow-hidden calendar-grid bg-white os-inset-pane")}
+                className={cn("flex-1 flex overflow-hidden calendar-grid bg-white os-inset-pane", effectiveView === "week" && "flex-col")}
                 style={isMacOSTheme ? {
                   border: "1px solid rgba(0, 0, 0, 0.55)",
                   boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.4)",
                 } : undefined}
               >
+                {effectiveView === "week" && weekDates[0] && <BookPanel week={weekDates[0].date} />}
                 {effectiveView === "week" && (
                   <WeekTimeGrid weekDates={weekDates} selectedEventId={selectedEventId}
                     onDateClick={handleDateClick} onTimeSlotClick={onNewEventAtTime}
@@ -419,52 +373,6 @@ export function CalendarAppComponent({
               </div>
             )}
 
-            {/* Todo: full-width on narrow screens, sidebar on wide */}
-            {showTodoFullWidth && (
-              <div
-                className="flex-1 overflow-y-auto bg-white os-inset-pane"
-                style={isMacOSTheme ? {
-                  border: "1px solid rgba(0, 0, 0, 0.55)",
-                  boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.4)",
-                } : undefined}
-              >
-                <TodoSidebar
-                  todos={todos}
-                  calendars={calendars}
-                  onToggle={toggleTodo}
-                  onAdd={addTodo}
-                  onUpdate={updateTodo}
-                  onDelete={deleteTodo}
-                  isMacOSTheme={isMacOSTheme}
-                  isSystem7Theme={isSystem7Theme}
-                  fullWidth
-                  selectedTodoId={selectedTodoId}
-                  onSelectTodo={handleSelectTodo}
-                />
-              </div>
-            )}
-            {showTodo && (
-              <div
-                className="shrink-0 overflow-y-auto bg-white os-inset-pane"
-                style={isMacOSTheme ? {
-                  border: "1px solid rgba(0, 0, 0, 0.55)",
-                  boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.4)",
-                } : { borderLeft: "1px solid rgba(0,0,0,0.08)" }}
-              >
-                <TodoSidebar
-                  todos={todos}
-                  calendars={calendars}
-                  onToggle={toggleTodo}
-                  onAdd={addTodo}
-                  onUpdate={updateTodo}
-                  onDelete={deleteTodo}
-                  isMacOSTheme={isMacOSTheme}
-                  isSystem7Theme={isSystem7Theme}
-                  selectedTodoId={selectedTodoId}
-                  onSelectTodo={handleSelectTodo}
-                />
-              </div>
-            )}
           </div>
 
           {/* Bottom toolbar */}
@@ -473,7 +381,6 @@ export function CalendarAppComponent({
             onPrev={handlePrev} onNext={handleNext}
             showCalendarSidebar={showCalendarSidebar} onToggleCalendarSidebar={() => setShowCalendarSidebar((current) => !current)}
             showMiniCalendar={showMiniCalendar} onToggleMiniCalendar={() => setShowMiniCalendar((current) => !current)}
-            showTodoSidebar={showTodoSidebar} onToggleTodoSidebar={() => setShowTodoSidebar(!showTodoSidebar)}
             searchQuery={safeSearchQuery} onSearchQueryChange={setSearchQuery} showSearch={!isNarrow}
             isNarrow={isNarrow}
             isWindowsTheme={isWindowsTheme} isMacOSTheme={isMacOSTheme} isSystem7Theme={isSystem7Theme} t={t}

@@ -23,12 +23,6 @@ export const helpItems = [
       "Double-click any date — or use File ▸ New Event — to add a timed event",
   },
   {
-    icon: "✅",
-    title: "Todos Sidebar",
-    description:
-      "Toggle the Todos panel to manage tasks alongside your scheduled events",
-  },
-  {
     icon: "📥",
     title: "iCal Import / Export",
     description:
