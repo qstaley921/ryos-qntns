@@ -71,8 +71,12 @@ if (import.meta.main) {
   let rawBytes = 0;
   let gzipBytes = 0;
   const rows: Array<{ url: string; raw: number; gzip: number }> = [];
+  // The Ghost build prefixes every URL with RYOS_BASE (/assets/r-<stamp>/); dist/ holds the files without it.
+  const base = process.env.RYOS_BASE;
   for (const url of scripts) {
-    const filePath = path.join(distRoot, url.split(/[?#]/)[0]);
+    let file = url.split(/[?#]/)[0];
+    if (base && base !== "/" && file.startsWith(base)) file = "/" + file.slice(base.length);
+    const filePath = path.join(distRoot, file);
     if (!existsSync(filePath)) {
       console.error(`[boot] ${url} is referenced by index.html but missing`);
       process.exit(1);
