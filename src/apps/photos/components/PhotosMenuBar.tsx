@@ -18,6 +18,8 @@ export function PhotosMenuBar({
   onBack,
   onToggleStrip,
   stripLabel,
+  onToggleSide,
+  sideLabel,
 }: {
   onClose: () => void;
   onShowAbout: () => void;
@@ -30,6 +32,8 @@ export function PhotosMenuBar({
   onBack?: () => void;
   onToggleStrip?: () => void;
   stripLabel: string;
+  onToggleSide: () => void;
+  sideLabel: string;
 }) {
   const { t } = useTranslation();
   const { isShareDialogOpen, setIsShareDialogOpen, isWindowsTheme, isMacOSTheme, appId, appName } =
@@ -50,6 +54,7 @@ export function PhotosMenuBar({
       label: "View",
       items: [
         { type: "action", label: "Library", onClick: onLibrary },
+        { type: "action", label: sideLabel, onClick: onToggleSide },
         { type: "separator" },
         { type: "action", label: "Previous Photo", onClick: onPrev ?? (() => {}), disabled: !onPrev, shortcut: "\u2190" },
         { type: "action", label: "Next Photo", onClick: onNext ?? (() => {}), disabled: !onNext, shortcut: "\u2192" },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CaretLeft, CaretRight, DownloadSimple, FilmStrip } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, DownloadSimple, FilmStrip, SidebarSimple } from "@phosphor-icons/react";
 import type { AppProps } from "@/apps/base/types";
 import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
@@ -59,6 +59,7 @@ export function PhotosAppComponent({
   const [spots, setSpots] = useState<Record<string, number>>({});
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [hideStrip, setHideStrip] = useState(false); // session only: not persisted
+  const [hideSide, setHideSide] = useState(false); // §13i: session only
 
   useEffect(() => {
     let live = true;
@@ -80,12 +81,19 @@ export function PhotosAppComponent({
     openDoc(d).then((b) => setAlbums((a) => ({ ...a, [d.id]: b ? albumOf(b) : { photos: [], own: null } })));
   }, [sel, docs, albums]);
 
-  const album = sel === LIBRARY ? null : albums[sel];
+  const isLib = sel === LIBRARY;
+  // §13h: Library is every album's photos, flat: source-list order, then photo order in each post. No new call.
+  const lib = (docs ?? []).flatMap((d) => (albums[d.id]?.photos ?? []).map((src) => ({ src, slug: d.slug })));
+  const album = isLib ? null : albums[sel];
+  const shown = isLib ? lib.map((p) => p.src) : album?.photos ?? null;
   const current = docs?.find((d) => d.id === sel);
+  // Order Postcard: the open album, or in Library the open photo's own post.
+  const postcardSlug = isLib ? (big !== null ? lib[big]?.slug : undefined) : current?.slug;
   const orderPostcard = () =>
-    current && launchApp("internet-explorer", { initialData: { mini: true, path: `/${current.slug}/?postcard` }, multiWindow: true });
+    postcardSlug && launchApp("internet-explorer", { initialData: { mini: true, path: `/${postcardSlug}/?postcard` }, multiWindow: true });
   const playShow = () =>
     album?.own && play(spots[sel] ?? 0, { ...album.own, onstop: (spot: number) => setSpots((s) => ({ ...s, [sel]: spot })) });
+  const sideLabel = hideSide ? "Show Sidebar" : "Hide Sidebar";
   const go = (id: string) => { setSel(id); setBig(null); setPicked(null); };
 
   // Grid keys, only while the grid shows in the foreground window (the viewer has its own).
@@ -103,23 +111,13 @@ export function PhotosAppComponent({
 
   const grid = (() => {
     if (!docs) return <Status>Loading…</Status>;
-    if (sel === LIBRARY) {
-      if (!docs.length) return <Status>No albums</Status>;
-      return (
-        <Grid>
-          {docs.map((d) => (
-            <Thumb key={d.id} src={d.feature_image ?? albums[d.id]?.photos[0] ?? null} title={d.title} onClick={() => go(d.id)} />
-          ))}
-        </Grid>
-      );
-    }
-    if (!album) return <Status>Loading…</Status>;
-    if (!album.photos.length) return <Status>No photos</Status>;
+    if (isLib ? docs.length > 0 && !docs.some((d) => albums[d.id]) : !album) return <Status>Loading…</Status>;
+    if (!shown?.length) return <Status>No photos</Status>;
     return (
       <Grid>
-        {album.photos.map((src, i) => (
+        {shown.map((src, i) => (
           <Thumb
-            key={src}
+            key={i}
             src={src}
             selected={picked === i}
             onClick={() => (picked === i ? setBig(i) : setPicked(i))}
@@ -130,8 +128,7 @@ export function PhotosAppComponent({
     );
   })();
 
-  const count =
-    sel === LIBRARY ? `${docs?.length ?? 0} albums` : album ? `${album.photos.length} photos` : "";
+  const count = shown ? `${shown.length} photos` : "";
 
   return (
     <AppWindowShell
@@ -142,15 +139,17 @@ export function PhotosAppComponent({
         <PhotosMenuBar
           onClose={onClose}
           onShowAbout={() => setIsAboutOpen(true)}
-          onOrderPostcard={current ? orderPostcard : undefined}
+          onOrderPostcard={postcardSlug ? orderPostcard : undefined}
           onPlay={album?.own ? playShow : undefined}
           playLabel={spots[sel] ? "Resume Slideshow" : "Play Slideshow"}
           onLibrary={() => go(LIBRARY)}
           onPrev={big !== null && big > 0 ? () => setBig(big - 1) : undefined}
-          onNext={big !== null && album && big < album.photos.length - 1 ? () => setBig(big + 1) : undefined}
+          onNext={big !== null && shown && big < shown.length - 1 ? () => setBig(big + 1) : undefined}
           onBack={big !== null ? () => setBig(null) : undefined}
           onToggleStrip={big !== null ? () => setHideStrip((h) => !h) : undefined}
           stripLabel={hideStrip ? "Show Filmstrip" : "Hide Filmstrip"}
+          onToggleSide={() => setHideSide((h) => !h)}
+          sideLabel={sideLabel}
         />
       }
       windowFrameProps={{
@@ -178,7 +177,7 @@ export function PhotosAppComponent({
       <div className="flex h-full w-full flex-col font-os-ui text-os-text-primary">
         <div className="flex min-h-0 flex-1">
           {/* Source list: Library, then one album per photo post. */}
-          <nav className="w-48 shrink-0 overflow-auto border-r border-black/10 bg-os-panel-bg py-2 text-sm">
+          <nav className={cn("w-48 shrink-0", hideSide && "hidden", "overflow-auto border-r border-black/10 bg-os-panel-bg py-2 text-sm")}>
             <SourceRow active={sel === LIBRARY} onClick={() => go(LIBRARY)}>
               Library
             </SourceRow>
@@ -191,31 +190,42 @@ export function PhotosAppComponent({
           </nav>
           {/* The content column: the grid, or the viewer in its place (§13 13-opus_high-3); the source list stays. A click on empty grid space clears the selection (Thumb stops its own). */}
           <div className="relative min-w-0 flex-1 overflow-auto bg-white" onClick={() => setPicked(null)}>
-            {big !== null && album ? (
-              <Viewer photos={album.photos} at={big} onAt={setBig} onClose={() => setBig(null)} active={!!isForeground} hideStrip={hideStrip} />
+            {big !== null && shown ? (
+              <Viewer photos={shown} at={big} onAt={setBig} onClose={() => setBig(null)} active={!!isForeground} hideStrip={hideStrip} />
             ) : (
               grid
             )}
           </div>
         </div>
-        {/* Bottom bar: Play (slideshow albums) and Order Postcard (any open album, §70). */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-t border-black/10 bg-os-panel-bg px-4 text-xs text-os-text-secondary">
-          <span>{count}</span>
+        {/* Bottom bar: Play (slideshow albums) and Order Postcard (any open album, §70).
+            §13i: split at the source list's 192px (w-48) edge, so the sidebar button sits 16px into the content
+            column (the grid's own p-4 inset); hidden sidebar = no spacer, the button at the window's left + 16. */}
+        <div className="flex h-12 shrink-0 border-t border-black/10 bg-os-panel-bg text-xs text-os-text-secondary">
+          {!hideSide && <div className="w-48 shrink-0 border-r border-black/10" />}
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 px-4">
           <div className="flex items-center gap-2">
-          {big !== null && album && (
+            <div className="metal-inset-btn-group">
+              <button type="button" className={BAR_BTN} onClick={() => setHideSide((h) => !h)} data-state={hideSide ? "off" : "on"} title={sideLabel} aria-label={sideLabel}>
+                <SidebarSimple size={14} weight="bold" />
+              </button>
+            </div>
+            <span>{count}</span>
+          </div>
+          <div className="flex items-center gap-2">
+          {big !== null && shown && (
             <>
               {/* §13f: icon-only Aqua toolbar buttons (the fork's metal-inset classes, as Calendar's bottom bar). */}
               <div className="metal-inset-btn-group">
                 <button type="button" className={BAR_BTN} disabled={big <= 0} onClick={() => setBig(big - 1)} title="Previous" aria-label="Previous">
                   <CaretLeft size={14} weight="bold" />
                 </button>
-                <button type="button" className={BAR_BTN} disabled={big >= album.photos.length - 1} onClick={() => setBig(big + 1)} title="Next" aria-label="Next">
+                <button type="button" className={BAR_BTN} disabled={big >= shown.length - 1} onClick={() => setBig(big + 1)} title="Next" aria-label="Next">
                   <CaretRight size={14} weight="bold" />
                 </button>
               </div>
               {/* Plain link: the image host is another origin, so the browser may open it instead of saving. No fetch/blob (network rule). */}
               <div className="metal-inset-btn-group">
-                <a className={BAR_BTN} href={album.photos[big]} download target="_blank" rel="noreferrer" title="Download" aria-label="Download">
+                <a className={BAR_BTN} href={shown[big]} download target="_blank" rel="noreferrer" title="Download" aria-label="Download">
                   <DownloadSimple size={14} weight="bold" />
                 </a>
               </div>
@@ -227,7 +237,7 @@ export function PhotosAppComponent({
               </div>
             </>
           )}
-          {current && (
+          {postcardSlug && (
             <div className="metal-inset-btn-group">
             <button
               type="button"
@@ -252,6 +262,7 @@ export function PhotosAppComponent({
             </button>
             </div>
           )}
+          </div>
           </div>
         </div>
       </div>
@@ -305,7 +316,7 @@ function Viewer({ photos, at, onAt, onClose, active, hideStrip }: { photos: stri
       <div ref={strip} className={cn("flex h-[104px] shrink-0 gap-2 overflow-x-auto p-4", hideStrip && "hidden")}>
         {photos.map((src, i) => (
           <button
-            key={src}
+            key={i}
             type="button"
             onClick={() => onAt(i)}
             aria-label={`Photo ${i + 1} of ${photos.length}`}
