@@ -1,4 +1,6 @@
-import { useLaunchApp } from "@/hooks/useLaunchApp";
+import { useState } from "react";
+import { ThemedIcon } from "@/components/shared/ThemedIcon";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { AppDrawer } from "@/components/shared/AppDrawer";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; onClose: () => void; info: GhostInfo }) {
-  const launchApp = useLaunchApp();
+  const [copied, setCopied] = useState<boolean | null>(null); // null = alert closed
+  const { isMacOSTheme } = useThemeFlags();
   const { doc, words, views, likes, links } = info;
   // Ghost's internal tags are the #-tags, slug "hash-…"; only public ones are shown.
   const tags = (doc.tags ?? []).filter((t) => !t.slug.startsWith("hash-"));
@@ -61,10 +64,7 @@ export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; on
               href={doc.url}
               onClick={(e) => {
                 e.preventDefault();
-                launchApp("internet-explorer", {
-                  initialData: { mini: true, path: new URL(doc.url!, "https://www.qntns.com/").pathname },
-                  multiWindow: true,
-                });
+                navigator.clipboard.writeText(doc.url!).then(() => setCopied(true), () => setCopied(false));
               }}
             >
               {doc.url.replace(/^https?:\/\/(www\.)?/, "")}
@@ -84,12 +84,34 @@ export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; on
         )}
       </dl>
   );
-  if (!compact) return (
+  const alert = (
+    <Dialog open={copied !== null} onOpenChange={(o) => !o && setCopied(null)}>
+      <DialogContent className="max-w-[400px]">
+        <DialogTitle className="sr-only">Info</DialogTitle>
+        <DialogDescription className="sr-only">{copied ? "Link copied to clipboard" : "Couldn't copy the link"}</DialogDescription>
+        <DialogHeader>Info</DialogHeader>
+        <div className="p-6">
+          <div className="flex gap-3 items-start">
+            <ThemedIcon name="warn.png" alt="" className="size-[32px] mt-1 [image-rendering:pixelated]" width={32} height={32} />
+            <div className="font-geneva-12 text-[12px] leading-tight text-neutral-900">
+              <p className="mb-2">{copied ? "Link copied to clipboard" : "Couldn't copy the link"}</p>
+              <p className="break-all select-text">{doc.url}</p>
+            </div>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <Button autoFocus variant={isMacOSTheme ? "default" : "retro"} onClick={() => setCopied(null)} className="font-geneva-12 text-[12px]">OK</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+  if (!compact) return (<>
     <AppDrawer isOpen={isOpen} onClose={onClose} title="Info" data-textedit-info-drawer="">
       {rows}
     </AppDrawer>
-  );
-  return (
+    {alert}
+  </>);
+  return (<>
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex flex-col gap-0 max-w-[400px] max-h-[calc(100dvh-32px)]" data-textedit-info-drawer="">
         <DialogTitle className="sr-only">Info</DialogTitle>
@@ -101,5 +123,6 @@ export function GhostInfoDrawer({ isOpen, onClose, info }: { isOpen: boolean; on
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+    {alert}
+  </>);
 }
