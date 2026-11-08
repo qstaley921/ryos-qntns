@@ -368,7 +368,7 @@ export function EventTrayEditor({
           {!booked && (
             <Button
               type="button"
-              variant={isMacOSTheme ? "aqua" : "retro"}
+              variant={isMacOSTheme ? (canSend ? "default" : "aqua") : "retro"}
               size="sm"
               disabled={!canSend}
               onClick={send}
