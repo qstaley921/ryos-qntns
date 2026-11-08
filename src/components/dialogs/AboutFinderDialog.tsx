@@ -327,6 +327,15 @@ export function AboutFinderDialog({
               >
                 <p>© Ryo Lu. 1992-{new Date().getFullYear()}</p>
                 <p>
+                  OS Theme made by{" "}
+                  <a href="https://os.ryo.lu" target="_blank" rel="noopener noreferrer" className="text-os-link hover:underline">ryOS</a>
+                </p>
+                <p>Content made by QNTNs</p>
+                <p>
+                  Licensed AGPL-3.0 ·{" "}
+                  <a href="https://github.com/qstaley921/ryos-qntns" target="_blank" rel="noopener noreferrer" className="text-os-link hover:underline">Source</a>
+                </p>
+                <p>
                   {isMac && desktopDownloadUrl && (
                     <>
                       <a

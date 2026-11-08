@@ -11,6 +11,7 @@ import {
   MenubarSubContent,
 } from "@/components/ui/menubar";
 import { AboutFinderDialog } from "@/components/dialogs/AboutFinderDialog";
+import { AboutQntnsDialog } from "@/components/dialogs/AboutQntnsDialog";
 import { LoginDialog } from "@/components/dialogs/LoginDialog";
 import { LogoutDialog } from "@/components/dialogs/LogoutDialog";
 import { AppId, appRegistry } from "@/config/appRegistry";
@@ -71,6 +72,7 @@ const getDocumentIconPath = (doc: RecentDocument): string => {
 export function AppleMenu() {
   const { t } = useTranslation();
   const [aboutFinderOpen, setAboutFinderOpen] = useState(false);
+  const [aboutQntnsOpen, setAboutQntnsOpen] = useState(false);
   const launchApp = useLaunchApp();
   const { isMacOSTheme } = useThemeFlags();
   const { isFullscreen, supported: fullscreenSupported, toggle: toggleFullscreen } =
@@ -174,6 +176,12 @@ export function AppleMenu() {
             className="text-md h-6 px-3"
           >
             {t("common.appleMenu.aboutThisComputer")}
+          </MenubarItem>
+          <MenubarItem
+            onClick={() => setAboutQntnsOpen(true)}
+            className="text-md h-6 px-3"
+          >
+            About QNTNs
           </MenubarItem>
 
           {/* Native desktop shell auto-update (Electron). Web has no shell to update. */}
@@ -341,6 +349,7 @@ export function AppleMenu() {
         isOpen={aboutFinderOpen}
         onOpenChange={setAboutFinderOpen}
       />
+      <AboutQntnsDialog isOpen={aboutQntnsOpen} onOpenChange={setAboutQntnsOpen} />
 
       {/* Sign Up Dialog */}
       <LoginDialog
