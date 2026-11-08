@@ -8,10 +8,7 @@ import {
   getCalendarEventEndDate,
 } from "@/shared/calendarEventDates";
 import type { WeekDay } from "../../hooks/useCalendarLogic";
-import {
-  DEFAULT_TIME_GRID_HOUR_HEIGHT,
-  useTimeScaleGestures,
-} from "../../hooks/useTimeScaleGestures";
+import { useTimeScaleGestures } from "../../hooks/useTimeScaleGestures";
 import { TimedEventBlock } from "../TimedEventBlock";
 import { Availability, hoursOf, type Bookable } from "./Availability";
 import {
@@ -21,6 +18,7 @@ import {
   TODAY_RED,
   TODAY_RED_XP,
 } from "./calendarAppConstants";
+import { useFilledHourHeight } from "./calendarAppUtils";
 import { useEffectiveTimezone } from "@/hooks/useEffectiveTimezone";
 import { getZonedMinutesSinceMidnight } from "@/lib/timezoneConfig";
 
@@ -37,7 +35,7 @@ export function WeekTimeGrid({
   isSystem7Theme,
   searchQuery,
   hourLabels,
-  hourHeight,
+  hourHeight: zoomHeight,
   setHourHeight,
   onUpdateEvent,
 }: {
@@ -58,11 +56,12 @@ export function WeekTimeGrid({
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
 }) {
   const { t } = useTranslation();
-  const [gridStart, gridEnd] = hoursOf(bookable);
+  const [gridStart, gridEnd] = hoursOf(weekDates.map((d) => d.date));
   const useGeneva = isMacOSTheme || isSystem7Theme;
   const scrollRef = useRef<HTMLDivElement>(null);
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
-  useTimeScaleGestures(scrollRef, hourHeight, setHourHeight, {
+  const hourHeight = useFilledHourHeight(scrollRef, zoomHeight, gridEnd - gridStart);
+  useTimeScaleGestures(scrollRef, zoomHeight, setHourHeight, {
     horizontalScrollParentRef: horizontalScrollRef,
   });
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
@@ -101,8 +100,7 @@ export function WeekTimeGrid({
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const scrollTo = (8 - gridStart) * DEFAULT_TIME_GRID_HOUR_HEIGHT;
-    el.scrollTop = Math.max(0, scrollTo - 20);
+    el.scrollTop = 0;
   }, [gridStart]);
 
   useEffect(() => {
@@ -236,7 +234,7 @@ export function WeekTimeGrid({
                   />
                 ))}
 
-                <Availability date={day.date} bookable={bookable} hourHeight={hourHeight} onSlot={onSlot} />
+                <Availability date={day.date} bookable={bookable} hourHeight={hourHeight} gridStart={gridStart} onSlot={onSlot} />
 
                 {day.timedEvents.map((ev) => (
                   <TimedEventBlock

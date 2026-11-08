@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchSlots, getEvent } from "./booking";
-import { HOUR_END, HOUR_START } from "./calendarAppConstants";
+import { ET_CLOSE, ET_OPEN } from "./calendarAppConstants";
 
 export type Bookable = { slots: string[] | null; minutes: number };
 
@@ -20,23 +20,35 @@ export function useBookable(week: string): Bookable & { failed: boolean } {
   return { slots, minutes, failed };
 }
 
-/** Hours the grid shows: earliest free start (floored) to latest free end (ceiled) across the week; whole day with no slots. */
-export function hoursOf({ slots, minutes }: Bookable): [number, number] {
-  if (!slots?.length) return [HOUR_START, HOUR_END];
-  const t = slots.map((s) => Date.parse(s));
-  const mod = (ms: number) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes(); };
-  // shortcut: a booking that crosses midnight is clipped to the day, as dayRanges does
-  const lo = Math.floor(Math.min(...t.map(mod)) / 60);
-  const hi = Math.ceil(Math.min(24 * 60, Math.max(...t.map((x) => mod(x) + minutes))) / 60);
-  return [lo, Math.max(hi, lo + 1)];
+const ET = "America/New_York";
+/** Minutes ET is ahead of UTC at an instant (negative: ET is behind). */
+function etOffset(ms: number) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: ET, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" })
+    .formatToParts(ms).map((x) => [x.type, +x.value]));
+  return (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) - Math.floor(ms / 60000) * 60000) / 60000;
 }
 
-/** One day's free [start, end) minute ranges from the slots, and the gaps between them (merged runs). */
+/** The bookable window, 6 AM to 10 PM Eastern on that date, as minutes since the visitor's local midnight.
+ *  shortcut: a window that wraps past local midnight (zones east of ~UTC+2) shows the whole day. */
+export function dayWindow(date: string): [number, number] {
+  const [y, m, d] = date.split("-").map(Number);
+  const at = (h: number) => { const g = Date.UTC(y, m - 1, d, h); return g - etOffset(g) * 60000; };
+  const d0 = new Date(y, m - 1, d).getTime();
+  const lo = (at(ET_OPEN) - d0) / 60000, hi = (at(ET_CLOSE) - d0) / 60000;
+  return lo >= 0 && hi <= 1440 ? [lo, hi] : [0, 1440];
+}
+
+/** Whole local hours the grid shows for these dates: the union of their ET windows. */
+export function hoursOf(dates: string[]): [number, number] {
+  const w = dates.map(dayWindow);
+  return [Math.floor(Math.min(...w.map((x) => x[0])) / 60), Math.ceil(Math.max(...w.map((x) => x[1])) / 60)];
+}
+
+/** One day's free [start, end) minute ranges from the slots, and the gaps between them (merged runs), inside that day's ET window. */
 function dayRanges(date: string, b: Bookable) {
   const { slots, minutes } = b;
   const d0 = new Date(`${date}T00:00:00`).getTime();
-  const [h0, h1] = hoursOf(b);
-  const lo = h0 * 60, hi = h1 * 60;
+  const [lo, hi] = dayWindow(date);
   const free = (slots ?? [])
     .map((s) => ({ s, a: Math.max(lo, (Date.parse(s) - d0) / 60000) }))
     .map(({ s, a }) => ({ s, a, b: Math.min(hi, (Date.parse(s) - d0) / 60000 + minutes) }))
@@ -53,12 +65,12 @@ function dayRanges(date: string, b: Bookable) {
 }
 
 /** A day column's availability: read-only "Busy" blocks everywhere that is not a free slot, a button on each free slot. */
-export function Availability({ date, bookable, hourHeight, onSlot }: {
-  date: string; bookable: Bookable; hourHeight: number; onSlot: (slot: string, minutes: number) => void;
+export function Availability({ date, bookable, hourHeight, gridStart, onSlot }: {
+  date: string; bookable: Bookable; hourHeight: number; gridStart: number; onSlot: (slot: string, minutes: number) => void;
 }) {
   if (!bookable.slots) return null; // loading or failed: no blocks, nothing to click
   const { free, busy } = dayRanges(date, bookable);
-  const y = (m: number) => ((m - hoursOf(bookable)[0] * 60) / 60) * hourHeight;
+  const y = (m: number) => ((m - gridStart * 60) / 60) * hourHeight;
   return (
     <>
       {free.map((f) => (

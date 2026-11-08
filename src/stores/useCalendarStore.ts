@@ -105,6 +105,9 @@ const getTodayStr = (): string =>
 const formatDate = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+/** Same string as BOOKED_TITLE in the booking module (not imported: the store stays free of app code). */
+const isBooked = (e: CalendarEvent) => !!e.startTime && e.title.startsWith("Booked with Quentin");
+
 export const useCalendarStore = create<CalendarStoreState>()(
   persist(
     (set, get) => {
@@ -338,18 +341,19 @@ export const useCalendarStore = create<CalendarStoreState>()(
     },
     {
       name: STORAGE_KEYS.calendar,
-      version: 1,
+      version: 2,
       // v1: the default calendar "Home" is now "Personal" (same id, same colour)
+      // v2: only booked events persist; every placeholder / all-day event is dropped
       migrate: (persisted) => {
         const p = persisted as Partial<CalendarStoreState>;
-        return { ...p, calendars: p.calendars?.map((c) => (c.id === "home" && c.name === "Home" ? { ...c, name: "Personal" } : c)) } as CalendarStoreState;
+        return { ...p, events: p.events?.filter(isBooked), calendars: p.calendars?.map((c) => (c.id === "home" && c.name === "Home" ? { ...c, name: "Personal" } : c)) } as CalendarStoreState;
       },
       storage: createIndexedDBPersistStorage({
         legacyNames: [LEGACY_STORAGE_KEYS.calendar],
       }),
       // Do not persist viewport — opening Calendar should show today, not last session.
       partialize: (state) => ({
-        events: state.events,
+        events: state.events.filter(isBooked), // an unsent booking stays in memory
         calendars: state.calendars,
         todos: state.todos,
         showTodoSidebar: state.showTodoSidebar,
@@ -363,6 +367,7 @@ export const useCalendarStore = create<CalendarStoreState>()(
         return {
           ...currentState,
           ...p,
+          events: (p.events ?? currentState.events).filter(isBooked),
           // Always land on "today" in the user's effective timezone on rehydrate.
           selectedDate: formatZonedDateString(now, tz),
           currentMonth: zoned.month - 1,

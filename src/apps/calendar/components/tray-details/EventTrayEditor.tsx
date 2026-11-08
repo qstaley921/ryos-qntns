@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { AquaCheckbox } from "@/components/ui/aqua-checkbox";
 import type { CalendarEvent, CalendarGroup } from "@/stores/useCalendarStore";
 import { EVENT_COLOR_MAP } from "./constants";
 import {
@@ -36,9 +35,8 @@ export function EventTrayEditor({
   onDelete: (id: string) => void;
 }) {
   const [state, dispatch] = useReducer(eventEditorReducer, event, getEventEditorState);
-  const { title, location, notes, date, endDate, startTime, endTime } = state;
+  const { title, notes, date, endDate, startTime, endTime } = state;
   const setTitle = (value: string) => dispatch({ type: "setTitle", value });
-  const setLocation = (value: string) => dispatch({ type: "setLocation", value });
   const setNotes = (value: string) => dispatch({ type: "setNotes", value });
   const setDate = (value: string) => dispatch({ type: "setDate", value });
   const setEndDate = (value: string) => dispatch({ type: "setEndDate", value });
@@ -97,12 +95,6 @@ export function EventTrayEditor({
     if (next !== event.title) onUpdate(event.id, { title: next });
   };
 
-  const commitLocation = () => {
-    const next = location.trim() || undefined;
-    if (next !== (event.location || undefined)) {
-      onUpdate(event.id, { location: next });
-    }
-  };
 
   const commitNotes = () => {
     const next = notes.trim() || undefined;
@@ -137,22 +129,6 @@ export function EventTrayEditor({
     }
   };
 
-  const setAllDay = (next: boolean) => {
-    if (next) {
-      onUpdate(event.id, {
-        startTime: undefined,
-        endTime: undefined,
-        endDate: normalizeAllDayEndDate(date, endDate),
-      });
-    } else {
-      onUpdate(event.id, {
-        endDate: undefined,
-        startTime: startTime || "09:00",
-        endTime: endTime || "10:00",
-      });
-    }
-  };
-
   const commitTimes = (st: string, et: string) => {
     dispatch({ type: "setTimes", startTime: st, endTime: et });
     if (!allDay && (st !== event.startTime || et !== (event.endTime || ""))) {
@@ -175,12 +151,6 @@ export function EventTrayEditor({
       !isMacOSTheme &&
       "font-geneva-12 text-[16px] leading-snug",
     !isMacOSTheme && !isSystem7Theme && "text-base font-semibold leading-snug"
-  );
-
-  const subInputClass = cn(
-    "w-full bg-transparent border-0 outline-none focus:ring-0 p-0 mt-0.5",
-    "text-[11px] text-black/45 placeholder:text-black/35",
-    useGeneva && "font-geneva-12"
   );
 
   const fieldInputClass = cn(
@@ -234,31 +204,9 @@ export function EventTrayEditor({
           placeholder="Meet to…"
           aria-label={t("apps.calendar.event.title")}
         />
-        <input
-          type="text"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          onBlur={commitLocation}
-          onKeyDown={(e) => e.stopPropagation()}
-          className={subInputClass}
-          placeholder={t("apps.calendar.tray.locationPlaceholder")}
-          aria-label={t("apps.calendar.tray.locationPlaceholder")}
-        />
       </div>
 
       <div className="flex flex-col gap-2 min-h-0">
-        <TrayFieldRow
-          label={t("apps.calendar.views.allDay")}
-          useGeneva={useGeneva}
-        >
-          <button
-            type="button"
-            onClick={() => setAllDay(!allDay)}
-            className="flex shrink-0"
-          >
-            <AquaCheckbox checked={allDay} color="#4A90D9" />
-          </button>
-        </TrayFieldRow>
 
         {!allDay ? (
           <>

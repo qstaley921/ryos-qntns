@@ -16,8 +16,9 @@ export const EVENT_COLOR_LIGHT: Record<string, string> = {
   purple: "rgba(155, 89, 182, 0.15)",
 };
 
-export const HOUR_START = 0;
-export const HOUR_END = 24;
+/** The bookable window, in America/New_York hours (shown converted to the visitor's zone). */
+export const ET_OPEN = 6;
+export const ET_CLOSE = 22;
 export const TODAY_RED = "#E25B4F";
 export const TODAY_RED_XP = "#B53325";
 export const SEARCH_DIM_OPACITY = 0.28;

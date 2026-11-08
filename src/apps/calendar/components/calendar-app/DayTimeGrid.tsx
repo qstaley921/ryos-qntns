@@ -2,11 +2,9 @@ import { useRef, useLayoutEffect, useEffect, useState, useCallback, useMemo } fr
 import { cn } from "@/lib/utils";
 import { osSeparatorBorderClassName } from "@/components/shared/osThemePrimitives";
 import type { CalendarEvent } from "@/stores/useCalendarStore";
-import {
-  DEFAULT_TIME_GRID_HOUR_HEIGHT,
-  useTimeScaleGestures,
-} from "../../hooks/useTimeScaleGestures";
+import { useTimeScaleGestures } from "../../hooks/useTimeScaleGestures";
 import { TimedEventBlock } from "../TimedEventBlock";
+import { useFilledHourHeight } from "./calendarAppUtils";
 import { Availability, hoursOf, type Bookable } from "./Availability";
 import {
   EVENT_COLOR_LIGHT,
@@ -34,7 +32,7 @@ export function DayTimeGrid({
   isSystem7Theme,
   searchQuery,
   hourLabels,
-  hourHeight,
+  hourHeight: zoomHeight,
   setHourHeight,
   onUpdateEvent,
 }: {
@@ -55,9 +53,10 @@ export function DayTimeGrid({
   onUpdateEvent: (id: string, updates: Partial<CalendarEvent>) => void;
 }) {
   const useGeneva = isMacOSTheme || isSystem7Theme;
-  const [gridStart, gridEnd] = hoursOf(bookable);
+  const [gridStart, gridEnd] = hoursOf([date]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useTimeScaleGestures(scrollRef, hourHeight, setHourHeight);
+  const hourHeight = useFilledHourHeight(scrollRef, zoomHeight, gridEnd - gridStart);
+  useTimeScaleGestures(scrollRef, zoomHeight, setHourHeight);
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
 
   const handleEventTap = useCallback((ev: CalendarEvent, e?: React.MouseEvent) => {
@@ -106,8 +105,7 @@ export function DayTimeGrid({
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const scrollTo = (8 - gridStart) * DEFAULT_TIME_GRID_HOUR_HEIGHT;
-    el.scrollTop = Math.max(0, scrollTo - 20);
+    el.scrollTop = 0;
   }, [gridStart]);
 
   useEffect(() => {
@@ -165,7 +163,7 @@ export function DayTimeGrid({
               />
             ))}
 
-            <Availability date={date} bookable={bookable} hourHeight={hourHeight} onSlot={onSlot} />
+            <Availability date={date} bookable={bookable} hourHeight={hourHeight} gridStart={gridStart} onSlot={onSlot} />
 
             {timedEvents.map((ev) => (
               <TimedEventBlock

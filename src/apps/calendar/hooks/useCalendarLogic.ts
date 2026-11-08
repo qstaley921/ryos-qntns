@@ -423,26 +423,8 @@ export function useCalendarLogic() {
     [setSelectedDate]
   );
 
-  const handleDateDoubleClick = useCallback(
-    (date: string) => {
-      setSelectedDate(date);
-      const title = t("apps.calendar.tray.newEventTitle");
-      const cal = calendars[0];
-      const id = addEvent({
-        title,
-        date,
-        color: cal?.color || "blue",
-        calendarId: cal?.id || "home",
-      });
-      const created = useCalendarStore
-        .getState()
-        .events.find((e) => e.id === id);
-      if (created) pushUndo({ type: "addEvent", event: { ...created } });
-      setSelectedEventId(id);
-      track(CALENDAR_ANALYTICS.EVENT_CREATE, { source: "dateDoubleClick" });
-    },
-    [setSelectedDate, calendars, addEvent, t, pushUndo, setSelectedEventId]
-  );
+  // a visitor can't make an all-day event: a double click only selects the day
+  const handleDateDoubleClick = handleDateClick;
 
   const createTimedEvent = useCallback(
     (date: string, startTime: string, endTime: string, title = t("apps.calendar.tray.newEventTitle")) => {
@@ -467,14 +449,6 @@ export function useCalendarLogic() {
     [setSelectedDate, calendars, addEvent, t, pushUndo, setSelectedEventId]
   );
 
-  const handleNewEventAtTime = useCallback(
-    (date: string, hour: number) => {
-      const pad = (n: number) => String(n).padStart(2, "0");
-      createTimedEvent(date, `${pad(hour)}:00`, `${pad(hour >= 23 ? 23 : hour + 1)}:00`);
-    },
-    [createTimedEvent]
-  );
-
   /** A click on a free cal.com slot: an event at the slot's start, as long as the booking. */
   const unsentSlotEvent = useRef<string | null>(null);
   const handleNewEventAtSlot = useCallback(
@@ -494,23 +468,14 @@ export function useCalendarLogic() {
     },
     [createTimedEvent, deleteEvent]
   );
-
-  const handleNewEvent = useCallback(() => {
-    const title = t("apps.calendar.tray.newEventTitle");
-    const cal = calendars[0];
-    const id = addEvent({
-      title,
-      date: selectedDate,
-      color: cal?.color || "blue",
-      calendarId: cal?.id || "home",
-    });
-    const created = useCalendarStore
-      .getState()
-      .events.find((e) => e.id === id);
-    if (created) pushUndo({ type: "addEvent", event: { ...created } });
-    setSelectedEventId(id);
-    track(CALENDAR_ANALYTICS.EVENT_CREATE, { source: "toolbar" });
-  }, [selectedDate, calendars, addEvent, t, pushUndo, setSelectedEventId]);
+  // the unsent booking event lives only while its form is open
+  useEffect(() => {
+    const id = unsentSlotEvent.current;
+    if (!id || id === selectedEventId) return;
+    unsentSlotEvent.current = null;
+    const ev = useCalendarStore.getState().events.find((e) => e.id === id);
+    if (ev && !ev.title.startsWith(BOOKED_TITLE)) deleteEvent(id);
+  }, [selectedEventId, deleteEvent]);
 
   const handleEditSelectedEvent = useCallback(() => {
     // Tray is the editor; selection is enough. (Keeps Edit menu item valid.)
@@ -680,8 +645,6 @@ export function useCalendarLogic() {
     goToToday,
     handleDateClick,
     handleDateDoubleClick,
-    handleNewEvent,
-    handleNewEventAtTime,
     handleNewEventAtSlot,
     handleEditSelectedEvent,
     handleDeleteSelectedEvent,
