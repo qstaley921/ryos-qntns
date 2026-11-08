@@ -4,6 +4,8 @@ import { QntnsWallpaperLayer } from "../src/components/layout/desktop/DesktopDyn
 import { useThemeStore } from "../src/stores/useThemeStore";
 import { initializeI18nForFirstPaint } from "../src/lib/i18n";
 
+// Storybook always opens in Aqua Glass (§68c), whatever is saved: it is the review surface and should match qntns.com.
+localStorage.setItem("ryos:theme:aqua-material", "glass");
 // Aqua (§7), light (§41): hydrate() pins light; setTheme() would follow the OS dark preference.
 useThemeStore.getState().hydrate();
 void initializeI18nForFirstPaint();

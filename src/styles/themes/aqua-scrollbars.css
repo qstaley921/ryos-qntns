@@ -1,12 +1,13 @@
 /* Mac OS X Tiger (10.4) Aqua scroll bars (CHECKLIST-35 §64).
  *
- * Two scopes, the same rules:
- *   - every scroller under :root[data-os-theme="macosx"]
- *   - `.aqua-scrollbars`, for a document with no data-os-theme (the framed
- *     postcard HTML): put the class on <html> (or any scroller) and it and
- *     everything inside it get the bars.
- * Each selector lists the scope itself and its descendants so the viewport
- * (root) scroll bar is styled too.
+ * Unscoped: every scroller in a document that loads this file, viewport
+ * included. ryOS ships one theme (src/themes/index.ts: macosx only), and
+ * §68b found a scope on :root[data-os-theme] breaks Chrome: hydrate() sets
+ * the attribute after scrollers already exist, and Chrome does not fully
+ * restyle a custom scroll bar on an ancestor attribute change, so the
+ * :vertical / :end:decrement parts (fill, track, arrows) stay unapplied
+ * until a hot CSS swap. Unscoped rules match from the first paint.
+ * `.aqua-scrollbars` stays listed for the framed postcard HTML.
  *
  * Sizes: track and arrow buttons 16px. Tiger drew a 15px bar; rounded up to
  * 16 for the base-4 rule. The 1px borders are hairline exemptions.
@@ -21,17 +22,26 @@
  * whose (inherited) scrollbar-color is set, so it must never reach Chrome.
  */
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar,
+::-webkit-scrollbar,
 .aqua-scrollbars::-webkit-scrollbar,
 .aqua-scrollbars ::-webkit-scrollbar {
   width: 16px;
   height: 16px;
 }
 
+/* Track, axis-free base (CHECKLIST-35 §68b): a browser that drops the
+ * :vertical / :horizontal rules below still gets a white channel with an
+ * inset edge, not a bare bar. Where the axis rules apply they win on
+ * specificity (one more pseudo-class), so this changes nothing there. */
+::-webkit-scrollbar-track,
+.aqua-scrollbars::-webkit-scrollbar-track,
+.aqua-scrollbars ::-webkit-scrollbar-track {
+  background: #f4f4f4;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.25);
+}
+
 /* Track: white channel, shaded at its edges, faint pinstripes. */
-:root[data-os-theme="macosx"]::-webkit-scrollbar-track:vertical,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-track:vertical,
+::-webkit-scrollbar-track:vertical,
 .aqua-scrollbars::-webkit-scrollbar-track:vertical,
 .aqua-scrollbars ::-webkit-scrollbar-track:vertical {
   background:
@@ -40,8 +50,7 @@
   border-left: 1px solid #a5a5a5;
 }
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar-track:horizontal,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-track:horizontal,
+::-webkit-scrollbar-track:horizontal,
 .aqua-scrollbars::-webkit-scrollbar-track:horizontal,
 .aqua-scrollbars ::-webkit-scrollbar-track:horizontal {
   background:
@@ -51,54 +60,53 @@
 }
 
 /* Thumb: glossy blue capsule (highlight band, deeper blue core, bounce light). */
-:root[data-os-theme="macosx"]::-webkit-scrollbar-thumb,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb,
 .aqua-scrollbars::-webkit-scrollbar-thumb,
 .aqua-scrollbars ::-webkit-scrollbar-thumb {
   border: 1px solid #2c5fa8;
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  /* §68b axis-free gel: an ellipse stretches with the thumb on either axis,
+   * so the capsule is filled even where the :vertical / :horizontal rules
+   * below are dropped. They win on specificity where they apply. */
+  background: radial-gradient(ellipse farthest-side at 50% 40%, #dcedfd 0%, #a9d0f8 30%, #5ea3ee 70%, #3f87e0 100%);
 }
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar-thumb:vertical,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-thumb:vertical,
+::-webkit-scrollbar-thumb:vertical,
 .aqua-scrollbars::-webkit-scrollbar-thumb:vertical,
 .aqua-scrollbars ::-webkit-scrollbar-thumb:vertical {
   background: linear-gradient(to right, #4a86d8 0%, #a9d0f8 18%, #dcedfd 34%, #7fb6f0 50%, #3f87e0 70%, #5ea3ee 86%, #9ccbf8 100%);
 }
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar-thumb:horizontal,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-thumb:horizontal,
+::-webkit-scrollbar-thumb:horizontal,
 .aqua-scrollbars::-webkit-scrollbar-thumb:horizontal,
 .aqua-scrollbars ::-webkit-scrollbar-thumb:horizontal {
   background: linear-gradient(to bottom, #4a86d8 0%, #a9d0f8 18%, #dcedfd 34%, #7fb6f0 50%, #3f87e0 70%, #5ea3ee 86%, #9ccbf8 100%);
 }
 
 /* Background window: graphite thumb, as Tiger dims a window that is not frontmost. */
-:root[data-os-theme="macosx"] .window:not(.is-foreground) ::-webkit-scrollbar-thumb {
+.window:not(.is-foreground) ::-webkit-scrollbar-thumb {
   border-color: #7a7f87;
+  background: radial-gradient(ellipse farthest-side at 50% 40%, #eef0f2 0%, #d0d3d7 30%, #a4a8ae 70%, #8d9299 100%);
 }
 
-:root[data-os-theme="macosx"] .window:not(.is-foreground) ::-webkit-scrollbar-thumb:vertical {
+.window:not(.is-foreground) ::-webkit-scrollbar-thumb:vertical {
   background: linear-gradient(to right, #8e939a 0%, #d0d3d7 18%, #eef0f2 34%, #b4b8be 50%, #8d9299 70%, #a4a8ae 86%, #c8cbcf 100%);
 }
 
-:root[data-os-theme="macosx"] .window:not(.is-foreground) ::-webkit-scrollbar-thumb:horizontal {
+.window:not(.is-foreground) ::-webkit-scrollbar-thumb:horizontal {
   background: linear-gradient(to bottom, #8e939a 0%, #d0d3d7 18%, #eef0f2 34%, #b4b8be 50%, #8d9299 70%, #a4a8ae 86%, #c8cbcf 100%);
 }
 
 /* Arrows: Tiger's default pairs both at the far end (bottom / right). */
-:root[data-os-theme="macosx"]::-webkit-scrollbar-button,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button,
+::-webkit-scrollbar-button,
 .aqua-scrollbars::-webkit-scrollbar-button,
 .aqua-scrollbars ::-webkit-scrollbar-button {
   display: none;
 }
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar-button:end:decrement,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button:end:decrement,
-:root[data-os-theme="macosx"]::-webkit-scrollbar-button:end:increment,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button:end:increment,
+::-webkit-scrollbar-button:end:decrement,
+::-webkit-scrollbar-button:end:increment,
 .aqua-scrollbars::-webkit-scrollbar-button:end:decrement,
 .aqua-scrollbars ::-webkit-scrollbar-button:end:decrement,
 .aqua-scrollbars::-webkit-scrollbar-button:end:increment,
@@ -112,8 +120,7 @@
 }
 
 /* Vertical: up then down, a hairline between them and above the pair. */
-:root[data-os-theme="macosx"]::-webkit-scrollbar-button:vertical:end:decrement,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button:vertical:end:decrement,
+::-webkit-scrollbar-button:vertical:end:decrement,
 .aqua-scrollbars::-webkit-scrollbar-button:vertical:end:decrement,
 .aqua-scrollbars ::-webkit-scrollbar-button:vertical:end:decrement {
   background-image:
@@ -123,8 +130,7 @@
   border-top: 1px solid #8f8f8f;
 }
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar-button:vertical:end:increment,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button:vertical:end:increment,
+::-webkit-scrollbar-button:vertical:end:increment,
 .aqua-scrollbars::-webkit-scrollbar-button:vertical:end:increment,
 .aqua-scrollbars ::-webkit-scrollbar-button:vertical:end:increment {
   background-image:
@@ -135,8 +141,7 @@
 }
 
 /* Horizontal: left then right. */
-:root[data-os-theme="macosx"]::-webkit-scrollbar-button:horizontal:end:decrement,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button:horizontal:end:decrement,
+::-webkit-scrollbar-button:horizontal:end:decrement,
 .aqua-scrollbars::-webkit-scrollbar-button:horizontal:end:decrement,
 .aqua-scrollbars ::-webkit-scrollbar-button:horizontal:end:decrement {
   background-image:
@@ -146,8 +151,7 @@
   border-left: 1px solid #8f8f8f;
 }
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar-button:horizontal:end:increment,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button:horizontal:end:increment,
+::-webkit-scrollbar-button:horizontal:end:increment,
 .aqua-scrollbars::-webkit-scrollbar-button:horizontal:end:increment,
 .aqua-scrollbars ::-webkit-scrollbar-button:horizontal:end:increment {
   background-image:
@@ -158,22 +162,20 @@
 }
 
 /* Pressed arrow darkens, as Tiger's did. */
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-button:active,
+::-webkit-scrollbar-button:active,
 .aqua-scrollbars ::-webkit-scrollbar-button:active,
 .aqua-scrollbars::-webkit-scrollbar-button:active {
   filter: brightness(0.82);
 }
 
-:root[data-os-theme="macosx"]::-webkit-scrollbar-corner,
-:root[data-os-theme="macosx"] ::-webkit-scrollbar-corner,
+::-webkit-scrollbar-corner,
 .aqua-scrollbars::-webkit-scrollbar-corner,
 .aqua-scrollbars ::-webkit-scrollbar-corner {
   background: #ececec;
 }
 
 @supports not selector(::-webkit-scrollbar) {
-  :root[data-os-theme="macosx"],
-  .aqua-scrollbars {
+  :root {
     scrollbar-color: #5a9be8 #f2f2f2;
   }
 }
