@@ -4380,7 +4380,7 @@ const attachAutocomplete = (el) => {
  * parses a whole body; only the ones actually stepped onto are ever built.
  */
 // `onClose` (CHECKLIST-37 §79d): the RyOS Postcard window closes itself when the editor does.
-export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose } = {}) => {
+export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose, isFront } = {}) => {
     const el = root.querySelector("[data-postcard]");
     if (!el) return () => {};
 
@@ -5715,7 +5715,7 @@ export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose } = 
 
     const onKeydown = (event) => {
         if (el.hidden) return;
-        if (event.key === "Escape") return close();
+        if (event.key === "Escape") return isFront && !isFront() ? undefined : close(); // §79f: a window host says whether it is in front
 
         const arrow = ARROWS[event.key];
         if (arrow) {

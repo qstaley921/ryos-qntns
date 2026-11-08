@@ -42,6 +42,8 @@ export function PostcardWindow({
     window.dispatchEvent(new CustomEvent(`closeWindow-${instanceId || "internet-explorer"}`, { detail: { onComplete: onClose } }));
   const closeRef = useRef(close);
   closeRef.current = close;
+  const frontRef = useRef(isForeground);
+  frontRef.current = isForeground;
 
   useEffect(() => {
     if (post.html) return;
@@ -71,7 +73,7 @@ export function PostcardWindow({
       const u = new URL(doc.url ?? "https://www.qntns.com/", location.href);
       const data = pc.readArticle(root, { url: `${u.host}${u.pathname}` });
       host.innerHTML = pc.renderPostcard(data);
-      card = pc.attachPostcard(host, data, { onClose: () => !gone && closeRef.current() });
+      card = pc.attachPostcard(host, data, { onClose: () => !gone && closeRef.current(), isFront: () => frontRef.current } as { onClose?: () => void });
       card!.open();
     });
     return () => {
