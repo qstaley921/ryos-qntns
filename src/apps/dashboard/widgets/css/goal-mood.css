@@ -1,0 +1,244 @@
+/* QNTNs mood — CHECKLIST-24 items 2 and 3.
+
+   THE BUDGET. The graph fills the embed's width (STOP 2 feedback): a 72
+   label column, a 16 gap, then ten cells sharing what is left, each floored
+   to a multiple of 4. cell = round-down((W - 88) / 10, 4). At 343 (a 375
+   phone) that is 24; at 680 it is 56. What the flooring leaves (under 40) is
+   split either side by margin: auto. A mark is three quarters of the cell,
+   floored to 4 (24 → 16, 56 → 40), so beige always shows round it; an empty
+   cell is a 4px dot. The axes are 1px hairlines on the cell edges at 5 x
+   cell, the named hairline exemption. Under the field: 16, the energy words,
+   16, the key (30 stops x 4 = 120 by 12, 8 either side of it), spanning
+   both columns so it centres on the figure, which margin: auto centres on
+   the widget (CHECKLIST-27 §18): key centre = widget centre. The label
+   words are 12px Josefin on their own line height, the type-metric
+   exemption. */
+.qntns-mood {
+    container: mood / inline-size;
+    font-family: var(--font-ui);
+    color: var(--color-ink);
+}
+
+/* THE HEAD: title left, the 32px log toggle right, 16 above the stage. */
+.qntns-mood__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-16);
+}
+
+/* THE STAGE holds the graph, the log and the pop-up. Its height is the
+   graph's: the log and the pop-up are laid over it, never beside it. */
+.qntns-mood__stage {
+    position: relative;
+}
+
+.qntns-mood__stage:has(.qntns-mood__log:not([hidden])) .qntns-mood__figure {
+    visibility: hidden;
+}
+
+/* THE LOG fills the stage. The scroller inside it scrolls, with no native
+   bar: 24 on its right is the postcard track's 16 and its 8 gap. The bottom
+   32 fades out (card.css's --card-fade-h), and the fade lifts at the end. */
+.qntns-mood__log {
+    position: absolute;
+    inset: 0;
+}
+
+.qntns-mood__scroll {
+    height: 100%;
+    padding-right: var(--space-24);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--space-32)), transparent);
+}
+
+.qntns-mood__scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.qntns-mood__log.is-end .qntns-mood__scroll {
+    mask-image: none;
+}
+
+/* The postcard's track (postcard.css), moved from outside the card's left
+   edge to inside the stage's right edge. postcard.css loads after this file,
+   so the extra class carries the override. */
+.qntns-mood .qntns-mood__track {
+    right: 0;
+    margin-right: 0;
+}
+
+.qntns-mood__track .qntns-track__nub {
+    touch-action: none;
+}
+
+/* The card's down-square (card.css .qntns-card__more): 32, navy, beige
+   chevron, centred on the scroller's text column, 16 above the stage's
+   bottom (CHECKLIST-28 §7: every overflow cue sits 16 off its edge). */
+.qntns-mood__more {
+    position: absolute;
+    bottom: var(--space-16);
+    left: 0;
+    right: var(--space-24);
+    display: flex;
+    width: var(--space-32);
+    height: var(--space-32);
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    padding: 0;
+    border: 1px solid var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-beige-dark);
+    cursor: pointer;
+}
+
+.qntns-mood__log.is-end .qntns-mood__more {
+    display: none;
+}
+
+.qntns-mood__log[hidden] {
+    display: none;
+}
+
+/* THE POP-UP is the footnote pop-up held to the stage, so it centres over
+   the graph rather than the window, and its panel never outgrows it. */
+.qntns-mood .qntns-fn-pop {
+    position: absolute;
+    z-index: 2;
+}
+
+.qntns-mood .qntns-fn-pop__panel {
+    max-height: 100%;
+}
+
+.qntns-mood__figure {
+    --mood-label: 72px;
+    --mood-cell: round(down, calc((100cqw - var(--mood-label) - var(--space-16)) / 10), 4px);
+    display: grid;
+    grid-template-columns: var(--mood-label) calc(var(--mood-cell) * 10);
+    column-gap: var(--space-16);
+    row-gap: var(--space-16);
+    width: fit-content;
+    margin: 0 auto;
+}
+
+.qntns-mood__labels,
+.qntns-mood__field {
+    display: grid;
+    grid-template-rows: repeat(10, var(--mood-cell));
+}
+
+.qntns-mood__labels {
+    position: relative;
+}
+
+.qntns-mood__word,
+.qntns-mood__energy,
+.qntns-mood__key {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.qntns-mood__word {
+    align-self: center;
+    text-align: right;
+}
+
+/* NEUTRAL sits on the horizontal axis, between rows 5 and 6. */
+.qntns-mood__word.is-axis {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+}
+
+.qntns-mood__field {
+    position: relative;
+    grid-template-columns: repeat(10, var(--mood-cell));
+}
+
+.qntns-mood__field::before,
+.qntns-mood__field::after {
+    content: "";
+    position: absolute;
+    background: var(--color-ink);
+}
+
+.qntns-mood__field::before {
+    top: 0;
+    bottom: 0;
+    left: calc(var(--mood-cell) * 5);
+    width: 1px;
+}
+
+.qntns-mood__field::after {
+    left: 0;
+    right: 0;
+    top: calc(var(--mood-cell) * 5);
+    height: 1px;
+}
+
+.qntns-mood__cell {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qntns-mood__cell:not(.is-entry)::before {
+    content: "";
+    width: var(--space-4);
+    height: var(--space-4);
+    border-radius: 50%;
+    background: var(--color-ink);
+}
+
+/* type.css's button face is reset; the cell is the whole hit area. */
+.qntns-mood__cell.is-entry {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.qntns-mood__mark {
+    width: round(down, calc(var(--mood-cell) * 0.75), 4px);
+    height: round(down, calc(var(--mood-cell) * 0.75), 4px);
+}
+
+.qntns-mood__energy,
+.qntns-mood__key {
+    grid-column: 2;
+    display: flex;
+}
+
+.qntns-mood__energy span {
+    flex: 1;
+    text-align: center;
+}
+
+.qntns-mood__key {
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+}
+
+.qntns-mood__ramp {
+    display: flex;
+    height: var(--space-12);
+}
+
+.qntns-mood__ramp span {
+    width: var(--space-4);
+}
+
+.qntns-mood__pop-title {
+    margin-bottom: var(--space-16);
+}

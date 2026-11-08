@@ -1,0 +1,165 @@
+/* QNTNs pagination — prev button, square dot strip, next button.
+   8px between every control, so the cluster gap and the dot gap are the same.
+
+   Resting state of an enabled step button is FILLED navy (not outlined).
+   The disabled step is the outlined variant at 20% opacity across the whole
+   button — icon included — which is why the opacity sits on the button element
+   rather than on recoloured parts. */
+
+.qntns-pagination {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-family: var(--font-ui);
+}
+
+.qntns-pagination__step {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: var(--border-card);
+    background: var(--color-ink);
+    color: var(--color-beige-dark);
+    cursor: pointer;
+}
+
+/* No hover state: the fill never changes. Enabled is filled, disabled is 20%.
+
+   [aria-disabled="true"], NOT :disabled, AND THAT IS A BEHAVIOUR DECISION.
+   A `disabled` button dispatches no click event at all — not to itself, not to
+   an ancestor — so a press on it cannot be answered. The step now refuses out
+   loud, with the same shake and the same error sound as a face-down card, and
+   that needs the press to arrive. aria-disabled says the same thing to a
+   screen reader while leaving the button focusable and clickable, which is
+   what a refusal needs.
+
+   The consequence is that nothing stops the press but this file's own code —
+   see the guard in attachPagination. */
+.qntns-pagination__step[aria-disabled="true"] {
+    background: var(--color-beige-dark);
+    color: var(--color-ink);
+    opacity: 0.2;
+    cursor: default;
+}
+
+/* THE SAME REFUSAL AS A FACE-DOWN CARD, and deliberately the same animation:
+   qntns-refuse is defined in card-group.css and shared rather than copied, so
+   the two refusals in this theme cannot drift into two different gestures.
+   The sound is the same one too — see playError in sound.js. */
+.qntns-pagination__step.is-refused {
+    animation: qntns-refuse var(--duration-refuse, 420ms) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* The sound still plays: the refusal is delivered, just not moved. */
+    .qntns-pagination__step.is-refused { animation: none; }
+}
+
+.qntns-pagination__dots {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+.qntns-pagination__dot {
+    box-sizing: border-box;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: 0.5px solid var(--color-ink);
+    border-radius: 0;
+    background: var(--color-beige-dark);
+    cursor: pointer;
+}
+
+.qntns-pagination__dot[aria-current="true"] {
+    background: var(--color-ink);
+}
+
+/* THE DOT WINDOW (§86, pagination.js). Past 7 pages the strip is a fixed
+   viewport onto a sliding track, so the control never grows wider than 7 dots.
+
+   Width budget:  7 dots x 8  +  6 gaps x 8  =  56 + 48  =  104px content, 112px box (border-box, screen.css :73;
+   §89a: width 104 left 96 of content and clipped the 7th dot, the right edge dot, whole).
+   §94: on a phone (max-width 599px) JS sets --dot-window: 4, so 4 x 8 + 3 x 8 = 56 content, 64px box.
+   The viewport is padded 4px all round so the 2px outline at 2px offset on a
+   focused dot is not clipped by overflow: hidden (2 + 2 = 4), and the padding
+   is handed back with a -4px margin, so the box the row lays out is still
+   104 x 8 and the cluster's 8px gaps are unchanged.
+
+   The track moves in whole 16px pitches (dot + gap), set inline by JS. An edge
+   dot with more pages beyond it drops to half: 8px -> 4px, by scale so the
+   pitch never changes and the shrink animates with the slide. */
+.qntns-pagination__dots--window {
+    width: calc(var(--dot-window, 7) * 8px + (var(--dot-window, 7) - 1) * var(--space-8) + 2 * var(--space-4)); /* border-box: the 8px of padding is inside the width */
+    padding: var(--space-4);
+    margin: calc(-1 * var(--space-4));
+    flex: none;
+    overflow: hidden;
+}
+
+.qntns-pagination__track {
+    display: flex;
+    gap: var(--space-8);
+    transition: transform 240ms ease;
+}
+
+.qntns-pagination__dots--window .qntns-pagination__dot {
+    transition: transform 240ms ease;
+}
+
+.qntns-pagination__dot[data-window="edge"] {
+    transform: scale(0.5);
+}
+
+.qntns-pagination__dot[data-window="out"] {
+    transform: scale(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-pagination__track,
+    .qntns-pagination__dots--window .qntns-pagination__dot {
+        transition: none;
+    }
+}
+
+.qntns-pagination__step:focus-visible,
+.qntns-pagination__dot:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+.qntns-pagination__icon {
+    display: block;
+}
+
+/* THE VERTICAL (MOBILE) VARIANT
+   ----------------------------
+   In a card group's mobile mode the pagination sits on the heading row and
+   pages a vertical stack, so the two step buttons read UP and DOWN. The dots
+   are not rendered at all there (see pagination.js) — only the two steps
+   remain, still 8px apart, still 32px square, so the cluster is exactly as
+   tall as the 32px heading beside it and adds nothing to the page's height
+   budget.
+
+   The GLYPH rotates; the icon is not swapped for a different one. A quarter
+   turn clockwise takes "<" to "^" and ">" to "v", which is why both buttons
+   take the same +90deg and not opposite signs.
+
+   The labels stay "Previous page" and "Next page". They do not contradict the
+   arrows: the page is a vertical stack read top to bottom, so the previous
+   page is above and the next page is below, and up/down is the same relation
+   left/right expresses in a row. A screen reader user is told what the button
+   DOES; the rotation only says which way the content will move.
+
+   Everything else is inherited untouched — the filled navy resting state, the
+   20% opacity across the whole disabled button, and the deliberate absence of
+   any hover fill change. */
+.qntns-pagination--vertical .qntns-pagination__icon {
+    transform: rotate(90deg);
+}

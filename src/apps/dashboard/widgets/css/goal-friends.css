@@ -1,0 +1,96 @@
+/* QNTNs friends heatmap — CHECKLIST-16 item 12.
+
+   All base 4: 12px cell, 4px gap, 16px pitch, a 32px label gutter (28px of
+   label box plus the 4px gap). Grid height 7 x 16 - 4 = 108. The head is the
+   shared .qntns-med__head / .qntns-med__title (item 41, goal-meditation.css).
+
+   TYPE METRIC, named: the labels are 12px on a 16px line. In a 12px row the
+   16px line box overflows 2px each side, centred by flex, not by a declared
+   off-grid offset. */
+.qntns-friends {
+    --friends-cell: 12px;
+    --friends-gap: var(--space-4);
+    --friends-gutter: 32px;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--color-ink);
+}
+
+/* 16px row; each label is absolutely placed over its column by the JS. */
+.qntns-friends__months {
+    position: relative;
+    height: 16px;
+    margin-bottom: var(--space-4);
+}
+
+.qntns-friends__month {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+}
+
+.qntns-friends__body {
+    display: flex;
+    gap: var(--friends-gap);
+}
+
+.qntns-friends__weekdays,
+.qntns-friends__grid {
+    display: grid;
+    grid-template-rows: repeat(7, var(--friends-cell));
+    gap: var(--friends-gap);
+}
+
+/* 28 + the body's 4px gap = the 32px gutter. */
+.qntns-friends__weekdays {
+    width: calc(var(--friends-gutter) - var(--friends-gap));
+}
+
+.qntns-friends__weekday {
+    display: flex;
+    align-items: center;
+}
+
+/* Sunday on top, one column per week; the last column stops at today. */
+.qntns-friends__grid {
+    grid-auto-flow: column;
+    grid-auto-columns: var(--friends-cell);
+}
+
+.qntns-friends__day {
+    display: block;
+    width: var(--friends-cell);
+    height: var(--friends-cell);
+    border-radius: 0;
+}
+
+.qntns-friends__day.is-0 { background: var(--color-beige-dark); }
+.qntns-friends__day.is-1 { background: var(--friends-1); }
+.qntns-friends__day.is-2 { background: var(--friends-2); }
+.qntns-friends__day.is-3 { background: var(--friends-3); }
+.qntns-friends__day.is-4 { background: var(--friends-4); }
+
+/* Bottom right: Less [0][1][2][3][4] More, 16px below the grid. */
+.qntns-friends__legend {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--friends-gap);
+    margin-top: var(--space-16);
+}
+
+/* THE LEGEND LABELS CENTRE ON THEIR CAPITALS (item 113). Josefin Sans, from
+   the shipped font's OS/2 table: upm 1000, ascent 750, descent -250, cap
+   height 702 (x-height 378). At 12px on the 16px line the content area is
+   9 + 3 = 12, the half-leading 2, so the baseline sits 11 from the box top.
+   The cap band runs 11 - 8.42 = 2.58 to 11, centre 6.79: 1.21 above the box
+   centre (8), which flex centres on the 12px square. Trimming the box to the
+   cap band puts the cap centre on the square's centre, so both labels move
+   down 1.21 (the box becomes 8.42 tall, a type metric, named). Not x-height:
+   the x band's centre is 8.73, 0.73 BELOW the box centre, so an ex trim would
+   lift them. text-box is Safari 18.2+ and Chrome 133+; Firefox ignores it
+   and the labels stay as before. */
+.qntns-friends__legend-label {
+    text-box: trim-both cap alphabetic;
+}

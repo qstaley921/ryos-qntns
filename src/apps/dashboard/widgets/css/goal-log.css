@@ -1,0 +1,99 @@
+/* QNTNs goal log — CHECKLIST-24 item 4.
+
+   A row: the date label (meta face, 12px, muted), 4 under it the amount
+   (UI face, 16px bold), 4 under that the note (reading face, 16px). 16
+   between rows, a hairline between them. Line heights are the faces' own
+   type metrics, the named off-grid exemption. */
+.qntns-log {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: log;
+}
+
+/* THE NUMBER sits in a 24 column, 8 from the text, on the date's baseline
+   and in the date's face (STOP 2 feedback: it sat low, in the body face).
+   A grid with baseline alignment puts the counter and the date on one line. */
+.qntns-log__row {
+    display: grid;
+    grid-template-columns: var(--space-24) 1fr;
+    column-gap: var(--space-8);
+    align-items: baseline;
+    padding: var(--space-16) 0;
+    border-top: 1px solid var(--color-border);
+    counter-increment: log;
+}
+
+.qntns-log__row::before {
+    content: counter(log) ".";
+    grid-row: 1;
+    font-family: var(--font-meta);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    text-align: right;
+}
+
+.qntns-log__row > * {
+    grid-column: 2;
+}
+
+.qntns-log__row:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.qntns-log__when {
+    display: block;
+    font-family: var(--font-meta);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.qntns-log__what {
+    margin-top: var(--space-4);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--color-ink);
+}
+
+.qntns-log .qntns-log__note,
+.qntns-log__empty {
+    margin: var(--space-4) 0 0;
+    font-size: 16px;
+    color: var(--color-ink);
+}
+
+.qntns-log__empty {
+    margin: 0;
+    font-family: var(--font-ui);
+    color: var(--color-text-muted);
+}
+
+/* The pop-up's down-square (goal-log.js popCues): card.css's
+   .qntns-card__more, a 32px navy square with the beige chevron, centred on
+   the panel 16 above its bottom edge (CHECKLIST-28 §7: every overflow cue sits
+   16 off the edge it points at); 16 + 32 = the body's 48 of bottom padding. */
+.qntns-log__more {
+    position: absolute;
+    bottom: var(--space-16);
+    left: 0;
+    right: 0;
+    display: flex;
+    width: var(--space-32);
+    height: var(--space-32);
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    padding: 0;
+    border: 1px solid var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-beige-dark);
+    cursor: pointer;
+}
+
+.qntns-log__more[hidden] {
+    display: none;
+}

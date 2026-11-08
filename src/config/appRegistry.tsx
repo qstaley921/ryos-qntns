@@ -74,15 +74,7 @@ const LazyControlPanelsApp = createLazyComponent<ControlPanelsInitialData>(
   "control-panels"
 );
 
-const LazyMinesweeperApp = createLazyComponent<unknown>(
-  () => import("@/apps/minesweeper/components/MinesweeperAppComponent").then(m => ({ default: m.MinesweeperAppComponent })),
-  "minesweeper"
-);
 
-const LazySoundboardApp = createLazyComponent<unknown>(
-  () => import("@/apps/soundboard/components/SoundboardAppComponent").then(m => ({ default: m.SoundboardAppComponent })),
-  "soundboard"
-);
 
 const LazyPaintApp = createLazyComponent<PaintInitialData>(
   () => import("@/apps/paint/components/PaintAppComponent").then(m => ({ default: m.PaintAppComponent })),
@@ -92,6 +84,16 @@ const LazyPaintApp = createLazyComponent<PaintInitialData>(
 const LazyPreviewApp = createLazyComponent<PreviewInitialData>(
   () => import("@/apps/preview/components/PreviewAppComponent").then(m => ({ default: m.PreviewAppComponent })),
   "preview"
+);
+
+const LazyMailApp = createLazyComponent<unknown>(
+  () => import("@/apps/mail/MailAppComponent").then(m => ({ default: m.MailAppComponent })),
+  "mail"
+);
+
+const LazyPhotosApp = createLazyComponent<unknown>(
+  () => import("@/apps/photos/components/PhotosAppComponent").then(m => ({ default: m.PhotosAppComponent })),
+  "photos"
 );
 
 const LazyVideosApp = createLazyComponent<VideosInitialData>(
@@ -109,10 +111,6 @@ const LazyPhotoBoothApp = createLazyComponent<unknown>(
   "photo-booth"
 );
 
-const LazySynthApp = createLazyComponent<unknown>(
-  () => import("@/apps/synth/components/synth-app/SynthAppComponent").then(m => ({ default: m.SynthAppComponent })),
-  "synth"
-);
 
 const LazyIpodApp = createLazyComponent<IpodInitialData>(
   () => import("@/apps/ipod/components/ipod-app/IpodAppComponent").then(m => ({ default: m.IpodAppComponent })),
@@ -144,20 +142,8 @@ const LazyStickiesApp = createLazyComponent<unknown>(
   "stickies"
 );
 
-const LazyInfiniteMacApp = createLazyComponent<unknown>(
-  () => import("@/apps/infinite-mac/components/InfiniteMacAppComponent").then(m => ({ default: m.InfiniteMacAppComponent })),
-  "infinite-mac"
-);
 
-const LazyInfinitePcApp = createLazyComponent<unknown>(
-  () => import("@/apps/infinite-pc/components/InfinitePcAppComponent").then(m => ({ default: m.InfinitePcAppComponent })),
-  "pc"
-);
 
-const LazyWinampApp = createLazyComponent<unknown>(
-  () => import("@/apps/winamp/components/WinampAppComponent").then(m => ({ default: m.WinampAppComponent })),
-  "winamp"
-);
 
 const LazyCalendarApp = createLazyComponent<unknown>(
   () => import("@/apps/calendar/components/calendar-app/CalendarAppComponent").then(m => ({ default: m.CalendarAppComponent })),
@@ -184,10 +170,6 @@ const LazyBooksApp = createLazyComponent<BooksInitialData>(
   "books"
 );
 
-const LazyCalculatorApp = createLazyComponent<unknown>(
-  () => import("@/apps/calculator/components/CalculatorAppComponent").then(m => ({ default: m.CalculatorAppComponent })),
-  "calculator"
-);
 
 const LazyStuffApp = createLazyComponent<StuffInitialData>(
   () =>
@@ -227,45 +209,32 @@ const LazyJournalApp = createLazyComponent<unknown>(
 // ============================================================================
 
 import { appMetadata as finderMetadata, helpItems as finderHelpItems } from "@/apps/finder/metadata";
-import { appMetadata as soundboardMetadata, helpItems as soundboardHelpItems } from "@/apps/soundboard/metadata";
 import { appMetadata as internetExplorerMetadata, helpItems as internetExplorerHelpItems } from "@/apps/internet-explorer/metadata";
 import { appMetadata as chatsMetadata, helpItems as chatsHelpItems } from "@/apps/chats/metadata";
 import { appMetadata as texteditMetadata, helpItems as texteditHelpItems } from "@/apps/textedit/metadata";
 import { appMetadata as paintMetadata, helpItems as paintHelpItems } from "@/apps/paint";
 import { appMetadata as previewMetadata, helpItems as previewHelpItems } from "@/apps/preview/metadata";
+import { appMetadata as mailMetadata, helpItems as mailHelpItems } from "@/apps/mail";
+import { appMetadata as photosMetadata, helpItems as photosHelpItems } from "@/apps/photos/metadata";
 import { appMetadata as photoboothMetadata, helpItems as photoboothHelpItems } from "@/apps/photo-booth/metadata";
-import { appMetadata as minesweeperMetadata, helpItems as minesweeperHelpItems } from "@/apps/minesweeper";
 import { appMetadata as videosMetadata, helpItems as videosHelpItems } from "@/apps/videos/metadata";
 import { appMetadata as tvMetadata, helpItems as tvHelpItems } from "@/apps/tv/metadata";
 import { appMetadata as ipodMetadata, helpItems as ipodHelpItems } from "@/apps/ipod/metadata";
 import { appMetadata as karaokeMetadata, helpItems as karaokeHelpItems } from "@/apps/karaoke/metadata";
-import { appMetadata as synthMetadata, helpItems as synthHelpItems } from "@/apps/synth/metadata";
 import { appMetadata as terminalMetadata, helpItems as terminalHelpItems } from "@/apps/terminal";
 import { appMetadata as appletViewerMetadata, helpItems as appletViewerHelpItems } from "@/apps/applet-viewer";
 import { appMetadata as controlPanelsMetadata, helpItems as controlPanelsHelpItems } from "@/apps/control-panels";
 import { appMetadata as adminMetadata, helpItems as adminHelpItems } from "@/apps/admin/metadata";
 import { appMetadata as stickiesMetadata, helpItems as stickiesHelpItems } from "@/apps/stickies";
-import {
-  appMetadata as infiniteMacMetadata,
-  helpItems as infiniteMacHelpItems,
-} from "@/apps/infinite-mac/metadata";
-import {
-  appMetadata as infinitePcMetadata,
-  helpItems as infinitePcHelpItems,
-} from "@/apps/infinite-pc/metadata";
-import { appMetadata as winampMetadata, helpItems as winampHelpItems } from "@/apps/winamp";
 import { appMetadata as calendarMetadata, helpItems as calendarHelpItems } from "@/apps/calendar/metadata";
 import { appMetadata as contactsMetadata, helpItems as contactsHelpItems } from "@/apps/contacts";
 import { appMetadata as dashboardMetadata, helpItems as dashboardHelpItems } from "@/apps/dashboard/metadata";
 import { appMetadata as mapsMetadata, helpItems as mapsHelpItems } from "@/apps/maps";
 import { appMetadata as booksMetadata, helpItems as booksHelpItems } from "@/apps/books/metadata";
-import { appMetadata as calculatorMetadata, helpItems as calculatorHelpItems } from "@/apps/calculator/metadata";
 import { appMetadata as stuffMetadata, helpItems as stuffHelpItems } from "@/apps/stuff/metadata";
 import { appMetadata as dictionaryMetadata, helpItems as dictionaryHelpItems } from "@/apps/dictionary/metadata";
 import { appMetadata as fitnessMetadata, helpItems as fitnessHelpItems } from "@/apps/fitness/metadata";
 import { appMetadata as journalMetadata, helpItems as journalHelpItems } from "@/apps/journal/metadata";
-import { DEFAULT_WINDOW_SIZE_WITH_TITLEBAR as infiniteMacDefaultSize } from "@/apps/infinite-mac/windowConfig";
-import { DEFAULT_WINDOW_SIZE_WITH_TITLEBAR as infinitePcDefaultSize } from "@/apps/infinite-pc/windowConfig";
 
 // ============================================================================
 // APP REGISTRY
@@ -286,24 +255,11 @@ export const appRegistry = {
       minSize: { width: 300, height: 200 },
     } as WindowConstraints,
   },
-  ["soundboard"]: {
-    id: "soundboard",
-    name: "Soundboard",
-    icon: { type: "image", src: soundboardMetadata.icon },
-    description: "Play sound effects",
-    component: LazySoundboardApp,
-    helpItems: soundboardHelpItems,
-    metadata: soundboardMetadata,
-    windowConfig: {
-      defaultSize: { width: 650, height: 475 },
-      minSize: { width: 550, height: 375 },
-    } as WindowConstraints,
-  },
   ["internet-explorer"]: {
     id: "internet-explorer",
-    name: "Internet Explorer",
+    name: "Safari",
     icon: { type: "image", src: internetExplorerMetadata.icon },
-    description: "Browse the web",
+    description: "Friends and portfolio sites",
     component: LazyInternetExplorerApp,
     helpItems: internetExplorerHelpItems,
     metadata: internetExplorerMetadata,
@@ -351,6 +307,32 @@ export const appRegistry = {
       minSize: { width: 420, height: 320 },
     } as WindowConstraints,
   } as BaseApp<PreviewInitialData> & { windowConfig: WindowConstraints },
+  ["mail"]: {
+    id: "mail",
+    name: "Mail",
+    icon: { type: "image", src: mailMetadata.icon },
+    description: "Send a message to QNTN",
+    component: LazyMailApp,
+    helpItems: mailHelpItems,
+    metadata: mailMetadata,
+    windowConfig: {
+      defaultSize: { width: 520, height: 420 },
+      minSize: { width: 360, height: 300 },
+    } as WindowConstraints,
+  },
+  ["photos"]: {
+    id: "photos",
+    name: "Photos",
+    icon: { type: "image", src: photosMetadata.icon },
+    description: "Photo albums",
+    component: LazyPhotosApp,
+    helpItems: photosHelpItems,
+    metadata: photosMetadata,
+    windowConfig: {
+      defaultSize: { width: 760, height: 520 },
+      minSize: { width: 480, height: 360 },
+    } as WindowConstraints,
+  },
   ["paint"]: {
     id: "paint",
     name: "Paint",
@@ -360,9 +342,10 @@ export const appRegistry = {
     helpItems: paintHelpItems,
     metadata: paintMetadata,
     windowConfig: {
-      defaultSize: { width: 713, height: 480 },
+      // 720 = wall tool strip; +16 for window chrome (maxSize is the outer frame)
+      defaultSize: { width: 736, height: 480 },
       minSize: { width: 400, height: 400 },
-      maxSize: { width: 713, height: 535 },
+      maxSize: { width: 736, height: 535 },
     } as WindowConstraints,
   } as BaseApp<PaintInitialData> & { windowConfig: WindowConstraints },
   ["photo-booth"]: {
@@ -377,20 +360,6 @@ export const appRegistry = {
       defaultSize: { width: 644, height: 510 },
       minSize: { width: 644, height: 510 },
       maxSize: { width: 644, height: 510 },
-    } as WindowConstraints,
-  },
-  ["minesweeper"]: {
-    id: "minesweeper",
-    name: "Minesweeper",
-    icon: { type: "image", src: minesweeperMetadata!.icon },
-    description: "Classic puzzle game",
-    component: LazyMinesweeperApp,
-    helpItems: minesweeperHelpItems,
-    metadata: minesweeperMetadata,
-    windowConfig: {
-      defaultSize: { width: 305, height: 400 },
-      minSize: { width: 305, height: 400 },
-      maxSize: { width: 305, height: 400 },
     } as WindowConstraints,
   },
   ["videos"]: {
@@ -446,19 +415,6 @@ export const appRegistry = {
       mobileSquare: true,
     } as WindowConstraints,
   } as BaseApp<IpodInitialData> & { windowConfig: WindowConstraints },
-  ["synth"]: {
-    id: "synth",
-    name: "Synth",
-    icon: { type: "image", src: synthMetadata.icon },
-    description: "Virtual synthesizer",
-    component: LazySynthApp,
-    helpItems: synthHelpItems,
-    metadata: synthMetadata,
-    windowConfig: {
-      defaultSize: { width: 720, height: 400 },
-      minSize: { width: 720, height: 290 },
-    } as WindowConstraints,
-  },
   ["terminal"]: {
     id: "terminal",
     name: "Terminal",
@@ -487,7 +443,7 @@ export const appRegistry = {
   } as BaseApp<AppletViewerInitialData> & { windowConfig: WindowConstraints },
   ["control-panels"]: {
     id: "control-panels",
-    name: "Control Panels",
+    name: "System Preferences",
     icon: { type: "image", src: controlPanelsMetadata.icon },
     description: "System settings",
     component: LazyControlPanelsApp,
@@ -524,47 +480,6 @@ export const appRegistry = {
     windowConfig: {
       defaultSize: { width: 500, height: 400 },
       minSize: { width: 300, height: 250 },
-    } as WindowConstraints,
-  },
-  ["infinite-mac"]: {
-    id: "infinite-mac",
-    name: "Infinite Mac",
-    icon: { type: "image", src: infiniteMacMetadata.icon },
-    description: "Classic Mac OS emulators",
-    component: LazyInfiniteMacApp,
-    helpItems: infiniteMacHelpItems,
-    metadata: infiniteMacMetadata,
-    windowConfig: {
-      defaultSize: infiniteMacDefaultSize,
-      minSize: { width: 512, height: 342 },
-      maxSize: { width: 1024, height: 792 }, // 768 + 24 for macOS X titlebar spacer
-    } as WindowConstraints,
-  },
-  ["pc"]: {
-    id: "pc",
-    name: "Virtual PC",
-    icon: { type: "image", src: infinitePcMetadata.icon },
-    description: "x86 OS emulation and DOS games",
-    component: LazyInfinitePcApp,
-    helpItems: infinitePcHelpItems,
-    metadata: infinitePcMetadata,
-    windowConfig: {
-      defaultSize: infinitePcDefaultSize,
-      minSize: { width: 640, height: 400 },
-      maxSize: { width: 1280, height: 1024 },
-    } as WindowConstraints,
-  },
-  ["winamp"]: {
-    id: "winamp",
-    name: "Winamp",
-    icon: { type: "image", src: winampMetadata.icon },
-    description: "Classic Winamp media player",
-    component: LazyWinampApp,
-    helpItems: winampHelpItems,
-    metadata: winampMetadata,
-    windowConfig: {
-      defaultSize: { width: 275, height: 116 },
-      minSize: { width: 275, height: 116 },
     } as WindowConstraints,
   },
   ["calendar"]: {
@@ -632,20 +547,6 @@ export const appRegistry = {
       minSize: { width: 420, height: 360 },
     } as WindowConstraints,
   } as BaseApp<BooksInitialData> & { windowConfig: WindowConstraints },
-  ["calculator"]: {
-    id: "calculator",
-    name: "Calculator",
-    icon: { type: "image", src: calculatorMetadata.icon },
-    description: "Basic, scientific, and unit conversion calculator",
-    component: LazyCalculatorApp,
-    helpItems: calculatorHelpItems,
-    metadata: calculatorMetadata,
-    windowConfig: {
-      defaultSize: { width: 240, height: 360 },
-      minSize: { width: 240, height: 360 },
-      maxSize: { width: 320, height: 520 },
-    } as WindowConstraints,
-  },
   ["stuff"]: {
     id: "stuff",
     name: "Stuff",

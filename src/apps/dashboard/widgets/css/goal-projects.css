@@ -1,0 +1,432 @@
+/* QNTNs projects, "Stewarding Work" — CHECKLIST-16 items 10, 11, 48, 49.
+
+   THE HEAD is meditation's, by class (.qntns-med__head/__title/__figure/
+   __trend/__rate in goal-meditation.css), so the two embeds' heads cannot
+   drift. Its trend colours map by meaning: .is-improving is --color-up even
+   though this embed draws it as an arrow DOWN (lower Age of Action is better).
+
+   THE BAR copies the audio playbar's metrics, not its code (chapters.css:22-39):
+   a 4px gap between segments and a 1px ink rule closing each side, so every
+   segment is its own outlined box. There the rules are overlays on one seek
+   rail; here each segment is a real element with --border-card (1px, the
+   hairline exemption). 40px tall, not the rail's 16: see item 62 below.
+
+   EACH PROJECT IS A CARD (56): the qntns card's surface by its tokens
+   (card.css:486-488), not .qntns-card itself, whose fixed size, 6px padding
+   and overflow would crush the row. The name reuses .qntns-card__title
+   (card.css:596-625); that rule sets no face of its own, so it inherits
+   Josefin from .qntns-proj's --font-ui, the same face as --card-font-text.
+
+   Card budget: 1 border, 16 pad, 16 title line, 8 gap, 40 bar, 16 pad,
+   1 border = 98 (the 2 x 1px are the hairline exemption; 96 on grid inside).
+   16 between cards; the 4px hard shadow leaves 12 of it clear. */
+.qntns-proj {
+    font-family: var(--font-ui);
+    color: var(--color-ink);
+}
+
+/* THE HEAD'S INSET (61): the card's 16px padding plus its 1px border = 17,
+   so "Stewarding Work" and the figure land on the cards' text edges. The 1 is
+   the hairline exemption, taken on top of a base-4 value. Scoped to this
+   embed: the head's classes are meditation's too. */
+.qntns-proj > .qntns-med__head {
+    padding-inline: calc(var(--space-16) + 1px);
+}
+
+.qntns-proj__row {
+    padding: var(--space-16);
+    border: var(--border-card);
+    background: var(--color-beige-dark);
+    box-shadow: var(--shadow-hard);
+}
+
+.qntns-proj__row + .qntns-proj__row {
+    margin-top: var(--space-16);
+}
+
+/* Title left, the project's Age of Action right, both on the card title's
+   16px line. min-width 0 lets the title's ellipsis engage in the flex row. */
+.qntns-proj__row-head {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-8);
+    margin-bottom: var(--space-8);
+}
+
+.qntns-proj__project {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.qntns-proj__row-age {
+    flex: none;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+/* 40 TALL (62): the expanded text is the large home card's excerpt, 18px on
+   a 24px line (card.css:811-812), with 8 above and 8 below: 8 + 24 + 8 = 40. */
+.qntns-proj__bar {
+    display: flex;
+    gap: var(--space-4);
+    height: var(--space-40);
+}
+
+/* Done and open tasks are 12px blocks that may shrink to 4px (the grid floor)
+   when a project has many; the expanded one takes whatever is left. Buttons
+   (64): type.css gives every button 700 and 0.04em tracking, so both are
+   put back to the embed's. */
+.qntns-proj__seg {
+    flex: 0 1 var(--space-12);
+    min-width: var(--space-4);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: var(--border-card);
+    background: var(--color-page);
+    color: var(--color-ink);
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+/* DONE SHADES (74): each done segment's fill and text colour are set inline
+   by goal-projects.js (doneShade), stepping along the home ramp. */
+.qntns-proj__seg.is-done {
+    background: var(--seg-fill);
+    color: var(--seg-text);
+}
+
+/* THE GROW (73). Only flex-grow changes on expand (0 -> 1; the basis stays
+   12px), and a number transitions where `auto` would not. The one growing and
+   the one shrinking move together, so their grows sum to 1 the whole way and
+   the row never gaps. The padding moves with it. --duration-base, not -fast:
+   150ms over a bar's width reads as a jump.
+   THE TEXT IS FADED IN AFTER THE GROW, never clipped mid-way: it is laid out
+   invisibly (opacity 0, the segment clips it) while the segment grows, then
+   fades in over --duration-fast once the grow has ended. On collapse it goes
+   at once. The name and age stay in the DOM throughout; the button's
+   aria-label carries them either way. */
+.qntns-proj__seg {
+    transition:
+        flex-grow var(--duration-base) var(--ease-standard),
+        padding var(--duration-base) var(--ease-standard);
+}
+
+.qntns-proj__seg > * {
+    opacity: 0;
+}
+
+.qntns-proj__seg.is-expanded > * {
+    opacity: 1;
+    transition: opacity var(--duration-fast) var(--ease-standard) var(--duration-base);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-proj__seg,
+    .qntns-proj__seg.is-expanded > * {
+        transition: none;
+    }
+}
+
+/* OPTICAL CENTRE (63), measured off the shipped JosefinSans-VariableFont_wght
+   .ttf: upm 1000, ascent 750, descent -250 (hhea = OS/2 typo, USE_TYPO_METRICS
+   set), cap height 702. At 18px on 24: content 18, half-leading 3, baseline
+   16.5 below the line top, cap top 16.5 - 12.64 = 3.86 below it.
+   Centred in 40 with 1px borders, the line top sits 8 down: cap top at 11.86,
+   baseline at 24.5. Gap from the top border (inner edge, y 1) to the cap is
+   10.86; from the baseline to the bottom border (y 39) is 14.5. Text 1.82 high.
+   FIX: 4px of top padding, 0 bottom, which moves the centred line down 2:
+   cap gap 12.86, baseline gap 12.5, off by 0.36 (within the 1px acceptance).
+   On grid: 4 is a spacing token. Same idea as the card title's clearance
+   (card.css:600-620): pad one side to correct this face's metrics. */
+.qntns-proj__seg.is-expanded {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    padding: var(--space-4) var(--space-8) 0;
+    font-size: 18px;
+    line-height: 24px;
+}
+
+/* SENTENCE CASE (148): a task name shows lowercased with its first letter
+   capped, however it was typed. Display only: the data and the aria-label keep
+   the stored text. ::first-letter needs a block container; the text span is a
+   flex item of the name, which blockifies it, so no display change is needed.
+   Proper nouns lowercase too ("Pay PwC" -> "Pay pwc").
+   DRAG TO READ: a name too long for its segment scrolls sideways inside the
+   text span: swipe on touch or trackpad, drag with the mouse
+   (goal-projects.js). No scrollbar. No native ellipsis either, since a
+   scrolled box draws it where the text began. Instead the name's ::after is a
+   "…" laid over the right edge on the segment's own fill (inherited down), a
+   fader in ellipsis form, shown while more text is hidden (.is-more). */
+.qntns-proj__name {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    background: inherit;
+    text-transform: lowercase;
+}
+
+.qntns-proj__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    white-space: nowrap;
+}
+
+.qntns-proj__text::-webkit-scrollbar {
+    display: none;
+}
+
+.qntns-proj__name.is-more::after {
+    content: "…";
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    /* 2 of fill before the "…" so a cut letter doesn't touch it. Off grid:
+       a named exemption from base 4, set by the user (4 read too wide). */
+    padding-left: 2px;
+    background: inherit;
+    pointer-events: none;
+}
+
+.qntns-proj__text::first-letter {
+    text-transform: uppercase;
+}
+
+.qntns-proj__age {
+    flex: none;
+    font-weight: 700;
+}
+
+/* THE INFO BUTTON (81, 88, 109): [arrow][11d][i]. A 32px box around the 24px
+   glyph, a 4px ring each side, 4px after the figure; the -4 end margin puts
+   the glyph on the card text edge #61 lines the figure up to. type.css's
+   button face is reset. At 32 it is the tallest thing in the head: the row
+   was 27.6 (the 24px title on 1.15), now 32, 4.4 taller (109; 88's 40 made
+   it 12.4). */
+.qntns-proj__info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--space-32);
+    height: var(--space-32);
+    margin: 0 calc(var(--space-4) * -1) 0 var(--space-4);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-ink);
+    cursor: pointer;
+}
+
+/* ICONS CENTRED ON THE FIGURE (109). .qntns-med__figure flex-centres each
+   child's BOX (goal-meditation.css). The figure is 24px on 1.15 = a 27.6 line:
+   content 24, half-leading 1.8, baseline 19.8 from the top, cap top
+   19.8 - 16.85 = 2.95 (Josefin cap 702/1000, OPTICAL CENTRE above), so the
+   digits' centre is 11.37 but the box centre is 13.8, and the arrow and the
+   i sat 2.43 low. Trimming the box to the capitals makes its centre the
+   digits' centre (box 16.85 tall, the cap-height type metric), and
+   align-items: center does the rest, with no nudge. text-box is Safari 18.2+
+   and Chrome 133+; Firefox ignores it and the icons stay 2.43 low, as before.
+   Scoped to .qntns-proj: the meditation head shares these classes. */
+.qntns-proj .qntns-med__rate {
+    text-box: trim-both cap alphabetic;
+}
+
+/* The pop-up's title (89) wears .qntns-med__title, the embed head's own rule
+   (24px 700 on 1.15, a `#` in a post). The 1.15 line (27.6px) is that rule's
+   Figma type metric, reused as is: the named off-grid exemption. It is a
+   <div> for goal-meditation.css's reason, so footnotes.css's p + p gap misses
+   it; this 12 restores it. No overflow here: that would start a block
+   formatting context and drop the line below the X's float (footnotes.css). */
+.qntns-proj__pop-title {
+    margin-bottom: var(--space-12);
+}
+
+/* ARCHIVE (75, 92, 94, 123). 32 above the button, twice the 16 between
+   cards, at the user's request (94), so it reads apart from live work. The
+   button is the head's own label, .qntns-med__title (93: 24px 700 on 1.15,
+   the 27.6px line its named type-metric exemption), beside a 24px caret with
+   the row head's 8 between. A button, not a <summary> (123), reset to look
+   like the label it was, full width so its fill covers the first card.
+   Lucide `play` is the caret, filled solid: icon() renders fill="none",
+   which the CSS fill property overrides. */
+.qntns-proj__closed {
+    margin-top: var(--space-32);
+}
+
+.qntns-proj__closed-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    /* 112: positioned and filled, so the first card, which starts behind the
+       button, is hidden under it rather than showing through the label. */
+    position: relative;
+    background: var(--color-page);
+}
+
+/* CENTRING (106). On paper (Josefin metrics, OPTICAL CENTRE above): the 24px
+   label on its 27.6 line has its cap band centred 11.37 from the line top;
+   the 24px caret box, flex-centred, is centred at 13.8, and `play` is
+   centred in its box, so the closed caret sits 2.43 low (open, rotated, its
+   span is x 6-20, about 3.4 low). -4 is the nearest grid step: 1.57 high
+   closed, about 0.6 high open. `top`, not a margin, so the line box and the
+   32 above stay put and the rotation still turns about the caret's centre. */
+/* THE TURN (123): the caret eases on the drop's own duration and curve, so it
+   turns right-to-down as the cards drop and back as they lift.
+   goal-projects.js flips aria-expanded at the press, both ways. */
+.qntns-proj__caret {
+    flex: none;
+    position: relative;
+    top: calc(var(--space-4) * -1);
+    fill: currentColor;
+    transition: transform var(--drop-ms) var(--drop-ease);
+}
+
+.qntns-proj__closed-head[aria-expanded="true"] .qntns-proj__caret {
+    transform: rotate(90deg);
+}
+
+/* THE REGION (123). Always rendered, so the rows are laid out before the
+   first open. flow-root keeps the first row's 16 inside the region rather
+   than collapsing through its top when the height is 0. Closed: inert (no
+   focus, not read), height 0 and clipped. Moving: goal-projects.js pins the
+   height in px and swaps it, and it transitions over --drop-span, the whole
+   cascade (--drop-ms + (n - 1) x --drop-step); settled open, the inline
+   height is dropped back to auto and the clip lifts, so the cards' hard
+   shadows show. Only y is clipped: `clip`, unlike `hidden`, leaves x
+   visible, so the 4px shadow on the right is never cut mid-motion. */
+.qntns-proj__archive {
+    display: flow-root;
+}
+
+.qntns-proj__archive[inert] {
+    height: 0;
+}
+
+.qntns-proj__archive[inert],
+.qntns-proj__archive.is-moving {
+    overflow-y: clip;
+}
+
+.qntns-proj__archive.is-moving {
+    transition: height var(--drop-span) var(--drop-ease);
+}
+
+.qntns-proj__archive > .qntns-proj__row {
+    position: relative;
+    margin-top: var(--space-16);
+}
+
+/* THE DROP (95, 112). The reference is apple.com's global-nav flyout: on
+   open the archived cards arrive top-down, each falling one full pitch, one
+   step after the card before it. The pitch is --drop-y, set
+   per card by goal-projects.js from the layout: this card's top minus the top
+   of what is above it (the previous card's height plus the 16 gap, about
+   98 + 16 = 114; for the first card the button's 27.6 line plus 16, about
+   44). So each card starts exactly where the one above it sits, fully behind
+   it, and the first starts behind the button, not its own height up, which
+   would carry it past the button over the last live card. --drop-y is a
+   measured layout distance, not spacing: the named exemption from base 4.
+   Stacking: goal-projects.js gives card i
+   z-index -1 - i, so each card is beneath the one before it; the isolation
+   keeps those negative layers inside the archive rather than behind the
+   page. Duration, step and curve are typed here once (the curve is Apple's
+   nav ease); the region's height grows with the cascade (THE REGION above).
+   OPAQUE (123): both keyframes used to fade opacity, which made the WHOLE
+   .qntns-proj__row (fill, border, shadow and text) translucent mid-motion,
+   so overlapping cards blended. They move by transform only now: every card
+   is 100% opaque at every frame, and the z-order and the region's clip hide
+   what is underneath. */
+.qntns-proj__closed {
+    --drop-ms: 400ms;
+    --drop-step: 80ms;
+    --drop-ease: cubic-bezier(0.4, 0, 0.6, 1);
+    isolation: isolate;
+}
+
+.qntns-proj__archive > .qntns-proj__row.is-dropping {
+    animation: qntns-proj-drop var(--drop-ms) var(--drop-ease) backwards;
+    animation-delay: calc(var(--drop-i, 0) * var(--drop-step));
+}
+
+/* THE LIFT (107): the drop played backwards on close, on the same three
+   numbers. goal-projects.js gives the bottom card --lift-i 0 so it leaves
+   first, shrinks the region alongside, and makes it inert once the top card
+   is home (--drop-ms + (n - 1) x --drop-step). The z-order is the drop's, so
+   each card slides up under the one above. */
+.qntns-proj__archive > .qntns-proj__row.is-lifting {
+    animation: qntns-proj-lift var(--drop-ms) var(--drop-ease) forwards;
+    animation-delay: calc(var(--lift-i, 0) * var(--drop-step));
+}
+
+@keyframes qntns-proj-lift {
+    to {
+        transform: translateY(calc(var(--drop-y, 0px) * -1));
+    }
+}
+
+@keyframes qntns-proj-drop {
+    from {
+        transform: translateY(calc(var(--drop-y, 0px) * -1));
+    }
+}
+
+/* Reduced motion (123): goal-projects.js skips the height and the cascade,
+   so it opens and closes at once; the caret turns without easing. */
+@media (prefers-reduced-motion: reduce) {
+    .qntns-proj__archive > .qntns-proj__row.is-dropping,
+    .qntns-proj__archive > .qntns-proj__row.is-lifting {
+        animation: none;
+    }
+
+    .qntns-proj__caret {
+        transition: none;
+    }
+}
+
+/* WASHED OUT (108, option b). The archived card's frame goes halfway to the
+   page: border, hard shadow, card fill and done-segment fills are mixed 50%
+   with --color-page. Text is washed only as far as it still reads: ink 76%
+   (a 24% wash, 4.75:1 on the washed card; 28% would be 4.29). Contrast
+   (WCAG, from tokens.css): washed border 2.68:1 on the page. SEGMENT TEXT
+   STAYS FULL INK: the 24% wash on a washed done fill is 3.66:1 at t 0.66 and
+   under 4.5 up to t 0.83, while full ink is 6.53 at worst. --border-card and
+   --shadow-hard are restated here, not reached through --color-ink: a custom
+   property holding var() resolves where it is declared (:root), so a local
+   --color-ink would not reach them. No opacity anywhere, fills or motion (123). */
+.qntns-proj__closed {
+    --proj-wash: color-mix(in srgb, var(--color-ink) 50%, var(--color-page));
+    --proj-text: color-mix(in srgb, var(--color-ink) 76%, var(--color-page));
+}
+
+.qntns-proj__archive > .qntns-proj__row {
+    --border-card: 1px solid var(--proj-wash);
+    --shadow-hard: 4px 4px 0 var(--proj-wash);
+    color: var(--proj-text);
+    background: color-mix(in srgb, var(--color-beige-dark) 50%, var(--color-page));
+}
+
+.qntns-proj__closed .qntns-proj__seg {
+    color: var(--color-ink);
+}
+
+.qntns-proj__closed .qntns-proj__seg.is-done {
+    background: color-mix(in srgb, var(--seg-fill) 50%, var(--color-page));
+}

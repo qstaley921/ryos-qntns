@@ -1,0 +1,1653 @@
+/* QNTNs fund section — the block at the bottom of the footer that says who is
+   paying for the site today and sells the next open days.
+
+   IT IS A GUEST IN THE FOOTER, NOT A NEW BAND. It sits inside
+   .qntns-footer__inner, under the subscribe form, on the same
+   --color-beige-dark ground, and it takes its width from the SAME
+   --footer-inner-max (720px) the subscribe field and the sticky bar row
+   already share. That token is declared on .qntns-page in home.css and this
+   file only reads it: one owner for the footer's inner measure, so the
+   section, the field and the bar can never disagree about where the column is.
+   The reference images are wider than 720 — the proportions were kept and the
+   width was taken from the token, not from the screenshot.
+
+   THE FOOTER'S HEIGHT BUDGET GROWS BY 556px COLLAPSED, AND THIS IS THE
+   ARITHMETIC. Collapsed is the resting state and the only one worth budgeting:
+   expanding is a press the reader made, and what it adds is the rest of the
+   paragraphs plus the cost block.
+   home.css budgets the resting footer from Y, the sticky bar's own top edge,
+   and ends at "Y + 182 rejection-message bottom, Y + 246 footer bottom (64px
+   padding)". This section is inserted between those two lines. Nothing above
+   Y + 182 moves; the 64px bottom padding is unchanged and this block adds no
+   margin of its own beneath itself, so the footer's last measurement is still
+   the padding home.css already counts.
+
+     Y + 182   rejection message bottom          (unchanged, from home.css)
+     +  48     margin-top, --space-48            clear of the subscribe block
+                                                (was 32; it is the footer pages'
+                                                own 48 bottom margin, so the two
+                                                gaps in the footer stack match)
+     +  32     heading                           32px display on a 32px line
+     +  24     heading margin-bottom             --space-24, revision 8
+     +  56     blurb, COLLAPSED                  two 28px lines (16px / 28px),
+                                                the site's own body line — see
+                                                --fund-blurb-line
+     +  32     blurb margin-bottom               --space-32, revision 7
+     + 176     the tiles COLUMN                  80 + 16 + 80, see THE TILES
+     +  32     tiles margin-bottom
+     +  16     month labels                      one 12px label on a 16px line
+     +   4     label row gap                     --fund-gap
+     + 136     the day grid                      7 x 16 + 6 x 4, see THE GRID
+     +   8     pager margin-top                  --space-8, see THE PAGER
+     +  32     the pager                         two 32px buttons in a row,
+                                                revision 10 — see THE PAGER
+     -----
+     Y + 778   section bottom
+
+   THE COST BAR AND ITS LEGEND ARE NOT IN THAT LIST ANY MORE. Revision 4 moved
+   them inside the blurb, after the last paragraph, so they are INSIDE the 48px
+   two-line clip and cost the collapsed section nothing. They reappear when the
+   reader expands it, along with the rest of the text. The calendar block is the
+   last thing in the section now — the grid plus the pager row under it — and
+   nothing in it has a bottom margin; the gap under it is the footer's 64px
+   padding and nothing else.
+     +  64     footer padding-bottom             (unchanged, home.css)
+     Y + 842   footer bottom
+
+   THE TWO REVISIONS THAT MOVED THIS NUMBER, so it is clear which change bought
+   which pixels:
+
+     774   revision 0
+     806   revision 1: "View more" left the paragraph and took its own 24px
+           line plus a 24px margin, in place of the blurb's single 24 (+32)
+     838   revision 2: the button came back INLINE, giving those 32 back (-32),
+           and the tiles stopped sharing a row (+64) — see THE TILES
+     878   revision 3: both tiles went from 88/80 to a shared 104 (+40), which
+           is the 40px stepper and the range line under it — see THE TILES
+     802   revision 4: the cost bar and legend moved inside the blurb and so
+           inside the two-line clip (-44), and the calendar, now last, gave up
+           its 32px bottom margin to the footer's own padding (-32)
+     810   revision 5: the tiles stopped being a stated 104 and now follow
+           their content, which is 80 with a one-line name (-48), and the gap
+           under the heading went from 8 to 64 (+56)
+     786   revision 7: that 64 halved to 32 (-32) and the blurb's bottom margin
+           went 24 -> 32 to become the gap under the cost bar too (+8)
+     802   revision 9: the section's top margin went 32 -> 48 to match the
+           footer pages' own bottom margin (+16), and the blurb's line went
+           24 -> 28, the site's body line, taking the collapsed clip from
+           2 x 24 to 2 x 28 (+8)
+
+     810   revision 10: the pager's two buttons became the SAME control as
+           .qntns-pagination__step, which is 32px square rather than 24 (+8)
+
+   THE TILES TERM IS NO LONGER A CONSTANT. 176 is the common case — a funder
+   whose first name fits one line. A name that wraps takes each tile to 104 and
+   this budget to 882; see THE TILES. It is the only term in the stack that
+   depends on content rather than on this file, and it is bounded, because the
+   name is capped at two lines.
+
+   So the resting footer is 810px rather than 246px. One thing moves it off
+   that number and it is deliberate: the blurb EXPANDED adds 28px per extra
+   line plus 24px per paragraph break. There is no viewport-dependent term left
+   in this stack at all — revision 2 removed the last breakpoint — so this
+   height is now the same on a phone as on a desktop. Nothing shifts under the
+   reader at rest; expanding is a press they made.
+
+   HARD EDGES. Every radius token in this theme is 0 and nothing here is
+   rounded, so no radius is stated at all; the borders are square because
+   nothing rounds them.
+
+   NO COLOUR LITERALS. Everything is a token, or a color-mix off a token in the
+   style tokens.css already uses for --color-border. The two derived tones are
+   named where they are taken. */
+
+/* THE SECTION SETS ITS OWN FACE, AND IT IS THE UI ONE.
+   type.css puts --font-reader (OpenDyslexic) on <body>, so every label in here
+   used to inherit the reading face: the chip's month, the calendar, the legend,
+   the price. Settled with the user on 2026-08-28 — OpenDyslexic is the BODY
+   face and is reserved for prose the reader actually reads a paragraph of. It
+   is set back on .qntns-fund__blurb, which is the only prose in this section.
+   Everything else here is a label, a number or a control and takes --font-ui.
+   --font-display keeps the two headline things: the funder's name and the day
+   count, plus the chip's day number. */
+.qntns-fund {
+    font-family: var(--font-ui);
+    /* The whole section's spacing vocabulary, declared once so the grid, the
+       tiles and the cost bar cannot drift apart.
+
+       --fund-cell / --fund-gap are the calendar's SQUARE and its GUTTER, and
+       together they are the week PITCH: 16 + 4 = 20px per week column. Every
+       column-count breakpoint below is derived from that one number.
+
+       --fund-label-w is the M/T/W/R/F/S/Y column. It is 16px BECAUSE a square
+       is: the weekday label is the first auto-column of its row and takes the
+       same uniform track every day cell takes, which is the whole reason the
+       row needs no template. It is declared separately rather than written as
+       var(--fund-cell) so that the two can be pulled apart if the labels ever
+       need their own width — at which point the row grows a template again and
+       --fund-label-gutter below stops being 16 + 4. */
+    --fund-cell: 16px;
+    --fund-gap: var(--space-4);
+    --fund-label-w: var(--fund-cell);
+    /* The label column plus its gutter — the offset the month-label row needs
+       to line its first track up with the grid's first COLUMN. There is no
+       weekday-label element in the months row, so this is padding rather than
+       a track: --fund-label-w 16 + --fund-gap 4 = 20. It is also the term the
+       JS subtracts before dividing by the 20px pitch to get its column count;
+       see THE CALENDAR. */
+    --fund-label-gutter: 20px;
+    /* The cost bar's own height. Its segments are percentages, so this is the
+       only measurement in it. */
+    --fund-bar-h: 16px;
+    /* THE BLURB'S LINE BOX, as a LENGTH and not a ratio, because the collapsed
+       blurb's height is calc(2 * this) and calc cannot multiply a unitless
+       line-height. See THE BLURB. */
+    /* 28, AND IT IS THE SITE'S BODY LINE, NOT A NUMBER THIS FILE CHOSE.
+       type.css sets body to 1rem on 1.75, which is 16 on 28, and content.css
+       runs post prose at exactly that. This was 24 — a full 4px tighter than
+       every other paragraph on the site — and it showed: the blurb read as
+       denser than the posts it sits under. Settled with the user 2026-08-28:
+       whatever the content paragraphs use is what this uses.
+
+       It is written as a px value rather than as the 1.75 ratio because the
+       collapsed clip height is `2 * this` and the footer's height budget is
+       counted in whole pixels; a ratio would make that budget a computation
+       instead of a number. 16 x 1.75 = 28 exactly, so nothing is lost.
+
+       THE COLLAPSED BLURB IS NOW 56, NOT 48, and the footer budget at the head
+       of this file moves with it. */
+    --fund-blurb-line: 28px;
+    /* THERE IS NO --fund-more-w ANY MORE. It was 104px, the width of a column
+       the collapsed blurb held clear down BOTH of its visible lines so an
+       absolutely positioned "View more" had somewhere to sit. Reserving it on
+       line one as well as line two is what made the blurb read as two columns
+       with the button in the right-hand one; the user rejected that on
+       2026-08-29. The button is a float on the last line now and reserves its
+       room the way any float does, so there is nothing to declare. See THE
+       BLURB. */
+
+    /* THE SAME COLUMN THE SUBSCRIBE FIELD SITS IN, AND FROM THE SAME TOKEN.
+       --footer-inner-max is declared on .qntns-page in home.css and shared by
+       .qntns-footer__subscribe and the sticky bar row; this reads it rather
+       than restating 720, so the footer's inner measure keeps one owner and the
+       three blocks cannot disagree about where the column is. The head of this
+       file always described the section this way — the declaration was simply
+       never written, so it ran the full width of .qntns-footer__inner. Fixed
+       2026-08-28 after the user saw it on the live site.
+
+       min(100%, ...) and not a bare max-width, matching the subscribe form
+       exactly: below the cap the section is the container, above it the cap
+       wins, and `auto` margins centre it. */
+    width: min(100%, var(--footer-inner-max));
+    margin: var(--space-48) auto 0;
+}
+
+/* The display face at the same fixed 32px/32 the footer wordmark uses, rather
+   than .display's 32->60px clamp. A clamped heading would make the height
+   budget above a range instead of a number, and this block is being inserted
+   into a footer whose whole stack is counted in home.css.
+
+   CENTRED, AND IT IS THE ONLY CENTRED THING IN THE SECTION. Everything under it
+   — the blurb, the tiles, the calendar — is left-aligned, so the heading reads
+   as the section's title rather than as the first line of the paragraph. It is
+   one word now, "Fund"; "Fund QNTNs" said the site's name to a reader already
+   standing in the site's footer. Both settled with the user 2026-08-28. */
+.qntns-fund__heading {
+    text-align: center;
+    /* 24 under the heading, not the grid's usual 8 and not the 32 the rest of
+       this block uses. The heading is the section's title and the blurb is a
+       separate block of argument under it, so the pair reads as two things
+       rather than as a label stuck to a paragraph — but the title sits CLOSER
+       to its own paragraph than the cost bar does to the tiles, because it
+       belongs to the text beneath it. It was 64 for one revision, halved to 32
+       at revision 7, and tightened to 24 at revision 8.
+
+       32 REMAINS THE BLOCK'S OUTER RHYTHM in the two places that separate
+       unlike things: above the cost bar and below the blurb. Between the
+       paragraphs it is 24, the site's own --content-para-gap; see
+       .qntns-fund__para. */
+    margin: 0 0 var(--space-24);
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 32px;
+    font-weight: 400;
+}
+
+/* THE BLURB — A FIXED TWO-LINE BOX WITH A RESERVED CORNER.
+   ---------------------------------------------------------------------------
+   THE PAD IS GONE AND IT MUST NOT COME BACK. Revision 2 sat "View more" on a
+   solid rectangle of --color-beige-dark so it could cover the clipped words
+   running underneath it. The theory was that a flat band painted with its own
+   token is invisible. It is not — the user's screenshot shows it as a lighter
+   rectangle, because the tile it overlaps and the antialiasing at its edges
+   give it away. The button is bold navy text on nothing now, like every other
+   piece of type in this section. DO NOT RE-ADD A BACKGROUND as the obvious fix
+   for the overlap; the user has looked at that and rejected it.
+
+   WHICH MEANS THE TEXT HAS TO GENUINELY STOP, and the way it stops is a float.
+   A zero-height concern: floats shorten the LINE BOXES of every block that
+   follows them in the same formatting context, and the paragraphs are in the
+   blurb's context, so a float in the blurb narrows the paragraph's lines
+   without touching its box. ::before puts that float at the very top of the
+   content, ahead of the first word, which is the only place a float can be and
+   still affect the first line — a float is never placed above its own position
+   in the flow.
+
+   IT RESERVES THE LAST VISIBLE LINE ONLY, and getting there cost a markup
+   change. Revision 8 held a 104px column clear down BOTH lines, because the
+   canonical trick — a full-height zero-width spacer, then the button floated
+   right and cleared below it — requires the button to sit AHEAD of the text in
+   the DOM, and the JS emitted it as the LAST inline child of the paragraph. A
+   float is never placed above its own position in the flow, so from there
+   `clear` could only push it further down, never up onto line two.
+
+   Reserving both lines was called a cheap trade at the time. It was not: a
+   104px gutter running the full height of a two-line box does not read as a
+   button sitting at the end of a sentence, it reads as a second column, and
+   the user rejected it on 2026-08-29. renderBlurb in fund.js now emits the
+   button FIRST, which is the one change that makes the canonical trick legal,
+   and line one has its full measure back. The button and the ::before below
+   are the other two thirds of that fix; all three move together or none do.
+
+   WHY NOT line-clamp, because the next person will reach for it: it clips
+   everything past the line boundary INCLUDING inline children, so the button
+   does not sit at the end of the clipped line, it disappears.
+
+   THE HEIGHT IS A MULTIPLICATION AND IT HAS TO COME OUT EXACT.
+
+     font-size    --type-step-0 = 1rem = 16px
+     line-height  24px, STATED AS A LENGTH, not as 1.5
+     height       calc(2 * 24px) = 48px
+
+   line-height is a number in most of this theme and is a length here on
+   purpose: `1.5` computes to 24 today, but only while the font-size is 16, and
+   calc() cannot multiply a unitless line-height by anything. A fractional
+   result is not a rounding nuisance — it is how the ascenders of the THIRD
+   line show through the bottom of the box. 48 is the number in the footer's
+   height budget at the head of this file. */
+.qntns-fund__blurb {
+    /* THE ONE READER-FACE ELEMENT IN THE SECTION. See .qntns-fund at the top:
+       the section sets --font-ui on itself, and this is the paragraph that is
+       exempted back to the body face. The cost bar and legend are its children
+       and are NOT prose, so they take --font-ui back — see .qntns-fund__cost
+       and .qntns-fund__legend. */
+    font-family: var(--font-reader);
+    /* No position: relative. It existed only so the button could be absolutely
+       positioned into this box's bottom-right corner; the button is a float
+       now and nothing else in here is positioned. */
+    overflow: hidden;
+    height: calc(2 * var(--fund-blurb-line));
+    /* 32, raised from 24 at revision 7, and it is the gap under the COST BAR
+       as much as under the text — the cost block is the blurb's last child, so
+       whatever sits below this element sits below the legend. One owner, one
+       value, identical in both states; see the margin-collapse note in THE
+       COST BAR for why it is not on the cost block itself. */
+    margin: 0 0 var(--space-32);
+    font-size: var(--type-step-0);
+    line-height: var(--fund-blurb-line);
+}
+
+/* THE SPACER THAT PUSHES THE BUTTON DOWN ONTO THE SECOND LINE.
+   Zero content, no paint, and — the part that matters — ZERO WIDTH, so it
+   costs the text no measure on either line. It is a full-height right float
+   whose bottom margin is pulled back by exactly one line, and the button below
+   it clears right, so the button lands at the top of the LAST visible line
+   instead of below the whole box.
+
+     height         calc(2 * 28) = 56px, the clip window
+     margin-bottom  -28px, one line back
+     button clears at 56 - 28 = 28px, which is the top of line two
+
+   This is the canonical trick and it is only available because the button now
+   sits AHEAD of the text in the DOM — a float is never placed above its own
+   position in the flow, so a button emitted after the paragraph could never
+   rise to line two. That is exactly why revision 8 could not use it: it
+   reserved a 104px column across BOTH lines and pinned the button into it
+   absolutely, which read as a two-column layout. The user rejected that on
+   2026-08-29. Line one has its full measure back. */
+.qntns-fund__blurb::before {
+    content: "";
+    float: right;
+    width: 0;
+    height: calc(2 * var(--fund-blurb-line));
+    margin-bottom: calc(-1 * var(--fund-blurb-line));
+}
+
+.qntns-fund[data-expanded] .qntns-fund__blurb {
+    height: auto;
+    overflow: visible;
+}
+
+/* Expanded there is no button in the DOM at all — revision 3 removed "View
+   less" — so there is nothing to reserve a corner for. */
+.qntns-fund[data-expanded] .qntns-fund__blurb::before {
+    content: none;
+}
+
+/* 24 BETWEEN PARAGRAPHS, WHICH IS --content-para-gap IN content.css.
+   It was 12 — "half a line of air" against the old 24px line — and that was
+   this file inventing a rhythm. A post's paragraphs are 24 apart; so are these.
+   Settled with the user 2026-08-28 alongside the line height above. It is
+   written as --space-24 rather than read from --content-para-gap because that
+   token is declared on the content column and does not reach the footer; the
+   two are the same number for the same reason and a change to one is a change
+   to both.
+
+   ONLY THE EXPANDED STATE EVER SEES THIS. Collapsed, the box is 56px tall and
+   only the first paragraph's first two lines are inside it, so a paragraph gap
+   never appears — which is why the collapsed height in the budget is 2 x 28 and
+   not 2 x 28 plus anything. The last paragraph's margin is zeroed so the
+   expanded blurb ends on its own text and the 32px below it is the blurb's
+   margin and nothing else. */
+.qntns-fund__para {
+    margin: 0 0 var(--space-24);
+}
+
+/* :last-of-TYPE, not :last-child. Since revision 4 the blurb's last child is
+   the cost block, not a paragraph, so :last-child matches nothing and the
+   final paragraph would keep a 12px margin that the cost block's own 24px then
+   sits under. */
+.qntns-fund__para:last-of-type {
+    margin-bottom: 0;
+}
+
+/* THE LINKS ARE BOLD AND NOT UNDERLINED, AND THE HOVER IS NOT AN UNDERLINE.
+   text-decoration: none is stated explicitly rather than inherited from
+   type.css's bare `a` rule — this file must not be one stylesheet away from
+   growing an underline it did not ask for.
+
+   The hover and focus state is the PALE BLUE WASH type.css already gives every
+   link on the site (--color-accent-soft behind, ink on top). It was chosen
+   over a rule appearing on hover for two reasons: an underline that is absent
+   at rest and present under the cursor is exactly the surprise the brief rules
+   out, and a background paints inside the inline box, so it cannot change the
+   line's height or reflow the clamped two lines under the reader. Ink on
+   --color-accent-soft (hsl 224 38% 89%) measures 9.6:1.
+
+   The wash is restated here rather than left to type.css because the ink
+   colour is restated too, and half a state inherited from another file is the
+   thing that drifts. */
+.qntns-fund__link {
+    color: var(--color-ink);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.qntns-fund__link:hover,
+.qntns-fund__link:focus-visible {
+    background-color: var(--color-accent-soft);
+    color: var(--color-ink);
+    text-decoration: none;
+}
+
+/* BOLD NAVY TEXT ON NOTHING. Every single thing a <button> arrives with —
+   background, border, padding, its own font — is taken off it, the same list
+   .qntns-footer__mark removes in home.css, and the background is off for good:
+   see THE PAD IS GONE above. What is deliberately NOT removed is the focus
+   ring. It is still a button and still a keyboard stop, and the only reason it
+   does not look like one is a design decision the keyboard must not pay for.
+
+   It is positioned into the blurb's bottom-right corner — bottom: 0 of a box
+   exactly two lines tall IS the second line — and it lands inside the column
+   the ::before float has already cleared for it, so it sits beside the text
+   rather than on top of it.
+
+   THE ELLIPSIS IS DRAWN HERE, not emitted in the markup. It belongs to the
+   collapsed state only, and the collapsed state is a CSS fact — data-expanded
+   is on the section, and a ::before that switches off with it cannot fall out
+   of step with the box it is annotating. The JS must not emit a second one.
+
+   There is no expanded rule for this element any more. Revision 3 deleted
+   "View less": the button is in the DOM only while the blurb is collapsed, so
+   an [data-expanded] override would be styling something that is not there. */
+/* A FLOAT ON THE LAST VISIBLE LINE, NOT A BOX PINNED TO A CORNER.
+   The text wraps above it and stops before it, which is what a float does and
+   what the previous revision spent an absolute position and an occluding
+   background faking. Both are gone:
+
+     float/clear  right. `clear: right` is what drops it past the ::before
+                  spacer above and onto line two; without it the button would
+                  float alongside the spacer on line one.
+     background   NONE, and it must stay none. It was --color-beige-dark so an
+                  absolutely positioned button could hide the words running
+                  underneath it, and the user rejected that rectangle once
+                  already — it reads as a lighter band because of the tile it
+                  overlaps and its own antialiased edges. A float displaces
+                  text rather than covering it, so there is nothing left to
+                  hide and no reason for the paint. DO NOT RE-ADD IT.
+     font-family  the UI face, like every other control in this section. It is
+                  a button, not prose; see the note on .qntns-fund at the top.
+                  .qntns-fund__blurb is the section's one --font-reader element
+                  and this sits inside it, so the face has to be taken back
+                  explicitly.
+     padding-left 16, which is now simply THE GAP between the sentence and the
+                  "…" rather than clearance for an occluded strip. On grid, and
+                  it is the only thing holding the two apart. */
+.qntns-fund__more {
+    appearance: none;
+    float: right;
+    clear: right;
+    margin: 0;
+    padding: 0 0 0 var(--space-16);
+    border: 0;
+    background: none;
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.qntns-fund__more::before {
+    content: "… ";
+}
+
+/* THE TILES — ALWAYS STACKED, ONE FULL-WIDTH COLUMN, ONE SHARED HEIGHT.
+   ---------------------------------------------------------------------------
+   Revision 2 settled the stacking and it stands: no side-by-side layout, no
+   breakpoint, both tiles the full width of the section at every viewport. That
+   is why this file has no media queries at all and why the footer's height
+   budget has no viewport-dependent term in it.
+
+   THE TWO TILES ARE THE SAME HEIGHT BY CONSTRUCTION, AND THE HEIGHT FOLLOWS
+   THE CONTENT. Those used to be in tension. Revision 3 made them agree by
+   stating a fixed --fund-tile-h of 104, sized for a name that wrapped to two
+   lines of 24px type; the same revision shrank that type and left the 104
+   standing, so a one-line name sat in a box with 24px of dead air under it.
+
+   `grid-auto-rows: 1fr` replaces the stated height and does both jobs at once.
+   In a grid whose own height is auto, fr rows resolve to ONE size large enough
+   for the tallest row's content — so the rows are equal because they are fr,
+   and they are content-sized because the grid is. Nothing states a height, and
+   nothing can go stale when the type inside changes again.
+
+   THE INNER BUDGET, with a one-line name, which is the common case:
+
+     NOW TILE                            BUY TILE
+     name          24                    chip   48, and it is what sets this
+     gap            4                           tile — the column beside it
+     sub           20                           comes to the same 48
+     ----------------                    stepper       24
+     content       48                    gap            4
+     + 32 padding                        sub           20
+     ----------------                    ----------------
+     TILE          80                    content       48  ->  TILE  80
+
+   Both 80, and equal without needing to be told. A name long enough to wrap
+   takes the now tile's content to 24 + 24 + 4 + 20 = 72 and the tile to 104,
+   and the 1fr row takes the buy tile up with it — so they stay equal at every
+   name length, which the stated height only managed at one.
+
+   The name is capped at two lines by its own max-height; see .qntns-fund__name.
+   That is the ceiling on how far this row can grow.
+
+   The buy tile's 4px row gap is the same 4 the now tile uses, and it is the
+   term that makes 24 + 4 + 20 come to the chip's 48 — see THE CHEVRONS for the
+   measured arithmetic behind it. It was 12 while the stepper was 40 tall.
+
+   The Fund button is NOT in that column — it is pinned into the tile's corner
+   and out of the flow entirely. See THE FUND BUTTON.
+
+   THE EMPTY STATE NO LONGER CHANGES THIS ROW AT ALL. Until revision 4,
+   [data-empty] meant the buy tile was not in the DOM and this file carried a
+   rule to make the now tile span the row on its own. That was backwards: it
+   left a reader looking at "No one is funding this site." with no way to fund
+   it, and an empty queue is when the buy tile matters most. BOTH TILES NOW
+   RENDER IN EVERY STATE, with the buy tile's chip showing today's date when
+   the queue is empty.
+
+   [data-empty] still exists and still drives the now tile's WORDING, but it is
+   invisible to this file — there is no [data-empty] selector anywhere in this
+   stylesheet and there should not be one. The rule that used to be here had
+   already stopped earning its place at revision 2, when the tiles became
+   permanently one full-width column: a one-column grid lays out one child and
+   two children identically, so there was nothing left for the override to
+   override. The column is the same height in every state. */
+.qntns-fund__tiles {
+    display: grid;
+    /* Equal rows, sized to the tallest content. See THE TILES. */
+    grid-auto-rows: 1fr;
+    gap: var(--space-16);
+    margin-bottom: var(--space-32);
+}
+
+.qntns-fund__tile {
+    display: flex;
+    /* CENTRE, since revision 8. The chip is 56 and the text column beside it
+       is shorter in both tiles, so aligning to the top hung the chip off the
+       first line with everything banked under it. Centred, the tile reads as
+       balanced and neither tile needs a rule of its own. */
+    align-items: center;
+    gap: var(--space-12);
+    /* NO HEIGHT. The tiles are equal because their grid rows are 1fr, and they
+       are content-sized because the grid is — see THE TILES. A stated height
+       here is what left dead air under a one-line name. */
+    padding: var(--space-16);
+    border: var(--border-card);
+    background: var(--color-card);
+    /* A grid item's min-width is auto, which means "never smaller than my
+       content" — and that is the reason a nowrap sentence inside it refuses to
+       truncate and blows the tile out instead. The ellipsis in .qntns-fund__sub
+       depends on this line. */
+    min-width: 0;
+}
+
+
+/* The date chip. A solid navy square, 56 on a side since revision 8 — it was
+   48, three 16s, and 56 is fourteen 4s. The type inside it did NOT grow: the
+   square is what got bigger, and the 24px day over the 12px month still comes
+   to 36. What changed is the air around it, from 6 a side to 10, and both are
+   a REMAINDER that flex-centring produces rather than a padding anyone wrote
+   down — (56 - 36) / 2 = 10 is off the grid and is allowed to be, for the same
+   reason the 1px hairline is: nothing lines up with it and nothing measures it.
+   If the type ever looks starved in the bigger square that is the number to
+   spend, but 56 with the existing type is the intent.
+
+   Cream on navy is the theme's inverse pair; it is --color-accent-contrast
+   because that is the token that exists for text on an accent fill. */
+.qntns-fund__chip {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    background: var(--color-ink);
+    color: var(--color-accent-contrast);
+}
+
+.qntns-fund__chip-day {
+    font-size: 20px;
+    line-height: 24px;
+    font-weight: 700;
+}
+
+/* The month is the UI face against the day's display face — the same pairing
+   the rest of the theme uses for a small label under a big number. Requested by
+   the user 2026-08-28. */
+.qntns-fund__chip-month {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    line-height: 12px;
+    letter-spacing: 0.08em;
+}
+
+.qntns-fund__now {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    /* A flex item will not shrink below its content, and a long first name
+       would push the tile wider than its track without this. */
+    min-width: 0;
+}
+
+/* The name is the largest type in the block on purpose — the section's whole
+   claim is that a PERSON is paying for this today, and a number does not read
+   as a person. It is no longer the heading's 32/32: revision 3 shrank it to
+   24/24 so that TWO lines of it plus the 4px gap plus the 20px sub come to
+   exactly the 72px inner height, instead of the 88 that 32/32 needed. See the
+   budget in THE TILES.
+
+   max-height is the enforcement, not a suggestion. A name long enough to want
+   a third line is cut at two rather than pushing the bottom of the box down,
+   which is the fault this change answers. overflow-wrap: anywhere so a single
+   unbroken name breaks rather than widening the tile. */
+.qntns-fund__name {
+    overflow: hidden;
+    max-height: calc(2 * 24px);
+    font-family: var(--font-display);
+    font-size: 24px;
+    line-height: 24px;
+    overflow-wrap: anywhere;
+}
+
+/* ONE LINE, ALWAYS, TRUNCATED RATHER THAN WRAPPED. The three parts of this
+   have to be present together or it silently does nothing: nowrap stops the
+   break, overflow: hidden gives the ellipsis something to cut, and
+   text-overflow draws it. The fourth part is not on this element at all — a
+   flex or grid item's min-width defaults to auto and a nowrap child then sizes
+   its ancestor instead of being clipped by it, so .qntns-fund__now AND
+   .qntns-fund__tile both carry min-width: 0. Removing either one turns this
+   rule off without changing it.
+
+   The NAME above may still wrap; only the sentence is pinned to one line. */
+.qntns-fund__sub {
+    /* SCROLLABLE, NOT CLIPPED, AND THE SCROLLBAR IS NOT DRAWN.
+       It was overflow: hidden, which is what text-overflow needs — and it meant
+       the end of a long sentence was simply gone, with no way to read it. It is
+       a scroll container now: the line still does not wrap, the ellipsis still
+       marks that there is more, and a reader can drag the text sideways to see
+       the rest. Asked for by the user 2026-08-28.
+
+       overflow-y: hidden with overflow-x: auto, not `overflow: auto`. A scroll
+       container that can scroll vertically would let a one-line box be dragged
+       off its own line by a stray gesture.
+
+       THE BAR IS HIDDEN ON ALL THREE ENGINES and that is three declarations,
+       not one: scrollbar-width for Firefox, -ms-overflow-style for old Edge,
+       and the ::-webkit-scrollbar rule below for WebKit and Blink. Miss any of
+       them and a grey bar cuts across the bottom of the tile on that engine
+       only. Hiding it costs nothing on a phone, where the bar is an overlay
+       that fades anyway, and on a desktop the ellipsis is the affordance.
+
+       overscroll-behavior-x: contain so dragging past the end of the sentence
+       does not chain out to the page and trigger the browser's back gesture.
+
+       WHAT THIS DOES NOT GIVE YOU: a mouse DRAG on desktop. Touch drag, a
+       trackpad swipe and shift-wheel all work because this is a real scroll
+       container; click-and-drag with a mouse is not a scroll gesture in any
+       browser and would need a pointer-event handler. Flagged rather than
+       built — the case that matters is a phone, which is also where the
+       sentence actually runs out of room.
+
+       A FADE, NOT AN ELLIPSIS, AND THE ELLIPSIS HAD TO GO.
+       text-overflow: ellipsis and a scroll container do not co-operate: the
+       browser draws the "…" at the clip edge and then refuses to scroll past
+       it, so the box scrolled and revealed nothing. Confirmed by the user on
+       the live site 2026-08-28.
+
+       The mask replaces it. It is anchored to this element's own box, NOT to
+       the scrolled content — masks resolve against the padding box — so the
+       fade stays pinned to the right edge while the sentence slides under it,
+       which is exactly the "there is more" signal the ellipsis was supposed to
+       be, and a better one, because it also says WHICH WAY.
+
+       IT COSTS NOTHING WHEN THE TEXT FITS, and that is why this needs no JS to
+       switch it on and off. The gradient fades to transparent, and transparent
+       over an empty stretch of tile is invisible — there is only something to
+       see where there is text under it.
+
+       IT IS AN ALPHA MASK AND NOT A PAINTED GRADIENT, which the stop colours
+       hide rather than show. `mask-image` reads the ALPHA channel of the image
+       and nothing else — mask-mode defaults to match-source, and for a gradient
+       that resolves to alpha. So the two stops below mean "opacity 1 here" and
+       "opacity 0 there"; they are written as rgb(0 0 0 / 1) and rgb(0 0 0 / 0)
+       to say so out loud, and the black is arbitrary — hotpink would render
+       identically. Nothing is painted over the text. The text itself fades out
+       and whatever is behind it shows through, which is why this works on the
+       tile and would work just as well on any other ground.
+
+       32 is the fade's width: two of the grid's 16s, wide enough to read as a
+       softening rather than as a cut. -webkit-mask-image for Safari before
+       15.4, which is the last engine that wants the prefix.
+
+       THE PADDING-RIGHT IS THE SAME 32 AND IT IS NOT DECORATION. Without it the
+       sentence runs out at the same edge the box does, so at maximum scroll the
+       last few characters sit UNDER the fade and cannot be got out from under
+       it — the reader drags to the end and the last word is still half gone.
+       32px of padding is 32px of scrollable room past the last glyph, so the
+       end of the content lines up with the START of the fade and the final
+       character is at full opacity. The two numbers are the same number for
+       that reason and must move together; if the fade ever widens, this widens
+       with it. Reported by the user 2026-08-28 after scrolling to the end. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    padding-right: 32px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* 20 ON 28, UP FROM 14 ON 20, AND THE 56px CHIP IS WHAT PAID FOR IT.
+       The column in each tile is name + gap + sub, and it is measured against
+       the chip beside it because the chip is what sets the tile's height:
+
+         24   the name / the day count   (.qntns-fund__name, .qntns-fund__days)
+        + 4   the gap
+        +28   this line
+         --
+          56  =  the chip, exactly
+
+       At the old 48px chip that sum was 24 + 4 + 20 = 48 and there was nothing
+       spare. The chip grew to 56 at revision 8 and the 8 pixels it bought were
+       sitting empty under this line in both tiles; they are spent here, on the
+       type rather than on air, at the user's request on 2026-08-28.
+
+       A stated line-height in px is the one place this file pins type rather
+       than a ratio: 1.4 of 20 is 28 either way, but writing it as a ratio would
+       let a change of font-size move the tile's height silently. */
+    font-size: 20px;
+    line-height: 28px;
+    white-space: nowrap;
+    -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / 1) calc(100% - 32px), rgb(0 0 0 / 0));
+    mask-image: linear-gradient(to right, rgb(0 0 0 / 1) calc(100% - 32px), rgb(0 0 0 / 0));
+}
+
+/* See the note above: WebKit and Blink need their own rule to drop the bar. */
+.qntns-fund__sub::-webkit-scrollbar {
+    display: none;
+}
+
+.qntns-fund__count,
+.qntns-fund__next-name {
+    font-weight: 700;
+}
+
+/* THE BUY TILE'S BODY — TWO COLUMNS, TWO ROWS, AND THE BUTTON IS BACK IN THE
+   FLOW.
+   ---------------------------------------------------------------------------
+   Revision 8 moved the chevron pair out of the stepper to sit directly above
+   the Fund button, right-aligned with it, 8px between them. This rule assumes
+   the markup agent made .qntns-fund__arrows a DIRECT CHILD of
+   .qntns-fund__buy, a sibling of the button rather than a child of the
+   stepper. If they wrapped the two in a new element instead, the four
+   placements below move onto that wrapper and nothing else here changes.
+
+     col 1 (1fr)          col 2 (auto)
+     row 1   stepper      arrows          both 24 tall
+             ---- 8px row gap ----
+     row 2   range line   Fund button     32, set by the button
+
+   IN FLOW, NOT POSITIONED, AND THAT IS THE DECISION THE SPEC ASKED FOR. The
+   Fund button was absolutely positioned into the tile's bottom-right corner
+   from revision 3 to revision 7. Keeping it there and positioning the arrows
+   too would be TWO separately positioned boxes whose 8px gap is a number
+   subtracted by hand — 16 inset + 32 button + 8 = the arrows' own inset — and
+   the moment the button's height changes that 8 is silently wrong. That is
+   exactly the half-and-half drift the brief warns about. A grid row gap cannot
+   drift: it is 8 because it is declared 8.
+
+   Bringing it back into flow deletes three things that only existed to hold
+   its corner open: --fund-buy-reserve, the padding-right that reserved it, and
+   `position: relative` on the tile. The button can no longer overlap the range
+   line because they are in different columns of the same grid, which is a
+   stronger guarantee than a reserved column of guessed width ever was.
+
+   The column gap is 16 — the tile's own padding — so the two groups read as
+   two columns rather than as one crowded row. */
+/* TWO GROUPS ON ONE CENTRED ROW — IT IS A FLEX ROW AGAIN, NOT A 2x2 GRID.
+   ---------------------------------------------------------------------------
+   The grid was two columns by two rows: stepper over range line on the left,
+   chevrons over Fund button on the right. It laid out correctly and still got
+   the vertical wrong, and the reason is worth writing down because it is not
+   obvious. The right-hand group is 24 + 8 + 32 = 64 tall and the left-hand one
+   is 24 + 4 + 28 = 56, so a grid whose rows hold BOTH grows its two tracks to
+   64 between them and then centres the left column's two items INDEPENDENTLY,
+   one in each fattened track. The day count and its range line drift apart by
+   the 8px of slack, and the pair stops matching the now tile's name-over-
+   sentence, which is the one thing the buy tile is supposed to echo.
+
+   A group cannot be centred as a group until it is a box. .qntns-fund__buy-text
+   is that box — see the markup — and this is now one flex row of exactly two
+   children, each centred against the chip on its own.
+
+     chip 56   |   buy-text 56   ...gap 16...   actions 64
+
+   The tile's inner height is the tallest of the three, so 64, and the 8 that
+   buys is air split evenly above and below the two shorter boxes rather than
+   dumped inside one of them. --}} */
+.qntns-fund__buy {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    /* The text takes the room and the controls sit on the far edge. */
+    justify-content: space-between;
+    /* The tile's own padding, so the two groups read as two columns rather
+       than as one crowded row. */
+    gap: var(--space-16);
+    min-width: 0;
+}
+
+/* 4, AND IT IS THE NOW TILE'S NUMBER. .qntns-fund__now uses --space-4 between
+   the funder's name and the sentence under it; this is the same gap under the
+   day count, so the two tiles share one rhythm instead of nearly agreeing.
+   Settled with the user 2026-08-28, who asked in the same breath that the
+   chevrons keep their 8 from the Fund button — that is a different gap, on
+   .qntns-fund__actions, and this line cannot reach it. That separation is the
+   whole reason the two groups are two boxes.
+
+   min-width: 0 for the ellipsis on the range line; see .qntns-fund__sub. */
+.qntns-fund__buy-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.qntns-fund__actions {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-8);
+}
+
+/* THE STEPPER
+   -----------
+   The native spinner is suppressed on all three engines — the two WebKit
+   pseudo-elements plus Firefox's textfield appearance — because it renders
+   differently in every browser, hides until hover, and cannot be made to look
+   like a hard-edged navy control. The real <input type="number"> stays
+   underneath: a phone still gets a numeric keypad and a keyboard still gets
+   its arrow keys, which is the whole reason this is not a div.
+
+   THE FIELD IS THE FUNDER'S NAME'S TYPE, AND IT HAS NO UNDERLINE. Revision 8:
+   the number is --font-display at 24px on a 24px line, character for character
+   the same as .qntns-fund__name in the now tile, and the 1px rule that used to
+   draw it is gone. The two largest things in the two tiles are now a person's
+   name and the number of days you would buy, which is the section's argument
+   in two words.
+
+   48 WIDE, AND WHAT THAT HOLDS. Gill Sans Ultra sets a digit at roughly 0.6em,
+   so 24px type gives about 14.4 a digit: two digits is ~29, three is ~43. 48
+   holds all three with room, so the field is the same width at "1", at "90"
+   and at "365" — MAX_DAYS in fund.js is 365, so three is the most it can ever
+   show — and the layout never jumps as the count changes. The brief asked for
+   two digits; three is what the data can produce and costs nothing extra.
+
+   THE ROW IS 24 AND NO LONGER NEEDS PINNING. It was `height: 24; line-height:
+   20` because the 1px underline sat outside a 24px content box and made the
+   input measure 25. With no border there is no 25 to correct, so the type sets
+   the row honestly: 24px on a 24px line.
+
+   LOSING THE UNDERLINE LOSES THE ONLY MARK THAT SAID "EDITABLE", and the two
+   chevrons are now the whole affordance — and revision 8 moved them away from
+   the field to sit above the Fund button. Whether it still reads as editable
+   is a judgement for the user to make by looking at it, not for this file to
+   pre-empt by putting something back. It is flagged, not fixed. */
+.qntns-fund__stepper {
+    display: flex;
+    /* The field and its unit never wrap onto a second line. */
+    flex-wrap: nowrap;
+    align-items: baseline;
+    /* 4, not 8. "1 day" has to read as one word group, not as a number with a
+       label parked beside it — see .qntns-fund__unit and .qntns-fund__days. */
+    gap: var(--space-4);
+    /* The chevrons left this row at revision 8, so it is the 24px display
+       number and the small unit label beside it, and 24 is the number's own
+       line. It is the top term of the buy tile's column budget; see THE
+       TILES. */
+    height: 24px;
+}
+
+.qntns-fund__days {
+    /* THE FIELD IS AS WIDE AS ITS DIGITS, AND WHY IT IS NOT A FIXED 48.
+       It was 48px with the digits centred, which held all three digits without
+       the layout jumping — but at "1" that parked a single glyph in the middle
+       of a 48px box, 34px clear of the word after it, and "1 day" stopped
+       reading as one word group. The user asked for it left and together.
+
+       1ch is the width of a "0" in the current font, so for a digits-only
+       field one ch is one digit exactly. wireStepper sets this width from the
+       value's LENGTH on every paint — see paint() in fund.js — so the field is
+       1ch at "1", 3ch at "365", and the unit always sits 4px after the last
+       digit. This declaration is the floor and the no-JS value.
+
+       BASE-4 EXEMPTION, NAMED HERE per CLAUDE.md: ch is a type metric, not a
+       measurement, and nothing lines up with it — the same class of exemption
+       the chip's centring remainder takes. The gap beside it is a real 4. */
+    width: 1ch;
+    padding: 0;
+    /* No underline since revision 8. `border: 0` is the whole of it — there is
+       no rule under this field any more and nothing replaces it. */
+    border: 0;
+    background: none;
+    color: var(--color-ink);
+    /* The now tile's name, exactly — see .qntns-fund__name. Not `inherit`,
+       which would give it the section's UI face; the point of the change is
+       that this number and that name are the same piece of type. */
+    font-family: var(--font-display);
+    font-size: 24px;
+    line-height: 24px;
+    /* LEFT. The box is the digits' own width now, so there is nothing inside it
+       to align against — but a number input centres by UA default in some
+       engines, and left is what makes "1 day" one group. */
+    text-align: left;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.qntns-fund__days::-webkit-inner-spin-button,
+.qntns-fund__days::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+/* THE UNIT IS THE NUMBER'S OWN TYPE. It was the small UI face at 14px, which
+   made "1 day" read as a value with a caption. It is --font-display at 24 on a
+   24px line now, character for character the same as .qntns-fund__days and as
+   .qntns-fund__name — so the two of them set as one word, and the row's height
+   is still the single 24px line the tile budget counts. */
+.qntns-fund__unit {
+    font-family: var(--font-display);
+    font-size: 24px;
+    line-height: 24px;
+    white-space: nowrap;
+}
+
+/* THE CHEVRONS — TWO 24px SQUARES, SIDE BY SIDE.
+   ---------------------------------------------------------------------------
+   Revision 5. They were 16px squares stacked vertically; they are the theme's
+   standard 24px control square now, laid out horizontally with 8px between
+   them, so the pair is 24 + 8 + 24 = 56 wide and 24 tall. Filled navy with the
+   chevron in the contrast cream, the same treatment the date chip gets.
+
+   THE HIT-TARGET PSEUDO-ELEMENT IS GONE. Revision 3 needed it because the
+   visible square was 16 and the target had to reach 24; the visible square IS
+   24 now, so the button's own box is the target and a pseudo-element extending
+   it would only overlap its neighbour. Nothing was shrunk to achieve that —
+   the square grew past the requirement.
+
+   THE GLYPH. icon("chevron-up") from assets/js/icon-set.js, the vendored
+   lucide set every other glyph in the theme comes from. Its box is sized HERE
+   rather than taken from whatever `size` the JS passed, so the inset is a
+   property of this rule and cannot drift when the call changes:
+
+     square 24 - glyph 16 = 8, so the inset is 4 on every side, on the grid.
+
+   stroke-width is 3 rather than lucide's 2, and that is in viewBox units, not
+   pixels: the icon is a 24-unit box drawn at 16px, so 3 units paint
+   16/24 x 3 = exactly 2px. Lucide's own 2 would paint 1.33 and antialias into
+   a grey smear across a device pixel. 2px of cream on navy at 24px matches the
+   weight of the chip's own type.
+
+   ---------------------------------------------------------------------------
+   THE ROWS FIT THE CHIP, AND THE SPEC'S ARITHMETIC FOR IT WAS WRONG IN TWO
+   PLACES. The constraint is that the buy tile's two rows — the stepper, then
+   the range line under it — come to exactly the 48px the date chip is tall, so
+   the tile has one height and not two. The proposed sum was
+   24 + 8 gap + 16 date line = 48. Measured against what this file actually
+   computes, neither the 16 nor the 24 was true:
+
+     THE RANGE LINE IS 20, NOT 16. It is .qntns-fund__sub, shared deliberately
+     with the now tile's subtext, and that is --type-step--1 (0.875rem = 14px)
+     on a stated 20px line. Making it 12/16 to fit the sum would have changed
+     the now tile too, and revision 3 asked for the two to be identical.
+
+     THE STEPPER'S TOP ROW WAS 25, NOT 24. The day input is 20px type on a 24px
+     line PLUS its 1px underline, and box-sizing: border-box does not help when
+     no height is stated — the border sits outside a 24px content box and the
+     border-box height is 25. It is pinned to 24 below, with its line-height
+     dropped to 20 so the 23px of content box left under the border still holds
+     the line. Digits have no descenders, so nothing is at risk of clipping.
+
+   With both terms measured rather than assumed:
+
+     top row, the stepper      24     (pinned; see .qntns-fund__days)
+     row gap                    4
+     bottom row, range line    20     (14px type on a 20px line)
+     ------------------------------
+     total                     48  =  the chip's height
+
+   THE GAP GAVE WAY, NOT THE CHIP AND NOT THE TYPE. Revision 5 offered growing
+   the chip to the next multiple of 4 that the rows sum to — that would have
+   been 56, with 24 + 12 + 20 — but the chip is a designed 48 square shared with
+   the now tile, and growing it to make room for a gap is the tail wagging the
+   dog. 4 is also exactly the gap the now tile uses between its name and its
+   sub, so the two tiles now share that rhythm rather than differing by 8. */
+.qntns-fund__arrows {
+    display: flex;
+    gap: var(--space-8);
+}
+
+.qntns-fund__arrow {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: var(--color-ink);
+    color: var(--color-accent-contrast);
+    cursor: pointer;
+}
+
+/* AN ARROW AT THE BOUND REFUSES OUT LOUD — the same gesture, the same class
+   names and the same 20% as .qntns-pagination__step, copied in spirit and NOT
+   in animation: qntns-refuse is defined once in card-group.css and shared, so
+   the theme's three refusals cannot drift into three different shakes.
+
+   [aria-disabled="true"], NOT :disabled, for the reason pagination.css spells
+   out at length: a `disabled` button dispatches no click at all, so a press on
+   it cannot be answered, and a boundary that does nothing reads as a broken
+   button. aria-disabled says the same thing to a screen reader while leaving
+   the button clickable, which is what a refusal needs. Nothing but wireStepper
+   stops the press.
+
+   .qntns-fund__page NO LONGER RIDES ALONG, and it lost nothing by leaving.
+   Until revision 10 the pager arrows were listed beside .qntns-fund__arrow
+   here, because they null and refuse identically. They now carry
+   .qntns-pagination__step itself (see THE PAGER), and pagination.css states
+   all three of these rules for that class — the 20% disabled button, the
+   qntns-refuse animation, and the reduced-motion opt-out. Listing them here as
+   well would be a second copy of a treatment they already have. The stepper
+   arrow, which is not a pagination step, keeps them. */
+.qntns-fund__arrow[aria-disabled="true"] {
+    opacity: 0.2;
+    cursor: default;
+}
+
+.qntns-fund__arrow.is-refused {
+    animation: qntns-refuse var(--duration-refuse, 420ms) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* The sound still plays: the refusal is delivered, just not moved. */
+    .qntns-fund__arrow.is-refused { animation: none; }
+}
+
+/* stroke="currentColor" in icon-set.js, so the cream on the button is the
+   colour of the mark and there is nothing to set here but the box and the
+   stroke. See the inset arithmetic above for both numbers. */
+.qntns-fund__chevron {
+    display: block;
+    width: 16px;
+    height: 16px;
+    stroke-width: 3;
+}
+
+/* THE PRICE IS NOT A SEPARATE ELEMENT ANY MORE — it is the Fund button's own
+   visible label, a span INSIDE the anchor. Revision 3 deleted the standalone
+   $2.00 that used to sit beside the button rather than leave two nodes showing
+   the same number.
+
+   Regular weight, against the button's bold. It is a value, not a headline —
+   the same reasoning that took the bold off $682/year at revision 1 — and the
+   button's own 700 would otherwise inherit into it. */
+.qntns-fund__price {
+    font-weight: 400;
+}
+
+/* THE FUND BUTTON — IN FLOW, IN THE BUY GRID'S BOTTOM-RIGHT CELL.
+   ---------------------------------------------------------------------------
+   It was absolutely positioned into the tile's corner from revision 3 until
+   revision 7, at a 16px inset, with a --fund-buy-reserve of 136 holding a
+   column of the flow open beside it so the range line could not run
+   underneath. Revision 8 put the chevron pair above it, and an out-of-flow
+   button with an out-of-flow pair above it means the 8px between them is a
+   number computed by hand from the button's height. It is a grid row gap now
+   and the reserve, the padding that held it, and the tile's `position:
+   relative` are all deleted — see THE BUY TILE'S BODY.
+
+   The 16px inset is not lost: the tile's own 16px padding is the same edge the
+   inset used to sit on, so the button's right and bottom edges land exactly
+   where they did, and now by construction rather than by two numbers agreeing.
+
+   Otherwise it is the same navy-filled, cream-on-navy control the subscribe
+   form's send button is, at the same 32px height every control in this theme
+   settles on. No hover state: the fill never changes here either — see the
+   note in pagination.css. cursor: pointer is the whole affordance. */
+.qntns-fund__button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
+    height: 32px;
+    padding: 0 var(--space-12);
+    border: var(--border-card);
+    background: var(--color-ink);
+    color: var(--color-accent-contrast);
+    font-size: var(--type-step--1);
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+/* type.css gives every link a hover background-colour; it is removed here the
+   same way home.css removes it from the page links. */
+.qntns-fund__button:hover,
+.qntns-fund__button:focus-visible {
+    background-color: var(--color-ink);
+    color: var(--color-accent-contrast);
+}
+
+.qntns-fund__cart {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+/* THE CALENDAR, AND WHY IT CANNOT SCROLL SIDEWAYS
+   ---------------------------------------------------------------------------
+   REVISION 1 MOVED THE COLUMN COUNT OUT OF THIS FILE. It used to live here as
+   --fund-cols, a ladder of five breakpoints, with `grid-auto-columns: 0`
+   collapsing anything the JS rendered past the count. That was a workaround
+   for a JS that did not know how wide it was, and it had a defect written into
+   its own comment: the collapse landed on a WEEK boundary, so the last visible
+   month's label could be cut mid-word.
+
+   renderFundCalendar now takes an explicit column count and attachFund
+   measures the container to compute it, so the DOM contains exactly the
+   columns that fit and no more. There is nothing left for CSS to hide. The
+   ladder is gone and so is the mid-word cut, and the arithmetic the JS runs is
+   the arithmetic that was in this comment:
+
+     column pitch = --fund-cell 16 + --fund-gap 4                = 20
+     available    = container - --fund-label-gutter 20
+     columns      = floor(available / 20)
+
+   --fund-cell, --fund-gap and --fund-label-gutter are declared at the top of
+   this file and are the numbers that formula reads. THEY ARE THE CONTRACT
+   BETWEEN THE TWO HALVES: change 16 or 4 here and the JS's count must change
+   with them, or the grid overflows its box.
+
+   A COLUMN IS NO LONGER A WEEK. It is a contiguous run of days sharing a week
+   AND a month, so a week straddling a month boundary is two columns and each
+   month owns a whole number of them. That is what lets a month label span its
+   columns exactly. It changes nothing in this file — a column is a column and
+   the cells are still one per column per row — but it is why the count above
+   is "columns" and not "weeks".
+
+   THE TRACKS ARE IMPLICIT NOW. grid-auto-flow: column with a uniform
+   grid-auto-columns of --fund-cell means the row is as many tracks as it has
+   children, whatever the JS emitted, with no template to keep in step. The
+   weekday label column is the same 16px as a day cell — --fund-label-w and
+   --fund-cell are deliberately equal — so the row's first child needs no
+   special track and the label row's leading offset is a padding instead.
+
+   WHY NOT the alternatives, all tried on paper first:
+
+   - Flexible columns — see below. Still no.
+   - `overflow-x: auto` USED TO BE FORBIDDEN HERE AND IS NOW HOW THE STRIP IS
+     REACHED. The user asked for it on 2026-09-09: "allow left right scroll
+     with finger. Don't show scroll bar, though." The paragraph this replaces
+     argued that a horizontally scrolling strip inside a vertically scrolling
+     page is the interaction people fight with, and that on a phone it eats the
+     vertical swipe. Both are real, and the second is why the axes are split
+     rather than opened together — see .qntns-fund__calendar below, where
+     overflow-y stays hidden so a sideways box can never be dragged
+     vertically. The first is the user's call and they have made it.
+
+     WHAT IT DOES AND DOES NOT BUY, because the column arithmetic is unchanged
+     and this is easy to over-read. fitColumns still renders exactly as many
+     columns as the box fits, so on a wide footer there is nothing to scroll
+     and the finger finds a strip that does not move. What it reaches is the
+     ONE case this file always allowed to overflow: the current month is
+     rendered WHOLE so its name can be spelled out, so a container too narrow
+     even for that used to CLIP it, with the clipped part unreachable by any
+     gesture. That part is now reachable. The pager buttons are still how you
+     travel beyond the rendered window.
+   - Flexible columns — `repeat(auto-fill, minmax(0, 1fr))` — never overflow
+     either, but they put the squares off the base-4 grid at every width except
+     the ones that happen to divide evenly. The square is fixed at 16 and the
+     COUNT gives way instead.
+   - Hiding trailing columns in CSS: a day cell carries only a data-key, so CSS
+     cannot tell which month a cell belongs to and could never cut on a month
+     boundary. Only the JS knows. That is why it now decides.
+
+   THE ONE CASE THAT OVERFLOWS is the current month: it is always rendered
+   WHOLE so its name can be spelled out, so a container too narrow even for
+   that produces content wider than the box. Per revision 1 that is the one
+   thing allowed to exceed the width. It used to be clipped; it is now
+   scrollable, and that is the whole of the change.
+
+   THE GRID'S SIZE:
+
+     grid width  = --fund-label-gutter 20 + cols x 20 - 4
+                 = 16 + 20 x cols          (the trailing gap is not drawn:
+                                            n columns have n-1 gaps)
+     grid height = 7 x 16 + 6 x 4 = 112 + 24 = 136px
+
+   136 is the number in the footer's height budget at the head of this file and
+   it does not move with the column count. */
+/* No bottom margin: since revision 4 moved the cost block into the blurb, the
+   calendar block is the LAST thing in the section — this grid and the pager
+   row under it — and the gap below it is the footer's own 64px padding, see
+   the height budget at the head of this file. A margin here would sit on top
+   of that and read as 96. The 8px between the grid and the arrows is the
+   PAGER's margin-top, not a margin here, so it cannot be mistaken for the gap
+   to the footer edge. */
+/* THE AXES ARE SPLIT, AND THAT IS THE LOAD-BEARING HALF.
+   `overflow-x: auto` with `overflow-y: hidden`, never `overflow: auto`. A box
+   that can scroll on both axes lets a 136px-tall strip be dragged vertically
+   by a few pixels and left there, which reads as a rendering fault and is the
+   exact thing the old prohibition was worried about on a phone. Same
+   construction .qntns-fund__sub uses, and for the same reason.
+
+   overscroll-behavior-x: contain so dragging past the end of the strip does
+   not hand the gesture to the page behind it and trigger a back-navigation.
+
+   HIDING THE BAR TAKES THREE DECLARATIONS AND NOT ONE: scrollbar-width for
+   Firefox, -ms-overflow-style for old Edge, and the ::-webkit-scrollbar rule
+   below for WebKit and Blink. Miss any of the three and a bar appears on that
+   engine only. The user asked for no bar; this is what no bar costs.
+
+   The grid keeps its own height, so nothing here restates 136. */
+.qntns-fund__calendar {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* See the note above: WebKit and Blink need their own rule to drop the bar. */
+.qntns-fund__calendar::-webkit-scrollbar {
+    display: none;
+}
+
+.qntns-fund__months,
+.qntns-fund__row {
+    display: grid;
+    /* However many children the JS emitted, each one column of --fund-cell.
+       No template, so there is no count in this file to fall out of step. */
+    grid-auto-flow: column;
+    grid-auto-columns: var(--fund-cell);
+    gap: var(--fund-gap);
+}
+
+/* The month row has no element standing in for the weekday-label column, so
+   the offset is padding rather than a leading track. 20 = the 16px label plus
+   its 4px gutter, so the first month starts exactly over the first week. */
+.qntns-fund__months {
+    padding-left: var(--fund-label-gutter);
+    margin-bottom: var(--fund-gap);
+}
+
+/* Each label spans its own month's COLUMNS via the inline --weeks the JS sets
+   — the name is from the first contract and kept, but with boundary weeks now
+   split it is a column count and not a week count. The fallback of 1 keeps a
+   label that lost its custom property to a single column instead of collapsing
+   the row.
+
+   A month whose columns are only partly rendered prints ". . ." rather than its
+   name: the JS emits the span with a data-clipped hook and three spaced full
+   stops, so the spans still add up and nothing reads "March" over four days of
+   March. It was an empty text node until 2026-08-28, and the user was right
+   that a blank column head reads as a rendering fault where a mark reads as
+   "there is more of this off the end". It is NOT the &hellip; character: at
+   12px that is three dots packed inside one glyph width and it smudges.
+
+   Muted navy: 60% ink against the footer band it sits on, mixed rather than
+   given as a literal — the same construction tokens.css uses for
+   --color-border. It measures about 3.4:1 on --color-beige-dark, which is
+   below AA for body text and fine for this: a month label is a chart axis
+   sitting directly above the squares it names, not prose, and the squares
+   themselves carry the information at full ink. */
+.qntns-fund__month {
+    grid-column: span var(--weeks, 1);
+    overflow: hidden;
+    /* Over the middle of its own block of days, not at its left edge. */
+    text-align: center;
+    color: color-mix(in srgb, var(--color-ink) 60%, var(--color-beige-dark));
+    font-size: 12px;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+/* THE CLIPPED MONTH'S MARK IS BIGGER THAN THE NAMES IT SITS AMONG, on purpose.
+   Everything else in this row is a 12px word and a full stop at 12px is two
+   device pixels of ink — next to "February" it disappears. 16px is the size the
+   three dots need to register as a deliberate mark rather than as dirt, and the
+   row does not grow: the line-height stays the 16 the month row is budgeted at
+   in THE GRID, and a full stop has neither ascender nor descender, so there is
+   nothing in the glyph that can reach past that box.
+
+   BASE-4 NOTE: 16 is on the grid; the letter-spacing below is not a spacing
+   value in the layout sense — nothing lines up with it — and it is here rather
+   than as literal spaces in the markup so the spread can be tuned without
+   touching what the JS emits. Named per CLAUDE.md. */
+.qntns-fund__month[data-clipped] {
+    font-size: 16px;
+    letter-spacing: 0.1em;
+}
+
+.qntns-fund__grid {
+    display: grid;
+    gap: var(--fund-gap);
+}
+
+.qntns-fund__weekday {
+    color: color-mix(in srgb, var(--color-ink) 60%, var(--color-beige-dark));
+    font-size: 12px;
+    line-height: var(--fund-cell);
+    text-align: center;
+}
+
+/* An OPEN day: a 16px square drawn by its 1px hairline only — the named
+   exemption, a rule and not a measurement. box-sizing is global in screen.css,
+   so the border is inside the 16 and the pitch stays exactly 20. */
+.qntns-fund__day {
+    width: var(--fund-cell);
+    height: var(--fund-cell);
+    border: var(--border-card);
+    /* A REAL DAY IS A <button> (item 3.1) and a button arrives with a box of
+       its own: UA padding, a system font whose line-height would set a min
+       height, a grey background and a focus outline that would all push the
+       square off the 20px pitch the column arithmetic at the head of this file
+       depends on. Zero them explicitly rather than trusting a reset. The 1px
+       hairline `border` above STAYS — it is what draws an open square, and
+       box-sizing is global in screen.css so it lives inside the 16.
+       A .is-blank cell is still a span; these declarations are inert on it. */
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    background: none;
+    cursor: pointer;
+}
+
+/* --fund-run is set inline per cell, one colour per contiguous funded segment,
+   one of eight fixed ramp stops, dark to light, run n wearing stop n % 8. The fallback is the old flat navy: a calendar rendered without run
+   colours — a hand-transcribed partial, a run list that failed to parse — looks
+   exactly as it did before. */
+/* THE FALLBACK IS `transparent` ON THIS RULE AND ONLY THIS ONE (item 3.2).
+   A funded cell always carries an inline --fund-run — renderCalendarInner
+   emits it for every key in `filled` — so funded squares are unaffected. A
+   SELECTED cell does not: selecting an open past day must leave it an open
+   square drawn by its hairline, because painting it solid navy would read as
+   "someone funded this day", which is the exact lie this revision exists to
+   stop. `.is-today` below keeps its --color-ink fallback; there it is
+   load-bearing, and it is stated after this rule on purpose. */
+.qntns-fund__day.is-funded,
+.qntns-fund__day.is-selected {
+    background: var(--fund-run, transparent);
+}
+
+/* THE SELECTION DIMS ITS SIBLINGS, and it does not care how many cells are in
+   it: one pressed day and a multi-day purchase preview are the same state at
+   two lengths. The attribute on the container is both the span's storage and
+   this rule's switch, so a calendar nobody has pressed has no attribute and
+   no dim. Blank cells are excluded — they draw nothing, so half of nothing is
+   the same nothing, but the exclusion keeps them out of a rule that later
+   grows a border or a transition. Today dims with everything else: `opacity`
+   rasterises background and box-shadow as ONE group and multiplies it, so the
+   4px ring and its fill fade in lockstep and the marker keeps its shape. */
+[data-fund-selected] .qntns-fund__day:not(.is-selected):not(.is-blank) {
+    opacity: 0.5;
+}
+
+/* Reserves the cell and draws nothing — a month that starts mid-week needs the
+   position to exist so the columns downstream of it stay in their weeks. */
+.qntns-fund__day.is-blank {
+    border-color: transparent;
+    background: none;
+}
+
+/* TODAY, and it is ONE rule on purpose. A filled square and an open square are
+   two different grounds, so a marker painted in either navy or beige would be
+   invisible on one of them. This paints BOTH: the cell goes solid navy and a
+   4px inset ring of the footer band is punched out of it, leaving a 1px navy
+   border, a 4px band-coloured moat and an 8px navy core. It reads as a target
+   against the open squares and against the filled ones, and it does not change
+   the cell's size, so the 20px pitch is untouched.
+
+   It is stated after .is-funded so a day that is both is marked. */
+.qntns-fund__day.is-today {
+    background: var(--fund-run, var(--color-ink));
+    box-shadow: inset 0 0 0 var(--space-4) var(--color-beige-dark);
+}
+
+/* THE PAGER — TWO ARROWS UNDER THE GRID.
+   ---------------------------------------------------------------------------
+   The strip only ever shows as many weeks as the footer's 720px measure fits.
+   These page it a week at a time, back and forward, by writing
+   `data-fund-offset` on the calendar container; the JS owns that number and
+   renderCalendarInner does the arithmetic.
+
+   CENTRED UNDER THE STRIP, at the user's request on 2026-09-09: "move the
+   arrows to center align". It was FLUSH LEFT with the weekday label column,
+   which was defensible — that column is the grid's own first track and starts
+   at the container's left edge, so the row needed no offset at all — and the
+   user has looked at it and asked for the middle instead.
+
+   `justify-content: center` AND STILL NO padding-left. The two buttons are the
+   flex line's only content, so centring them centres them in the container,
+   which is the same box the grid occupies. Adding the label column's 20px
+   offset as well would centre them over the DAYS rather than over the strip
+   and put them 10px right of the middle of the thing they page; the days are
+   not a box anything else in this file aligns to. .qntns-fund__months keeps
+   its padding-left for the opposite reason — a month label has to sit over its
+   own days, so the label column is exactly what it must step over.
+
+   THEY ARE THE SAME BUTTON AS A SECTION PAGER, NOT A LOOKALIKE (revision 10,
+   asked for by the user on 2026-09-09: "the left/right buttons at the bottom
+   should be the same square button groups as on the sections. Just not dots in
+   between."). Each button therefore CARRIES .qntns-pagination__step as well as
+   .qntns-fund__page, and every value that makes it look like one — 32px
+   square, padding 0, --border-card, filled --color-ink with a --color-beige-
+   dark glyph, no hover change, the 20% disabled state across the whole button
+   — lives once, in pagination.css. NONE of those numbers are restated here.
+   Copying them into this file is how the two would drift; a shared class
+   cannot. What stays below is only what is particular to this pager: where the
+   row sits, and how far apart the two buttons are.
+
+   The DOT STRIP does not come with it. There is no .qntns-pagination wrapper
+   and no dots — two buttons and the gap between them, which is all the user
+   asked for.
+
+   ITS COST TO THE FOOTER'S HEIGHT BUDGET IS 40px, and the budget at the head
+   of this file counts it:
+
+     +   8     pager margin-top      --space-8
+     +  32     the buttons           32px square, from .qntns-pagination__step
+
+   The calendar block is still the last thing in the section and this row still
+   adds no margin beneath itself, so the gap under it is the footer's own 64px
+   padding and nothing else.
+
+   BASE 4: 32px button, 16px glyph, 8px gap. The gap is --space-8 and NOT
+   --fund-gap (4px) any more, because 8 is the distance between every control
+   in a pagination cluster — see the first line of pagination.css. */
+.qntns-fund__pager {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+}
+
+/* The glyph. 16px, not the 18px a section pager uses: this row sits under a
+   grid whose whole unit is the 16px day square, and 16 is on the 4-grid where
+   18 is not. It must not shrink inside the flex centring on a narrow
+   container. Colour comes from .qntns-pagination__step via currentColor, so
+   nothing here states one. */
+.qntns-fund__page-icon {
+    flex: none;
+}
+
+/* THE COST BAR — NOW THE LAST THING INSIDE THE BLURB.
+   ---------------------------------------------------------------------------
+   Revision 4 moved this block out of the bottom of the section and into the
+   end of the expandable text, after the last paragraph and before the "View
+   more" button. THE CONSEQUENCE IS THAT IT IS INVISIBLE UNTIL THE BLURB IS
+   EXPANDED, because the collapsed blurb is exactly two lines tall with
+   overflow hidden. That follows from where it was asked to go and it is
+   probably the intent — the bar is the evidence for the argument the blurb is
+   making, so it belongs with the argument rather than three sections below it.
+
+   The 32px above it is the gap between the last paragraph and the bar, and it
+   is the same --space-32 that sits under the heading and under the blurb — one
+   rhythm around this block rather than a big gap above the bar and nothing
+   below it. It is a margin on THIS element rather than on the last paragraph
+   so the paragraphs keep the one rule they share.
+
+   THERE IS NO margin-bottom HERE, and that is deliberate. The gap BELOW the
+   bar — the user's "32px under the bar graph to separate it from the first two
+   boxes" — is the blurb's own bottom margin, not this element's. This block
+   lives INSIDE the blurb and the tiles live outside it, so a margin here would
+   have to escape the blurb to be seen, and whether it can depends on whether
+   the blurb is a block formatting context — which changes between the
+   collapsed state (overflow: hidden, a BFC, margin trapped) and the expanded
+   one (overflow: visible, no BFC, margin collapses out). One gap with two
+   different mechanisms depending on a state is the bug waiting to happen.
+   Putting it on .qntns-fund__blurb gives the gap ONE owner and the same 32 in
+   both states: collapsed it is the space under two lines of text, expanded it
+   is the space under the legend.
+
+   ------------
+   ONE SOURCE FOR THREE COLOURS. --seg-fill is declared on [data-seg] and the
+   segment and its legend swatch both read it, so a segment and its key cannot
+   disagree about what colour "hosting" is — there is no second list to keep in
+   step. The three tones are the accent ramp that already exists in
+   assets/css/tokens.css: --color-accent at 21% lightness, --color-accent-muted
+   at 72% and --color-accent-soft at 89%, all on hue 224. No new literal, and
+   no fourth blue invented for this.
+
+   The segments are sized off the inline --seg percentage the JS writes, as
+   flex-basis with no grow and no shrink, so three percentages that sum to 100
+   fill the bar exactly and three that do not are visibly wrong rather than
+   silently normalised. */
+.qntns-fund [data-seg="hosting"] { --seg-fill: var(--color-accent); }
+.qntns-fund [data-seg="domain"]  { --seg-fill: var(--color-accent-muted); }
+.qntns-fund [data-seg="tools"]   { --seg-fill: var(--color-accent-soft); }
+
+.qntns-fund__cost {
+    /* Not prose. It is inside .qntns-fund__blurb, which is the section's one
+       reader-face element, so the UI face has to be taken back explicitly
+       here — see the note on .qntns-fund at the top of this file. */
+    font-family: var(--font-ui);
+    margin-top: var(--space-32);
+    display: grid;
+    /* The bar takes the room, the total sits at its right on the same line,
+       and the legend runs the full width beneath both. */
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-12) var(--space-12);
+}
+
+.qntns-fund__bar {
+    display: flex;
+    height: var(--fund-bar-h);
+    border: var(--border-card);
+}
+
+.qntns-fund__seg {
+    flex: 0 0 var(--seg, 0%);
+    background: var(--seg-fill);
+}
+
+/* Regular weight. It is a label on a chart, not a headline — the bar is the
+   thing being read and a bold total competes with it. */
+.qntns-fund__total {
+    font-size: var(--type-step--1);
+    line-height: var(--fund-bar-h);
+}
+
+/* THE LEGEND.
+   ---------------------------------------------------------------------------
+   THE MISALIGNMENT WAS A GLOBAL RULE IN ANOTHER FILE, and this is the whole of
+   the diagnosis. assets/css/type.css:198 says
+
+     li + li { margin-top: var(--space-2); }
+
+   and --space-2 is 0.5rem. The legend is a <ul> of <li>, so the SECOND AND
+   THIRD items each got 8px of top margin and the first got none. That is
+   exactly the reported symptom — one item sitting higher, the other two
+   agreeing with each other — and it had nothing to do with which swatch was
+   filled. Three rounds went into the swatch's box model looking for it. The
+   reset below is the fix, and card-group.css does the same thing to the same
+   global rule for the same reason; see .qntns-card-group__slot there.
+
+   WHAT WAS TRIED AND DID NOT WORK, recorded so nobody repeats it: the swatch
+   going display: block and the item centring (attempt 1); box-sizing,
+   flex: 0 0 auto, align-self and a uniform border on all three (attempt 2);
+   the item becoming a grid with a stated swatch track (attempt 3). All three
+   were aimed at this file, and the cause was in type.css.
+
+   ALSO CHECKED AND FALSE, so it is not re-proposed: the container was never
+   baseline-aligning. .qntns-fund__legend has carried `align-items: center`
+   since attempt 1, and neither `baseline` nor `vertical-align` has ever
+   appeared in this file.
+
+   ---------------------------------------------------------------------------
+   THE SWATCH WORK BELOW IS KEPT, AND IT IS A SEPARATE THING. It did not fix
+   the reported fault and it was never the diagnosis. It stays because it is
+   correct on its own merits: a filled box and an outlined box should be the
+   same box, and the structure below makes that true by construction rather
+   than by three declarations agreeing with each other. The item is a GRID with
+   a stated swatch track rather than a flex row:
+
+     .qntns-fund__key   grid, columns  12px | auto,  align-items: center
+                        row height  = max(swatch 12, line-height 16) = 16
+     track 1            the swatch, 12px wide, 12px tall, centred in 16
+     track 2            the label, 12px type on a 16px line, centred in 16
+
+   WHAT CENTRES WHAT, AGAINST WHAT: the grid row is 16px tall because the label
+   is; `align-items: center` centres BOTH tracks against that 16px row, so the
+   swatch gets 2px of air above and below and the label fills it. The swatch's
+   width comes from the TRACK, not from the swatch, so an item cannot size
+   itself differently from its neighbours even if its contents change. Nothing
+   in the item participates in a baseline anywhere — a grid item is never
+   baseline-aligned unless asked, and it is not asked here.
+
+   That makes the misalignment inexpressible rather than merely corrected. The
+   three items are now three identical 16px rows.
+
+   THE ROW, still: justify-content centres the set under the bar, and flex-wrap
+   stays as the narrow-viewport escape. All three fit on one line from 352px of
+   section width up — 3 swatches (36) + 3 gaps (24) + about 215 of 12px labels
+   + 2 item gaps (32) = 307. */
+.qntns-fund__legend {
+    /* Not prose. It is inside .qntns-fund__blurb, which is the section's one
+       reader-face element, so the UI face has to be taken back explicitly
+       here — see the note on .qntns-fund at the top of this file. */
+    font-family: var(--font-ui);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    grid-column: 1 / -1;
+    gap: var(--space-4) var(--space-16);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* A grid, not a flex row. See WHAT CENTRES WHAT, AGAINST WHAT above.
+
+   margin-top: 0 IS THE FIX FOR THE MISALIGNMENT — it drops type.css:198's
+   `li + li { margin-top: var(--space-2) }`, which was giving the second and
+   third items 8px the first never got. The legend spaces its items with the
+   flex `gap`, so there is nothing for a margin to contribute here even when it
+   is not doing harm. */
+.qntns-fund__key {
+    margin-top: 0;
+    display: grid;
+    grid-template-columns: 12px auto;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--type-step--2);
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+/* The swatch's WIDTH now comes from its grid track and its position from the
+   row's centring, so this rule paints and does nothing else. The border is on
+   all three including the filled one, so the box never changes with the fill;
+   1px is the hairline exemption, a rule and not a measurement. */
+.qntns-fund__swatch {
+    box-sizing: border-box;
+    height: 12px;
+    /* BASE-4 EXEMPTION, TAKEN DELIBERATELY AND NAMED HERE per CLAUDE.md.
+       2px is not a measurement and nothing lines up with it — it is an OPTICAL
+       offset, the same class of exemption as the 1px hairline. Geometric
+       centring puts the swatch on the middle of the label's 16px LINE BOX, but
+       the eye reads the label's CAP HEIGHT, which sits above that middle
+       because the line box carries the font's descender space below the
+       baseline. The swatch therefore looks a touch low when it is
+       mathematically level, and 2px down on the bottom margin lifts it onto
+       the cap. Requested by the user on 2026-08-28 after looking at it, which
+       is the only way a question like this can be settled.
+       This does NOT change the item's height: 16 - 12 - 2 = 2 of air above and
+       0 below within the 16px line box, so the row is still 16 and the legend's
+       budget above is unchanged. */
+    margin-bottom: 2px;
+    border: 1px solid var(--color-ink);
+    background: var(--seg-fill);
+}
+
+/* The theme's one focus ring, copied exactly from home.css and pagination.css
+   so every keyboard stop on the page looks identical. The 2px is the same
+   exemption the 1px hairline takes — it is the width of a ring, not a
+   measurement anything else lines up with, and changing it here would make
+   this section's focus ring a different one from the rest of the site's. */
+/* The day cells join this list rather than getting a ring of their own. They
+   are the theme's tightest keyboard stop — 16px square on a 20px pitch — so
+   the 2px ring at 2px offset reaches exactly to the edge of the 4px gap and
+   sits flush against the next square without overlapping it. That is the
+   arithmetic, not a taste call: 16 + 2 offset + 2 ring = the full 20px pitch.
+   Item 3.4 — with the grid a single tab stop, this ring is the only thing
+   telling a keyboard reader which day the arrow keys are standing on. */
+.qntns-fund__more:focus-visible,
+.qntns-fund__link:focus-visible,
+.qntns-fund__days:focus-visible,
+.qntns-fund__arrow:focus-visible,
+.qntns-fund__day:focus-visible,
+.qntns-fund__button:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}

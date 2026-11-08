@@ -1,0 +1,89 @@
+/* Theme tokens the goal and fund sheets read (assets/css/tokens.css, the :root of type.css, two from qntns/content.css), scoped to .qntns-widget so none reach ryOS. Printer's tokens.css (qntns/tokens.css) stays on :root as Printer has it. */
+@font-face { font-family: "Josefin Sans"; src: url("./fonts/JosefinSans-VariableFont_wght.ttf") format("truetype"); font-style: normal; font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Gill Sans Ultra"; src: url("./fonts/gill_sans-ultrabold.ttf") format("truetype"); font-weight: 400 900; font-style: normal; font-display: swap; }
+.qntns-widget {
+    /* Color */
+    --color-background: #d9cdbf;
+    --color-surface: #f4eee7;
+    --color-surface-strong: #fffaf4;
+    --color-text: #182952;
+    --color-text-muted: #4e5872;
+    --color-accent: #182952;
+    --color-accent-contrast: #fffaf4;
+    --color-border: color-mix(in srgb, var(--color-accent) 25%, transparent);
+    --color-focus: #182952;
+    --color-accent-h: 224;
+    --color-accent-s: 63%;
+    --color-accent-l: 21%;
+    --color-accent-soft: hsl(var(--color-accent-h) 38% 89%);
+    --color-accent-muted: hsl(var(--color-accent-h) 25% 72%);
+    --color-card: hsl(34 23% 86%);
+    --color-card-border: hsl(34 25% 72%);
+    --color-chip: hsl(34 18% 77%);
+    /* Trend colours, for the meditation Mastery Rate arrow (CHECKLIST-16 #30).
+       Shades are provisional: the user rules on them at STOP 2. */
+    --color-up: hsl(140 45% 30%);
+    --color-down: hsl(4 65% 42%);
+
+    /* Spacing */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --space-8: 4rem;
+    --space-9: 6rem;
+    --space-section: var(--space-8);
+    --space-page: var(--space-9);
+
+    /* Shape and depth */
+    --radius-sm: 0;
+    --radius-md: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+    --radius-pill: 0;
+    --radius-control: 0;
+    --border-width: 1px;
+    --border-width-strong: 2px;
+    --shadow-sm: 0 1px 2px rgb(24 41 82 / 12%);
+    --shadow-md: 0 8px 24px rgb(24 41 82 / 14%);
+    --shadow-card: 0 10px 22px rgb(24 41 82 / 12%), 0 2px 5px rgb(24 41 82 / 8%);
+
+    /* Layering and motion */
+    --z-base: 0;
+    --z-raised: 1;
+    --z-overlay: 10;
+    --z-modal: 20;
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    --ease-standard: ease;
+}
+.qntns-widget {
+    --font-reader: "OpenDyslexic", Arial, sans-serif;
+    --font-ui: "Josefin Sans", Arial, sans-serif;
+    --font-display: "Gill Sans Ultra", "Arial Black", sans-serif;
+    /* THE META FACE. IBM Plex Mono Bold is the one face the theme gives to
+       metadata — a date, a tag, a comment count, a publisher row. It is
+       declared here, beside the other three, because it is a THEME face and
+       not a card face. It used to exist only as --card-font-mono on the
+       .qntns-card selector, which meant every consumer outside a card asked
+       for a variable that was not in its ancestry, got nothing, and had its
+       whole font-family declaration dropped as invalid. The article meta row
+       spent months silently set in the reading face because of that.
+       This reverses DECISIONS-LOG.md #16. IBMPlexMono-Bold.ttf already ships
+       in assets/fonts — this adds no file and no network call. */
+    --font-meta: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --text-measure: 42rem;
+    --text-measure-narrow: 34rem;
+    --type-step--2: 0.75rem;
+    --type-step--1: 0.875rem;
+    --type-step-0: 1rem;
+    --type-step-1: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+    --type-step-2: clamp(1.5rem, 1.2rem + 1.5vw, 2.5rem);
+    --type-step-3: clamp(2rem, 1.5rem + 2.5vw, 3.75rem);
+    --type-step-4: clamp(2.75rem, 1.8rem + 4vw, 5.5rem);
+    --content-measure: var(--text-measure-narrow);
+    --color-meta: #868079;
+}

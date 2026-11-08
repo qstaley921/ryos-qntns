@@ -3,6 +3,7 @@
 // folders, Friends and Portfolio, from Ghost pages. A site opens in a frame if
 // the Worker's /frame-ok says it allows framing, else a card that links out.
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CaretLeft, CaretRight, ArrowSquareOut } from "@phosphor-icons/react";
 import type { AppProps, InternetExplorerInitialData } from "@/apps/base/types";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
@@ -10,6 +11,7 @@ import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { AppMenuBarMenus } from "@/components/shared/menubar/AppMenuBarMenus";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
+import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,7 +37,82 @@ const host = (url: string) => {
   }
 };
 
-export function InternetExplorerAppComponent({
+// §79: initialData { mini, path } is a Mini window (in the spirit of macOS's Captive Network
+// Assistant) on one of our own pages. A mode of Safari, not a new app: no registry lines.
+export function InternetExplorerAppComponent(props: AppProps<InternetExplorerInitialData>) {
+  return props.initialData?.mini && props.initialData.path ? <Mini {...props} path={props.initialData.path} /> : <Safari {...props} />;
+}
+
+// The page itself, same origin, loaded with ?window (CHECKLIST-35 §8: no desktop inside).
+// Title bar shows the page's title, one Done button closes; no address bar, tabs or bookmarks.
+function Mini({
+  isWindowOpen,
+  onClose,
+  isForeground,
+  skipInitialSound,
+  instanceId,
+  onNavigateNext,
+  onNavigatePrevious,
+  path,
+}: AppProps<InternetExplorerInitialData> & { path: string }) {
+  const { t } = useTranslation();
+  const chrome = useAppMenuBarChrome("internet-explorer", NAME);
+  const [title, setTitle] = useState("");
+  const u = new URL(path, location.origin);
+  // our own page only; any other origin never loads here
+  const src = u.origin === location.origin ? `${u.pathname}${u.search ? `${u.search}&` : "?"}window${u.hash}` : null;
+
+  return (
+    <AppWindowShell
+      isWindowOpen={isWindowOpen}
+      isWindowsTheme={chrome.isWindowsTheme}
+      isForeground={isForeground}
+      menuBar={
+        <AppMenuBarShell
+          isWindowsTheme={chrome.isWindowsTheme}
+          isMacOSTheme={chrome.isMacOSTheme}
+          appId={chrome.appId}
+          appName={chrome.appName}
+          isShareDialogOpen={chrome.isShareDialogOpen}
+          setIsShareDialogOpen={chrome.setIsShareDialogOpen}
+          aboutItemLabel={`About ${NAME}`}
+        >
+          <AppMenuBarMenus menus={[{ label: "File", items: [{ type: "action", label: "Done", onClick: onClose, shortcutId: "close" }, ...fileSubmenus({ t, onShareApp: () => chrome.setIsShareDialogOpen(true) })] }]} />
+        </AppMenuBarShell>
+      }
+      windowFrameProps={{
+        title: title || NAME,
+        onClose,
+        isForeground,
+        appId: "internet-explorer",
+        skipInitialSound,
+        instanceId,
+        onNavigateNext,
+        onNavigatePrevious,
+      }}
+    >
+      <div className="flex size-full flex-col bg-os-window-bg font-os-ui text-os-text-primary">
+        <div className="relative min-h-0 flex-1 bg-white">
+          {src && (
+            <iframe
+              src={src}
+              title={title || "Page"}
+              className="size-full border-0"
+              onLoad={(e) => setTitle(e.currentTarget.contentDocument?.title ?? "")}
+            />
+          )}
+        </div>
+        <div className="flex justify-end border-t border-os-window px-4 py-2">
+          <Button size="sm" onClick={onClose}>
+            Done
+          </Button>
+        </div>
+      </div>
+    </AppWindowShell>
+  );
+}
+
+function Safari({
   isWindowOpen,
   onClose,
   isForeground,
@@ -44,13 +121,14 @@ export function InternetExplorerAppComponent({
   onNavigateNext,
   onNavigatePrevious,
 }: AppProps<InternetExplorerInitialData>) {
+  const { t } = useTranslation();
   const chrome = useAppMenuBarChrome("internet-explorer", NAME);
   const [marks, setMarks] = useState<Bookmarks>({ friends: [], portfolio: [] });
   // history of opened bookmarks; null = the start page
   const [trail, setTrail] = useState<(Bookmark | null)[]>([null]);
   const [at, setAt] = useState(0);
+  const [reload, setReload] = useState(0);
   const [framed, setFramed] = useState<boolean | null>(null); // null = asking the Worker
-  const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const site = trail[at];
 
@@ -84,9 +162,7 @@ export function InternetExplorerAppComponent({
       appName={chrome.appName}
       isShareDialogOpen={chrome.isShareDialogOpen}
       setIsShareDialogOpen={chrome.setIsShareDialogOpen}
-      helpItemLabel={`${NAME} Help`}
       aboutItemLabel={`About ${NAME}`}
-      onShowHelp={() => setHelpOpen(true)}
       onShowAbout={() => setAboutOpen(true)}
     >
       <AppMenuBarMenus
@@ -95,15 +171,17 @@ export function InternetExplorerAppComponent({
             label: "File",
             items: [
               { type: "action", label: "Open in New Window", onClick: linkOut, disabled: !site },
+              ...fileSubmenus({ t, onShareApp: () => chrome.setIsShareDialogOpen(true) }),
               { type: "separator" },
               { type: "action", label: "Close", onClick: onClose, shortcutId: "close" },
             ],
           },
           {
-            label: "History",
+            label: "View",
             items: [
               { type: "action", label: "Back", onClick: () => setAt(at - 1), disabled: at === 0 },
               { type: "action", label: "Forward", onClick: () => setAt(at + 1), disabled: at === trail.length - 1 },
+              { type: "action", label: "Reload", onClick: () => setReload((n) => n + 1), disabled: !site || !framed },
             ],
           },
           {
@@ -187,7 +265,7 @@ export function InternetExplorerAppComponent({
             <p className="p-4 text-[12px] text-neutral-500">Loading {host(site.url)}…</p>
           ) : framed ? (
             <iframe
-              key={site.url}
+              key={`${site.url}#${reload}`}
               src={site.url}
               title={site.title}
               className="size-full border-0"
@@ -213,8 +291,8 @@ export function InternetExplorerAppComponent({
         appId="internet-explorer"
         helpItems={helpItems}
         metadata={appMetadata}
-        isHelpOpen={helpOpen}
-        onHelpOpenChange={setHelpOpen}
+        isHelpOpen={false}
+        onHelpOpenChange={() => {}}
         isAboutOpen={aboutOpen}
         onAboutOpenChange={setAboutOpen}
       />

@@ -5,6 +5,7 @@ import { useTranslatedHelpItems } from "@/hooks/useTranslatedHelpItems";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useDashboardStore, type WidgetType } from "@/stores/useDashboardStore";
 import { helpItems } from "../metadata";
+import { QNTNS_WIDGETS, isQntnsWidget, type QntnsWidgetType } from "../widgets";
 import { useShallow } from "zustand/react/shallow";
 import { Emoji } from "@/components/shared/Emoji";
 
@@ -55,21 +56,8 @@ export function useDashboardLogic() {
   );
 
   const handleAddWidget = useCallback(
-    (type: WidgetType) => {
-      const sizeMap: Record<WidgetType, { width: number; height: number }> = {
-        clock: { width: 170, height: 170 },
-        calendar: { width: 240, height: 350 },
-        weather: { width: 340, height: 180 },
-        stocks: { width: 240, height: 340 },
-        aquarium: { width: 340, height: 200 },
-        terrarium: { width: 340, height: 200 },
-        ipod: { width: 320, height: 125 },
-        dictionary: { width: 340, height: 220 },
-        stickynote: { width: 200, height: 200 },
-        translation: { width: 340, height: 170 },
-        currency: { width: 340, height: 170 },
-      };
-      const size = sizeMap[type];
+    (type: QntnsWidgetType) => {
+      const size = { ...QNTNS_WIDGETS.find((w) => w.type === type)!.size };
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -77,7 +65,7 @@ export function useDashboardLogic() {
       const padding = 20;
       const bottomReserved = 120;
 
-      const currentWidgets = useDashboardStore.getState().widgets;
+      const currentWidgets = useDashboardStore.getState().widgets.filter((w) => isQntnsWidget(w.type));
       const maxZ = Math.max(0, ...currentWidgets.map((w) => w.zIndex ?? 0));
 
       const overlaps = (
@@ -119,7 +107,8 @@ export function useDashboardLogic() {
         y = Math.max(margin, Math.min(margin + cascade, maxY));
       }
 
-      addWidget({ type, position: { x, y }, size, zIndex: maxZ + 1 });
+      // The store types only ryOS's widgets; it persists any string, and the overlay renders only ours.
+      addWidget({ type: type as unknown as WidgetType, position: { x, y }, size, zIndex: maxZ + 1 });
     },
     [addWidget]
   );

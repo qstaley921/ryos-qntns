@@ -1,0 +1,221 @@
+/* QNTNs meditation — CHECKLIST-16 items 6 and 7.
+
+   The grid is the fund calendar's, classes and all (see goal-meditation.js),
+   so this file only supplies the three sizing tokens fund.css declares on
+   .qntns-fund — the 16px square, the 4px gutter and the 20px label gutter —
+   and the two fills. Pitch is the fund's: 16 + 4 = 20 per column. */
+.qntns-med {
+    --fund-cell: 16px;
+    --fund-gap: var(--space-4);
+    --fund-label-w: var(--fund-cell);
+    --fund-label-gutter: 20px;
+    font-family: var(--font-ui);
+}
+
+/* Spans, not the fund's buttons: nothing here is pressed. */
+.qntns-med .qntns-fund__day {
+    cursor: default;
+}
+
+/* Two sits: the whole square, site navy. */
+.qntns-med .qntns-fund__day.is-full {
+    background: var(--color-ink);
+}
+
+/* One sit: the top-left triangle, split corner to corner. */
+.qntns-med .qntns-fund__day.is-half {
+    background: linear-gradient(to bottom right, var(--color-ink) 50%, transparent 50%);
+}
+
+/* Greyed (items 44, 45): before the first entry, or after today. No hairline
+   and a faint ink wash, so it cannot pass for an open 0-session square. The
+   12% is a tint, not a measurement. */
+.qntns-med .qntns-fund__day.is-out {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+/* THE HEAD (item 46): label left, [trend][percent] right, touching.
+   16px below the head, then the months row. */
+.qntns-med__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+/* CHECKLIST-28 §10: item 120's 8px title inset, as Stewardship's and
+   Spending's. The head runs full width (the centring pad is the calendar's),
+   so this is the title's only offset. Scoped to meditation's own root: the
+   other embeds borrow .qntns-med__head and set their own. */
+.qntns-med > .qntns-med__head {
+    padding-left: var(--space-8);
+}
+
+.qntns-med__figure {
+    display: flex;
+    align-items: center;
+}
+
+/* THE LABEL (item 41) AND THE PERCENT are <div>s dressed as the in-article
+   h2: type.css's h1..h6 rule (Josefin Sans 700, line-height 1.15) and
+   content.css's 24px, stated here so it holds outside a post body too.
+   Not an <h2>: toc.js would list it and content.js would demote it. Not a <p>:
+   dropcap.js drop-caps a body's first paragraph, which is the percent when a
+   post opens on this embed. */
+.qntns-med__title,
+.qntns-med__rate {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.15;
+    color: var(--color-ink);
+}
+
+/* The wrapper carries the accessible name (icon() hides its svg). Flex so the
+   16px svg is the whole box, with no inline line box adding space below it. */
+.qntns-med__trend { display: flex; }
+
+.qntns-med__trend.is-improving { color: var(--color-up); }
+.qntns-med__trend.is-worsening { color: var(--color-down); }
+.qntns-med__trend.is-steady { color: var(--color-text-muted); }
+
+/* CHECKLIST-21 preview: 24px between two equal columns. Card interiors
+   reuse projects' 16px padding, 8px title gap and 4px hard shadow. */
+.qntns-mastery__toggle { margin-left: var(--space-8); }
+.qntns-mastery__columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-24); }
+.qntns-mastery__columns > div { min-width: 0; }
+.qntns-mastery__label { font-size: 20px; font-weight: 700; line-height: 24px; margin-bottom: var(--space-16); }
+.qntns-mastery__sublabel { font-size: 16px; font-weight: 500; line-height: 20px; margin: var(--space-16) 0 var(--space-8); }
+.qntns-mastery__description { font-size: 16px; line-height: 24px; overflow-wrap: anywhere; }
+.qntns-mastery__empty { font-size: 16px; color: var(--color-text-muted); text-align: center; }
+.qntns-mastery__weekly .qntns-fund__day { height: 136px; }
+/* Full calendar column: 7 x 16px cells + 6 x 4px gaps = 136px. */
+.qntns-mastery__weekly .qntns-mastery__face { width: 100%; height: 100%; }
+/* CHECKLIST-28 §8: every preview cell is the day traits' 16px square, a week
+   or month one too, and the strip fills the card. strip() emits 53 periods
+   newest first (53 x 20 = 1060px, wider than any card); row-reverse puts the
+   newest at the right edge, wrap drops whatever does not fit to a second line,
+   and height + overflow hide that line, so only whole squares show.
+   flex-start in a row-reverse packs from the right, so every gap is exactly
+   4px and the strip may stop short of the left edge (under 20px). */
+.qntns-mastery__strip { display: flex; flex-flow: row-reverse wrap; justify-content: flex-start; row-gap: 0; column-gap: var(--space-4); height: 16px; overflow: hidden; }
+.qntns-mastery__strip .qntns-fund__day { flex: 0 0 16px; }
+.qntns-mastery__trait > summary { cursor: pointer; list-style: none; }
+.qntns-mastery__trait > summary::-webkit-details-marker { display: none; }
+.qntns-mastery__trait > summary:focus-visible { outline: 1px solid var(--color-ink); outline-offset: 4px; }
+.qntns-mastery__trait[open] .qntns-mastery__strip { display: none; }
+.qntns-mastery__trait[open] .qntns-mastery__description { margin: var(--space-8) 0 var(--space-16); }
+.qntns-mastery__calendar { min-width: 0; overflow-x: auto; }
+/* On a narrow screen the two categories keep their reading order in one
+   column; the calendar still selects only whole months that fit. */
+@media (max-width: 600px) {
+    .qntns-mastery__columns { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Hairline exemption: divider centered in the existing 24px column gap. */
+.qntns-mastery__columns { position: relative; margin: 0 var(--med-pad-r, 0) 0 var(--med-pad-l, 0); /* CHECKLIST-28 §10a: the calendar's centring pad, as before §10 */ }
+.qntns-mastery__columns::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: color-mix(in srgb, var(--color-ink) 20%, transparent); }
+.qntns-mastery__group { padding: 8px; background: color-mix(in srgb, var(--color-ink) 25%, transparent); }
+.qntns-mastery__group + .qntns-mastery__group { margin-top: 32px; }
+.qntns-mastery__group .qntns-mastery__sublabel { margin: 0 0 8px; text-align: center; }
+.qntns-mastery__foot { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-top: 16px; }
+.qntns-mastery__name { font-size: 20px; font-weight: 400; line-height: 24px; }
+.qntns-mastery__foot .qntns-pagination { order: -1; }
+/* 8 wrapper + 16 card padding + 1 hairline exemption. */
+.qntns-mastery__columns > div:nth-child(2) > .qntns-mastery__label { padding-left: 25px; }
+/* Each 16px square has two faces. 32ms per column starts a domino wave;
+   400ms matches the homepage card turn, without calling the sound layer. */
+.qntns-mastery__turn { perspective: 128px; background: transparent; border-color: transparent; overflow: visible; }
+.qntns-mastery__flipper { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; }
+.qntns-mastery__face { position: absolute; inset: 0; backface-visibility: hidden; }
+.qntns-mastery__face--back { transform: rotateY(180deg); }
+@media (max-width: 600px) { .qntns-mastery__columns::before { display: none; } }
+
+/* Every heading lands on the card text, never the card outline.
+   16px interior plus 1px hairline exemption; developing adds its 8px wrapper. */
+.qntns-mastery__columns > div:first-child > .qntns-mastery__label { padding-left: 17px; }
+
+.qntns-mastery__trait { cursor: pointer; }
+
+.qntns-mastery__card-figure { flex: none; font-size: 16px; font-weight: 700; line-height: 16px; }
+.qntns-mastery > .qntns-med__head .qntns-mastery__card-figure { font-size: 24px; line-height: 1.15; }
+
+/* CHECKLIST-24 #5. THE HABIT LOG BUTTON: the head's right end, after the
+   figure, 8 apart. A 32px box around the 20px list glyph, the info button's
+   size (goal-projects.css .qntns-proj__info), reset from type.css's button. */
+.qntns-mastery__head-end {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+.qntns-mastery__log {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--space-32);
+    height: var(--space-32);
+    margin: calc(var(--space-8) * -1) 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-ink);
+    cursor: pointer;
+}
+
+.qntns-mastery__pop-title {
+    margin-bottom: var(--space-16);
+}
+
+/* CHECKLIST-24. A COLUMN PAST 500 SCROLLS (500 = 125 x 4). The native bar is
+   hidden; the cues are the log pop-up's: a 32px fade to the page and the
+   navy down-square (goal-log.css .qntns-log__more), both gone at the end.
+   The 500 is the cards' box; the label sits above it and does not scroll.
+   The 8 of right and bottom padding keeps the cards' 4px hard shadows
+   inside the scroller's clip. */
+.qntns-mastery__col {
+    position: relative;
+    min-width: 0;
+}
+
+/* The label: a full-width block with the page's own ground, outside the
+   scroller, so it stays put and nothing scrolls into it. */
+.qntns-mastery__col > .qntns-mastery__label {
+    margin-bottom: 0;
+    padding-bottom: var(--space-16);
+    background: var(--color-page);
+}
+
+.qntns-mastery__col-scroll {
+    max-height: 500px;
+    padding: 0 var(--space-8) var(--space-8) 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+}
+
+.qntns-mastery__col-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.qntns-mastery__col-fade {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: var(--space-32);
+    background: linear-gradient(to bottom, transparent, var(--color-page));
+    pointer-events: none;
+}
+
+.qntns-mastery__col-fade[hidden] {
+    display: none;
+}
+
+/* 16 above the column's bottom edge, as every overflow cue (CHECKLIST-28 §7). */
+.qntns-mastery__col .qntns-log__more {
+    bottom: var(--space-16);
+}
+

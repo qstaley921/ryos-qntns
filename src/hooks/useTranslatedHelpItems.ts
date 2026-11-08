@@ -1,6 +1,5 @@
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { CALCULATOR_HELP_I18N_KEYS } from "@/apps/calculator/helpKeys";
 import { INTERNET_EXPLORER_HELP_I18N_KEYS } from "@/apps/internet-explorer/helpKeys";
 import { MAPS_HELP_I18N_KEYS } from "@/apps/maps/helpKeys";
 import { DICTIONARY_HELP_I18N_KEYS } from "@/apps/dictionary/helpKeys";
@@ -16,14 +15,6 @@ export const APP_HELP_I18N_KEYS: Record<AppId, readonly string[]> = {
     "airdropSharing",
     "dropToImport",
     "trashUndo",
-  ],
-  soundboard: [
-    "recordSlot",
-    "keyboardPlay",
-    "waveformView",
-    "customizeSlot",
-    "multipleBoards",
-    "importExport",
   ],
   "internet-explorer": [...INTERNET_EXPLORER_HELP_I18N_KEYS],
   chats: [
@@ -42,6 +33,8 @@ export const APP_HELP_I18N_KEYS: Record<AppId, readonly string[]> = {
     "voiceDictation",
     "fileManagement",
   ],
+  mail: [],
+  photos: [],
   preview: [
     "images",
     "pdfs",
@@ -65,14 +58,6 @@ export const APP_HELP_I18N_KEYS: Record<AppId, readonly string[]> = {
     "viewingPhotos",
     "downloadingPhotos",
     "switchingCameras",
-  ],
-  minesweeper: [
-    "desktopControls",
-    "mobileControls",
-    "chordReveal",
-    "mineCounterTimer",
-    "smileyStatus",
-    "quickRestart",
   ],
   videos: [
     "addVideo",
@@ -105,14 +90,6 @@ export const APP_HELP_I18N_KEYS: Record<AppId, readonly string[]> = {
     "listenParty",
     "syncedWithIpod",
     "keyboardShortcuts",
-  ],
-  synth: [
-    "virtualKeyboard",
-    "controlsPanel",
-    "presets",
-    "waveform3d",
-    "effects",
-    "octaveShift",
   ],
   terminal: [
     "basicCommands",
@@ -154,30 +131,6 @@ export const APP_HELP_I18N_KEYS: Record<AppId, readonly string[]> = {
     "clearAll",
     "autoSave",
   ],
-  "infinite-mac": [
-    "classicMacEmulator",
-    "selectSystem",
-    "displayScaling",
-    "pauseResume",
-    "captureScreenshot",
-    "chatsCanDriveIt",
-  ],
-  pc: [
-    "pcEmulator",
-    "dosGames",
-    "mouseCapture",
-    "keyboardInput",
-    "screenshotFullscreen",
-    "backToSystems",
-  ],
-  winamp: [
-    "playMusic",
-    "equalizer",
-    "playlist",
-    "skins",
-    "shuffleRepeat",
-    "controls",
-  ],
   calendar: [
     "navigateMonths",
     "createEvents",
@@ -212,7 +165,6 @@ export const APP_HELP_I18N_KEYS: Record<AppId, readonly string[]> = {
     "fonts",
     "darkMode",
   ],
-  calculator: [...CALCULATOR_HELP_I18N_KEYS],
   stuff: ["shelf", "scan", "tags", "prices", "share", "print"],
   dictionary: [...DICTIONARY_HELP_I18N_KEYS],
   fitness: [...FITNESS_HELP_I18N_KEYS],

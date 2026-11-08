@@ -21,34 +21,29 @@ export interface AppProps<TInitialData = unknown> {
 
 export interface BaseApp<TInitialData = unknown> {
   id:
-    | "soundboard"
     | "internet-explorer"
     | "chats"
     | "textedit"
     | "preview"
+    | "mail"
+    | "photos"
     | "control-panels"
-    | "minesweeper"
     | "finder"
     | "paint"
     | "videos"
     | "tv"
     | "photo-booth"
-    | "synth"
     | "ipod"
     | "karaoke"
     | "terminal"
     | "applet-viewer"
     | "admin"
     | "stickies"
-    | "infinite-mac"
-    | "pc"
-    | "winamp"
     | "calendar"
     | "contacts"
     | "dashboard"
     | "maps"
     | "books"
-    | "calculator"
     | "stuff"
     | "dictionary"
     | "fitness"
@@ -97,6 +92,8 @@ export interface InternetExplorerInitialData {
   shareCode?: string;
   url?: string;
   year?: string;
+  mini?: boolean; // §79: a Mini window on our own page `path`
+  path?: string;
 }
 
 export interface IpodInitialData {

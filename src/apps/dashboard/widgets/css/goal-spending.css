@@ -1,0 +1,389 @@
+/* QNTNs spending — CHECKLIST-28 items 4, 4a–4f, Reworks 1–3. Geometry in
+   goal-spending.js.
+
+   The grid is fund.css's (.qntns-fund__months / __grid / __row / __weekday /
+   __day); this file sets its tokens and the fills. The head is
+   goal-meditation.css's .qntns-med__head / __title (and __trend for R16's
+   arrows); the (i)s are goal-projects.css's .qntns-proj__info; the pie toggle
+   is sound.css's .qntns-steward__chart (outline/fill layers, R9); the scroll
+   squares are goal-log.css's .qntns-log__more; the pop-up is footnotes.css's
+   .qntns-fn-pop. All must load. Every size is a multiple of 4 except the 1px
+   hairlines (exempt). */
+.qntns-spend {
+    /* 36 block + 4 gap = a 40 pitch, twice meditation's 20. Label 16. The
+       label gutter is 0: since R13 no row in the scroller has a weekday, the
+       axis is its own column (below), 16 + the 4 flex gap. */
+    --fund-cell: 36px;
+    --fund-gap: var(--space-4);
+    --fund-label-w: 16px;
+    --fund-label-gutter: 0px;
+    font-family: var(--font-ui);
+    color: var(--color-ink);
+}
+
+/* layout()'s side padding centres the calendar (--pad, set by the JS). Only
+   the calendar takes it: the head and foot run the embed's full width, so
+   their edges are every other goal embed's (§9; on head and foot it inset
+   the title and pie toggle by up to ~90px on a 720 column). */
+.qntns-spend__cal {
+    padding: var(--pad);
+}
+
+/* §9: the title on Stewardship's title edge, its same 8px token
+   (goal-stewardship.css, item 120); the toggle stays flush right. */
+.qntns-spend > .qntns-med__head {
+    padding-left: var(--space-8);
+}
+
+/* R13. [axis 16] 4 [days, scrolling]. The axis repeats the months row (one
+   blank label) so its seven labels sit level with the seven rows. */
+.qntns-spend__cal {
+    display: flex;
+    gap: var(--space-4);
+}
+
+.qntns-spend__axis {
+    flex: none;
+}
+
+.qntns-spend__axis .qntns-fund__months,
+.qntns-spend__axis .qntns-fund__row {
+    grid-auto-columns: var(--fund-label-w);
+}
+
+.qntns-spend__days {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* fund.css's .qntns-fund__calendar scroller (split axes, no bar), plus a 32
+   fade on each side that has more, as a mask so it needs no paint colour. */
+.qntns-spend__scroll {
+    --fade-l: 0px;
+    --fade-r: 0px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+}
+
+.qntns-spend__scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.qntns-spend__scroll.is-more-left { --fade-l: var(--space-32); }
+.qntns-spend__scroll.is-more-right { --fade-r: var(--space-32); }
+
+/* The §7 chevron square (32, navy), 16 in from the edge it points at,
+   centred on the day area's height. */
+.qntns-spend__step {
+    top: 50%;
+    bottom: auto;
+    margin: 0;
+    translate: 0 -50%;
+}
+
+.qntns-spend__step[data-spend-step="-1"] { left: var(--space-16); right: auto; }
+.qntns-spend__step[data-spend-step="1"] { left: auto; right: var(--space-16); }
+
+/* R12. The figures' footer, every width: stewardship's foot type (16 on
+   16), 8 under the grid. [arrow 16] 4 [figure] 4 [(i) 32, 16 glyph] left,
+   the same right; the row is 32 tall, the (i)'s box. */
+.qntns-spend__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+    font-size: 16px;
+    line-height: 16px;
+}
+
+.qntns-spend__fig {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* R5: the figure stays ink; only the $/day amount takes green/red. */
+.qntns-spend__fig .is-up { color: var(--color-up); }
+.qntns-spend__fig .is-down { color: var(--color-down); }
+
+/* projects' (i) box; its -4 end margin is for a row's last item. */
+.qntns-spend .qntns-proj__info {
+    margin: 0;
+}
+
+/* A day's net, centred in the 36 block: 12 on 16, Josefin 700. 34 of room
+   inside the hairline. Measured (canvas measureText, headless Chromium, the
+   shipped variable font): "-$1.2k" 30.22, the widest short() can print
+   under $10k ("-$1.6k" 29.95, "-$999" 30.13); from $10k it prints whole
+   thousands, "-$12k" 28.15. So 3.78 spare at worst. letter-spacing 0: the
+   button rule in type.css adds 0.04em, which is +2.88 on six characters. */
+.qntns-spend__block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-color: transparent;
+    background: color-mix(in srgb, var(--hue) var(--mix), var(--color-page));
+    /* R2: a dark shade of the block's own hue; a pale tint on a dark block. */
+    color: color-mix(in srgb, var(--hue), black 48%);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.qntns-spend__block[data-dark] {
+    color: color-mix(in srgb, var(--hue) 16%, white);
+}
+
+/* 4f. Intensity (--mix, 24–100%) is set by the JS. */
+.qntns-spend__block.is-up { --hue: var(--color-up); }
+.qntns-spend__block.is-down { --hue: var(--color-down); }
+
+/* Greyed, as meditation's .is-out: before the first row, or after today. */
+.qntns-spend .qntns-fund__day.is-out {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+.qntns-spend span.qntns-fund__day {
+    cursor: default;
+}
+
+/* §11: an empty day inside the range keeps its fill; a gray $0 sits where a
+   block's amount does (same 12/16 700 type, centred). */
+.qntns-spend span.qntns-fund__day.is-zero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+    letter-spacing: 0;
+}
+
+.qntns-spend__block:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+.qntns-spend__info {
+    margin: 0;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.qntns-spend__view-title {
+    margin: var(--space-8) 0 var(--space-12);
+}
+
+/* R25. THE CATEGORY POP-UP is footnotes.css's .qntns-fn-pop over the
+   window. Column budget (panel ≤ 480, 1px hairlines exempt):
+     24 + [range trigger 32] + 16 + [pie ≤ 240] + 16 + [key/items, scrolls]
+   The range row is fixed and so is the pie (R20); only .qntns-fn-pop__body
+   scrolls, with goal-log.js's popCues. The X keeps its 24/24 corner, so the
+   range row stops 24 + 32 + 8 = 64 from the right. footnotes.css loads
+   after this file, so these overrides carry two classes. The body's 48
+   float (room for the X) is not needed: the X sits beside the range row. */
+.qntns-spend__pop .qntns-fn-pop__body {
+    padding-top: 0;
+    font-family: var(--font-ui);
+}
+
+.qntns-spend__pop .qntns-fn-pop__body::before {
+    display: none;
+}
+
+/* A day's or an (i)'s title, in the range control's place: 32 tall, level
+   with the X, 16 above the body. Line height 28 (meditation's 1.15 is 27.6)
+   so a title that wraps on a phone is 56, on the grid. */
+.qntns-spend__pop-title {
+    line-height: 28px;
+    display: flex;
+    flex: none;
+    align-items: center;
+    min-height: var(--space-32);
+    margin: var(--space-24) var(--space-64) var(--space-16) var(--space-24);
+}
+
+.qntns-spend__pop-title[hidden],
+.qntns-spend__range[hidden],
+.qntns-spend__charts[hidden] {
+    display: none;
+}
+
+.qntns-spend__charts {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    padding: var(--space-16) var(--space-24);
+}
+
+/* R26. The trigger: 32 tall (1 + 30 + 1, hairline exempt), 12 in, label
+   then a 16 chevron 8 apart; filled navy while the menu is open, as the
+   theme's open toggles are. */
+.qntns-spend__range {
+    position: relative;
+    flex: none;
+    align-self: flex-start;
+    margin: var(--space-24) var(--space-64) 0 var(--space-24);
+    font-family: var(--font-ui);
+}
+
+.qntns-spend__range-button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    height: var(--space-32);
+    padding: 0 var(--space-8) 0 var(--space-12);
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--color-ink);
+    font: inherit;
+    font-size: 16px;
+    line-height: 16px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.qntns-spend__range-button[aria-expanded="true"] {
+    background: var(--color-ink);
+    color: var(--color-beige-dark);
+}
+
+.qntns-spend__range-button:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+/* The menu is views-menu.css's box dropped DOWN, 8 under the trigger, over
+   the pie: navy hairline, the page beige, the hard shadow. Rows are its
+   32 (4 + 24 box + 4). At most seven rows show, 4 + 7 x 32 + 4 = 232;
+   more scroll. Top 64 + 232 = 296 stays inside the shortest panel
+   (24 + 32 + 16 + 240 + 16 + 48 = 376 at a 240 pie). */
+.qntns-spend__range-menu {
+    --duration-views: 320ms;
+    position: absolute;
+    top: calc(100% + var(--space-8));
+    left: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    min-width: 100%;
+    width: max-content;
+    max-height: 232px;
+    padding: var(--space-4) 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-page);
+    box-shadow: var(--shadow-hard);
+}
+
+.qntns-spend__range-menu[hidden] {
+    display: none;
+}
+
+/* No data that month: gray and not selectable. */
+.qntns-spend__range-menu .qntns-views__row:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.qntns-spend__rows {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.qntns-spend__rows th {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+    text-align: left;
+}
+
+.qntns-spend__rows th,
+.qntns-spend__rows td {
+    padding: var(--space-4) var(--space-8) var(--space-4) 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 24%, var(--color-page));
+    vertical-align: top;
+}
+
+.qntns-spend__rows th:last-child,
+.qntns-spend__rows td:last-child {
+    padding-right: 0;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* R6: spent rows print "-$", earned bare; colour by kind as before. */
+.qntns-spend__rows .is-earned td:last-child { color: var(--color-up); }
+.qntns-spend__rows .is-spent td:last-child { color: var(--color-down); }
+
+/* R17. The wheel is drawn `size` square (goal-spending.js wheel(): the
+   panel's width less 48, floored to 4, at most 240). No labels: the key under it names the
+   slices. A selected slice keeps full colour; the others drop to 40%. */
+.qntns-spend__pie {
+    display: block;
+    flex: none;
+}
+
+.qntns-spend__slice {
+    cursor: pointer;
+    outline: none;
+}
+
+.qntns-spend__pie:has(.is-active) .qntns-spend__slice:not(.is-active) {
+    opacity: 0.4;
+}
+
+.qntns-spend__slice:focus-visible > * {
+    stroke: var(--color-ink);
+    stroke-width: 2;
+}
+
+/* The key: swatch 12, name, total right; rows 28 tall (4 + 20 + 4) plus the 1px hairline (exemption), the
+   line-item table's rhythm, with its hairline. */
+.qntns-spend__key {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.qntns-spend__key-row {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    gap: var(--space-8);
+    align-items: center;
+    width: 100%;
+    padding: var(--space-4) 0;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 24%, var(--color-page));
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 14px;
+    line-height: 20px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.qntns-spend__swatch {
+    width: 12px;
+    height: 12px;
+}

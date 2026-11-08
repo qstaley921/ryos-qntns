@@ -1,0 +1,102 @@
+/* QNTNs family savings — CHECKLIST-16 items 16 and 114.
+
+   The head is goal-meditation.css's .qntns-med__head / __title / __rate
+   (item 41), so that file must load too. This file only draws the chart;
+   its geometry is in goal-savings.js. */
+.qntns-savings {
+    font-family: var(--font-ui);
+}
+
+/* Item 114.7: the title starts where the plot does (--plot-x is the gutter,
+   a multiple of 8, set by the JS) and the figure ends where the gridlines
+   stop, width - 8. Unset with no chart, so the head sits flush. */
+.qntns-savings > .qntns-med__head {
+    padding-left: var(--plot-x, 0);
+    padding-right: var(--space-8);
+}
+
+.qntns-savings__chart {
+    display: block;
+    overflow: visible;
+}
+
+/* 12px on a 16px line, the axis labels. */
+.qntns-savings__chart text {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    line-height: 16px;
+    fill: var(--color-ink);
+}
+
+/* Shade under the whole line, ramp to tail. 12% is a tint, not a
+   measurement (FLAG, item 114.3). */
+.qntns-savings__area {
+    fill: color-mix(in srgb, var(--color-ink) 12%, var(--color-page));
+    stroke: none;
+}
+
+/* Quarter gridlines. 16% is a tint (FLAG, item 114.1). 1px hairline. */
+.qntns-savings__grid {
+    stroke: color-mix(in srgb, var(--color-ink) 16%, var(--color-page));
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+/* The line: 1px ink, hard corners. 1px is the hairline exemption. */
+.qntns-savings__line {
+    fill: none;
+    stroke: var(--color-ink);
+    stroke-width: 1;
+    stroke-linejoin: miter;
+}
+
+/* Item 121: the chip is positioned against this box, the svg's own size. */
+.qntns-savings__plot {
+    position: relative;
+}
+
+/* The baseline is --border-card (1px solid --color-ink, tokens.css) spelled
+   as a stroke, since SVG takes no border shorthand. Hairline exemption.
+   crispEdges keeps a 1px line on a whole-px y from smearing over two rows. */
+.qntns-savings__base,
+.qntns-savings__tick line,
+.qntns-savings__active line {
+    stroke: var(--color-ink);
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+/* Item 121: the amount chip, a home card in small. left / top / width come
+   from the JS (chip() in goal-savings.js), all whole px.
+   24 tall outside the border: 4 + 16 line + 4, the 1px border taken out of
+   the padding (hairline exemption), so the box stays on the 4 grid.
+   The shadow is 2px, OFF-GRID: a named exemption, the card's 4px halved for
+   a 24px chip (FLAG, item 121.2; the on-grid option is 4px). */
+.qntns-savings__chip {
+    position: absolute;
+    box-sizing: border-box;
+    height: 24px;
+    padding: calc(var(--space-4) - 1px) 0;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    line-height: 16px;
+    text-align: center;
+    white-space: nowrap;
+    color: var(--color-ink);
+    background: var(--color-beige-dark);
+    border: var(--border-card);
+    box-shadow: 2px 2px 0 var(--color-ink);
+    pointer-events: none;
+}
+
+/* Item 121.4: read aloud on each keyboard move, never seen. Spelled out here
+   rather than .visually-hidden, as postcard.css does, since a11y.css is not
+   guaranteed to load in the story. */
+.qntns-savings__live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}

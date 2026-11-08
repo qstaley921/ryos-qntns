@@ -1,13 +1,9 @@
 import {
-  lazy,
-  Suspense,
   useEffect,
   useCallback,
   useMemo,
   useState,
   useRef,
-  type ComponentType,
-  type LazyExoticComponent,
 } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -21,242 +17,25 @@ import { DashboardMenuBar } from "./DashboardMenuBar";
 import { useAppStore } from "@/stores/useAppStore";
 import { useTranslation } from "react-i18next";
 import { Plus } from "@phosphor-icons/react";
-import { useDashboardStore, type WidgetType } from "@/stores/useDashboardStore";
+import { useDashboardStore } from "@/stores/useDashboardStore";
+import { QNTNS_WIDGETS, QntnsWidget, isQntnsWidget, type QntnsWidgetType } from "../widgets";
 import { orderWidgetsForMobile } from "@/stores/dashboardLayout";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
-  WIDGET_ICONS,
   WIDGET_TRAY_ICON_SIZE,
   WIDGET_TRAY_ITEM_MIN_WIDTH,
 } from "@/components/layout/dashboard/dashboardWidgetConstants";
 import { WidgetBarIcon } from "@/components/layout/dashboard/WidgetBarIcon";
-
-type WidgetFrontProps = {
-  widgetId: string;
-  isFlipped?: boolean;
-};
-
-type WidgetBackProps = {
-  widgetId: string;
-  onDone?: () => void;
-};
-
-type WidgetOverflowProps = {
-  widgetId: string;
-};
-
-type LazyWidgetComponent<Props> = LazyExoticComponent<ComponentType<Props>>;
-
-type WidgetRegistryEntry = {
-  front: LazyWidgetComponent<WidgetFrontProps>;
-  back?: LazyWidgetComponent<WidgetBackProps>;
-  overflow?: LazyWidgetComponent<WidgetOverflowProps>;
-};
-
-function lazyWidget<Props>(
-  loader: () => Promise<{ default: ComponentType<Props> }>
-): LazyWidgetComponent<Props> {
-  return lazy(loader);
-}
-
-const WIDGET_REGISTRY: Record<WidgetType, WidgetRegistryEntry> = {
-  clock: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/ClockWidget").then((module) => ({
-        default: module.ClockWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/ClockWidget").then((module) => ({
-        default: module.ClockBackPanel,
-      }))
-    ),
-  },
-  calendar: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/CalendarWidget").then((module) => ({
-        default: module.CalendarWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/CalendarWidget").then((module) => ({
-        default: module.CalendarBackPanel,
-      }))
-    ),
-  },
-  weather: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/WeatherWidget").then((module) => ({
-        default: module.WeatherWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/WeatherWidget").then((module) => ({
-        default: module.WeatherBackPanel,
-      }))
-    ),
-    overflow: lazyWidget<WidgetOverflowProps>(() =>
-      import("@/components/layout/dashboard/WeatherWidget").then((module) => ({
-        default: module.WeatherEmojiOverflow,
-      }))
-    ),
-  },
-  stocks: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/StocksWidget").then((module) => ({
-        default: module.StocksWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/StocksWidget").then((module) => ({
-        default: module.StocksBackPanel,
-      }))
-    ),
-  },
-  ipod: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/IpodWidget").then((module) => ({
-        default: module.IpodWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/IpodWidget").then((module) => ({
-        default: module.IpodBackPanel,
-      }))
-    ),
-  },
-  translation: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/TranslationWidget").then((module) => ({
-        default: module.TranslationWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/TranslationWidget").then((module) => ({
-        default: module.TranslationBackPanel,
-      }))
-    ),
-  },
-  currency: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/CurrencyWidget").then((module) => ({
-        default: module.CurrencyWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/CurrencyWidget").then((module) => ({
-        default: module.CurrencyBackPanel,
-      }))
-    ),
-  },
-  stickynote: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/StickyNoteWidget").then((module) => ({
-        default: module.StickyNoteWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/StickyNoteWidget").then((module) => ({
-        default: module.StickyNoteBackPanel,
-      }))
-    ),
-  },
-  dictionary: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/DictionaryWidget").then((module) => ({
-        default: module.DictionaryWidget,
-      }))
-    ),
-    back: lazyWidget<WidgetBackProps>(() =>
-      import("@/components/layout/dashboard/DictionaryWidget").then((module) => ({
-        default: module.DictionaryBackPanel,
-      }))
-    ),
-  },
-  aquarium: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/AquariumWidget").then((module) => ({
-        default: module.AquariumWidget,
-      }))
-    ),
-    overflow: lazyWidget<WidgetOverflowProps>(() =>
-      import("@/components/layout/dashboard/AquariumWidget").then((module) => ({
-        default: module.AquariumBubbleOverflow,
-      }))
-    ),
-  },
-  terrarium: {
-    front: lazyWidget<WidgetFrontProps>(() =>
-      import("@/components/layout/dashboard/TerrariumWidget").then((module) => ({
-        default: module.TerrariumWidget,
-      }))
-    ),
-    overflow: lazyWidget<WidgetOverflowProps>(() =>
-      import("@/components/layout/dashboard/TerrariumWidget").then((module) => ({
-        default: module.TerrariumFireflyOverflow,
-      }))
-    ),
-  },
-};
-
-function WidgetContent({
-  type,
-  widgetId,
-  isFlipped,
-}: {
-  type: WidgetType;
-  widgetId: string;
-  isFlipped?: boolean;
-}) {
-  const Front = WIDGET_REGISTRY[type].front;
-
-  return (
-    <Suspense fallback={null}>
-      <Front widgetId={widgetId} isFlipped={isFlipped} />
-    </Suspense>
-  );
-}
-
-function WidgetBackContent({
-  type,
-  widgetId,
-  onDone,
-}: {
-  type: WidgetType;
-  widgetId: string;
-  onDone: () => void;
-}) {
-  const Back = WIDGET_REGISTRY[type].back;
-  if (!Back) return null;
-
-  return (
-    <Suspense fallback={null}>
-      <Back widgetId={widgetId} onDone={onDone} />
-    </Suspense>
-  );
-}
-
-function WidgetOverflow({ type, widgetId }: { type: WidgetType; widgetId: string }) {
-  const Overflow = WIDGET_REGISTRY[type].overflow;
-  if (!Overflow) return null;
-
-  return (
-    <Suspense fallback={null}>
-      <Overflow widgetId={widgetId} />
-    </Suspense>
-  );
-}
 
 function WidgetStrip({
   onAdd,
   isWindowsTheme,
   onHeightMeasured,
 }: {
-  onAdd: (type: WidgetType) => void;
+  onAdd: (type: QntnsWidgetType) => void;
   isWindowsTheme: boolean;
   onHeightMeasured?: (height: number) => void;
 }) {
-  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -272,20 +51,6 @@ function WidgetStrip({
     observer.observe(el);
     return () => observer.disconnect();
   }, [onHeightMeasured]);
-
-  const widgets: { type: WidgetType; label: string }[] = [
-    { type: "clock", label: t("apps.dashboard.widgets.clock") },
-    { type: "calendar", label: t("apps.dashboard.widgets.calendar") },
-    { type: "weather", label: t("apps.dashboard.widgets.weather") },
-    { type: "stocks", label: t("apps.dashboard.widgets.stocks") },
-    { type: "ipod", label: t("apps.dashboard.widgets.ipod", "iPod") },
-    { type: "translation", label: t("apps.dashboard.widgets.translation", "Translation") },
-    { type: "currency", label: t("apps.dashboard.widgets.currencyConverter", "Currency Converter") },
-    { type: "stickynote", label: t("apps.dashboard.widgets.stickyNote", "Sticky Note") },
-    { type: "dictionary", label: t("apps.dashboard.widgets.dictionary", "Dictionary") },
-    { type: "aquarium", label: t("apps.dashboard.widgets.aquarium", "Aquarium") },
-    { type: "terrarium", label: t("apps.dashboard.widgets.terrarium", "Terrarium") },
-  ];
 
   return (
     <motion.div
@@ -350,7 +115,7 @@ function WidgetStrip({
             zIndex: 2,
           }}
         >
-          {widgets.map((w) => (
+          {QNTNS_WIDGETS.map((w) => (
             <button
               key={w.type}
               type="button"
@@ -369,7 +134,7 @@ function WidgetStrip({
                 }}
               >
                 <WidgetBarIcon
-                  icon={WIDGET_ICONS[w.type]}
+                  icon={w.icon}
                   size={WIDGET_TRAY_ICON_SIZE}
                   alt={w.label}
                 />
@@ -424,7 +189,11 @@ export function DashboardAppComponent({
   } = useDashboardLogic();
 
   const visibleWidgets = useMemo(
-    () => (isMobile ? orderWidgetsForMobile(widgets, mobileOrder) : widgets),
+    () => {
+      // Saved ryOS widgets (the store's clock/calendar/weather defaults) stay in the store but never render.
+      const ours = widgets.filter((w) => isQntnsWidget(w.type));
+      return isMobile ? orderWidgetsForMobile(ours, mobileOrder) : ours;
+    },
     [isMobile, mobileOrder, widgets],
   );
 
@@ -467,19 +236,8 @@ export function DashboardAppComponent({
   const menuBar = (
     <DashboardMenuBar
       onClose={handleClose}
-      onShowHelp={() => setIsHelpDialogOpen(true)}
       onShowAbout={() => setIsAboutDialogOpen(true)}
-      onAddClock={() => handleAddWidget("clock")}
-      onAddCalendar={() => handleAddWidget("calendar")}
-      onAddWeather={() => handleAddWidget("weather")}
-      onAddStocks={() => handleAddWidget("stocks")}
-      onAddIpod={() => handleAddWidget("ipod")}
-      onAddTranslation={() => handleAddWidget("translation")}
-      onAddCurrency={() => handleAddWidget("currency")}
-      onAddStickyNote={() => handleAddWidget("stickynote")}
-      onAddDictionary={() => handleAddWidget("dictionary")}
-      onAddAquarium={() => handleAddWidget("aquarium")}
-      onAddTerrarium={() => handleAddWidget("terrarium")}
+      onAddWidget={handleAddWidget}
       onResetWidgets={resetToDefaults}
     />
   );
@@ -643,13 +401,9 @@ export function DashboardAppComponent({
                               x={0}
                               y={0}
                               zIndex={widget.zIndex ?? 1}
-                              borderRadius={widget.type === "ipod" ? "9999px" : undefined}
-                              hideDoneButton={widget.type === "ipod"}
                               onRemove={() => removeWidget(widget.id)}
-                              overflowContent={<WidgetOverflow type={widget.type} widgetId={widget.id} />}
-                              backContent={(onFlipBack) => <WidgetBackContent type={widget.type} widgetId={widget.id} onDone={onFlipBack} />}
                             >
-                              {(isFlipped) => <WidgetContent type={widget.type} widgetId={widget.id} isFlipped={isFlipped} />}
+                              <QntnsWidget type={widget.type as QntnsWidgetType} />
                             </WidgetChrome>
                           </motion.div>
                         );
@@ -689,15 +443,11 @@ export function DashboardAppComponent({
                           x={widget.position.x}
                           y={widget.position.y}
                           zIndex={widget.zIndex ?? 1}
-                          borderRadius={widget.type === "ipod" ? "9999px" : undefined}
-                          hideDoneButton={widget.type === "ipod"}
                           onRemove={() => removeWidget(widget.id)}
                           onMove={(pos) => moveWidget(widget.id, pos)}
                           onBringToFront={() => bringToFront(widget.id)}
-                          overflowContent={<WidgetOverflow type={widget.type} widgetId={widget.id} />}
-                          backContent={(onFlipBack) => <WidgetBackContent type={widget.type} widgetId={widget.id} onDone={onFlipBack} />}
                         >
-                          {(isFlipped) => <WidgetContent type={widget.type} widgetId={widget.id} isFlipped={isFlipped} />}
+                          <QntnsWidget type={widget.type as QntnsWidgetType} />
                         </WidgetChrome>
                       </motion.div>
                     ))}
