@@ -43,13 +43,6 @@ const colorStyles: Record<
   },
 };
 
-const inactiveStyles = {
-  gradient:
-    "linear-gradient(rgba(160, 160, 160, 0.625), rgba(255, 255, 255, 0.625))",
-  shadow:
-    "0 2px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.3), inset 0 0 0 0.5px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 2px 3px 1px #bbbbbb",
-};
-
 /**
  * When the macOS accent is set to "graphite", all three traffic lights become a
  * single cool blue-leaning gray (matching the graphite accent base ~#888d99),
@@ -99,23 +92,27 @@ export function TrafficLightButton({
     : accent === "graphite"
       ? graphiteStyles
       : colorStyles[color];
-  const styles = isForeground ? activeStyles : inactiveStyles;
+  // CHECKLIST-35 §65: colour and × − + drawn in every window, foreground or
+  // not (no grey inactive dot, no hover-only glyph), so touch readers can see
+  // what to press. isForeground stays in the props for callers; unused here.
+  void isForeground;
+  const styles = activeStyles;
 
+  // §65 size: diameter 13px → 16px (base 4); glyph 10px → 12px.
   return (
-    <div className="group relative" style={{ width: "13px", height: "13px" }}>
+    <div className="group relative" style={{ width: "16px", height: "16px" }}>
       {/* Visual button */}
       <div
         aria-hidden="true"
         className={cn(
           "rounded-full relative overflow-hidden cursor-default outline-none box-border transition-[filter] duration-150",
-          isForeground && "group-hover:brightness-110"
+          "group-hover:brightness-110"
         )}
         style={{
-          width: "13px",
-          height: "13px",
+          width: "16px",
+          height: "16px",
           background: styles.gradient,
           boxShadow: styles.shadow,
-          opacity: isForeground ? 1 : 0.7,
         }}
       >
         {/* Top shine */}
@@ -145,28 +142,30 @@ export function TrafficLightButton({
             filter: "blur(0.3px)",
           }}
         />
-        {/* Action icon (×, −, +) shown on hover */}
-        {isForeground && (() => {
+        {/* Action icon (×, −, +), always shown (§65) */}
+        {(() => {
           const Icon = symbolIcons[color];
           return (
             <div
-              className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover/traffic:opacity-100 transition-opacity duration-150"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
               style={{
                 zIndex: 1,
                 color: activeStyles.iconColor,
                 filter: "drop-shadow(0 0.5px 0 rgba(255,255,255,0.2))",
               }}
             >
-              <Icon size={10} weight="bold" />
+              <Icon size={12} weight="bold" />
             </div>
           );
         })()}
       </div>
-      {/* Clickable area (larger for easier interaction) */}
+      {/* Clickable area: 4px past each edge → 24px square (§65; was -inset-2,
+          8px → 29px, which would overlap a neighbour at the 12px gap). With
+          the 12px gap the hit areas sit 4px apart, none overlapping. */}
       <button
         aria-label={ariaLabel}
         className={cn(
-          "absolute -inset-2 z-10 rounded-none outline-none cursor-default",
+          "absolute -inset-1 z-10 rounded-none outline-none cursor-default",
           showResizers ? "bg-red-500/50" : "opacity-0"
         )}
         onClick={(e) => {
