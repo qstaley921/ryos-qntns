@@ -56,8 +56,8 @@ export function PhotosAppComponent({
   // §13d: one selected photo per album grid; a second click (or double-click, or Enter) opens it.
   const [picked, setPicked] = useState<number | null>(null);
   const [spots, setSpots] = useState<Record<string, number>>({});
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [hideStrip, setHideStrip] = useState(false); // session only: not persisted
 
   useEffect(() => {
     let live = true;
@@ -81,6 +81,10 @@ export function PhotosAppComponent({
 
   const album = sel === LIBRARY ? null : albums[sel];
   const current = docs?.find((d) => d.id === sel);
+  const orderPostcard = () =>
+    current && launchApp("internet-explorer", { initialData: { mini: true, path: `/${current.slug}/?postcard` }, multiWindow: true });
+  const playShow = () =>
+    album?.own && play(spots[sel] ?? 0, { ...album.own, onstop: (spot: number) => setSpots((s) => ({ ...s, [sel]: spot })) });
   const go = (id: string) => { setSel(id); setBig(null); setPicked(null); };
 
   // Grid keys, only while the grid shows in the foreground window (the viewer has its own).
@@ -136,8 +140,16 @@ export function PhotosAppComponent({
       menuBar={
         <PhotosMenuBar
           onClose={onClose}
-          onShowHelp={() => setIsHelpOpen(true)}
           onShowAbout={() => setIsAboutOpen(true)}
+          onOrderPostcard={current ? orderPostcard : undefined}
+          onPlay={album?.own ? playShow : undefined}
+          playLabel={spots[sel] ? "Resume Slideshow" : "Play Slideshow"}
+          onLibrary={() => go(LIBRARY)}
+          onPrev={big !== null && big > 0 ? () => setBig(big - 1) : undefined}
+          onNext={big !== null && album && big < album.photos.length - 1 ? () => setBig(big + 1) : undefined}
+          onBack={big !== null ? () => setBig(null) : undefined}
+          onToggleStrip={big !== null ? () => setHideStrip((h) => !h) : undefined}
+          stripLabel={hideStrip ? "Show Filmstrip" : "Hide Filmstrip"}
         />
       }
       windowFrameProps={{
@@ -155,8 +167,8 @@ export function PhotosAppComponent({
           appId={"photos"}
           helpItems={helpItems}
           metadata={appMetadata}
-          isHelpOpen={isHelpOpen}
-          onHelpOpenChange={setIsHelpOpen}
+          isHelpOpen={false}
+          onHelpOpenChange={() => {}}
           isAboutOpen={isAboutOpen}
           onAboutOpenChange={setIsAboutOpen}
         />
@@ -179,7 +191,7 @@ export function PhotosAppComponent({
           {/* The content column: the grid, or the viewer in its place (§13 13-opus_high-3); the source list stays. A click on empty grid space clears the selection (Thumb stops its own). */}
           <div className="relative min-w-0 flex-1 overflow-auto bg-white" onClick={() => setPicked(null)}>
             {big !== null && album ? (
-              <Viewer photos={album.photos} at={big} onAt={setBig} onClose={() => setBig(null)} active={!!isForeground} />
+              <Viewer photos={album.photos} at={big} onAt={setBig} onClose={() => setBig(null)} active={!!isForeground} hideStrip={hideStrip} />
             ) : (
               grid
             )}
@@ -189,14 +201,29 @@ export function PhotosAppComponent({
         <div className="flex h-12 shrink-0 items-center justify-between border-t border-black/10 bg-os-panel-bg px-4 text-xs text-os-text-secondary">
           <span>{count}</span>
           <div className="flex items-center gap-2">
+          {big !== null && album && (
+            <>
+              <button type="button" className={BAR_BTN} disabled={big <= 0} onClick={() => setBig(big - 1)}>
+                ◀ Previous
+              </button>
+              <button type="button" className={BAR_BTN} disabled={big >= album.photos.length - 1} onClick={() => setBig(big + 1)}>
+                Next ▶
+              </button>
+              {/* Plain link: the image host is another origin, so the browser may open it instead of saving. No fetch/blob (network rule). */}
+              <a className={BAR_BTN} href={album.photos[big]} download target="_blank" rel="noreferrer">
+                Download
+              </a>
+              <button type="button" className={BAR_BTN} onClick={() => setHideStrip((h) => !h)}>
+                {hideStrip ? "Show Filmstrip" : "Hide Filmstrip"}
+              </button>
+            </>
+          )}
           {current && (
             <button
               type="button"
               className="flex h-8 items-center gap-2 rounded px-3 text-os-text-primary hover:bg-black/5"
               // §79a: the site's own postcard editor in a Mini window. Own window, so an open Safari is left alone.
-              onClick={() =>
-                launchApp("internet-explorer", { initialData: { mini: true, path: `/${current.slug}/?postcard` }, multiWindow: true })
-              }
+              onClick={orderPostcard}
             >
               Order Postcard
             </button>
@@ -206,12 +233,7 @@ export function PhotosAppComponent({
               type="button"
               className="flex h-8 items-center gap-2 rounded px-3 text-os-text-primary hover:bg-black/5"
               // Must stay synchronous: play() starts the sound and full screen in this click's gesture.
-              onClick={() =>
-                play(spots[sel] ?? 0, {
-                  ...album.own,
-                  onstop: (spot: number) => setSpots((s) => ({ ...s, [sel]: spot })),
-                })
-              }
+              onClick={playShow}
             >
               <span aria-hidden="true">▶</span>
               {spots[sel] ? "Resume" : "Play"}
@@ -223,6 +245,9 @@ export function PhotosAppComponent({
     </AppWindowShell>
   );
 }
+
+// Bottom-bar button: 32px tall (base 4), 8px gaps from the row; disabled ones grey out.
+const BAR_BTN = "flex h-8 items-center gap-2 rounded px-3 text-os-text-primary hover:bg-black/5 disabled:opacity-40 disabled:hover:bg-transparent";
 
 const Status = ({ children }: { children: React.ReactNode }) => (
   <div className="flex h-full items-center justify-center text-sm text-os-text-secondary">{children}</div>
@@ -240,7 +265,7 @@ const Grid = ({ children }: { children: React.ReactNode }) => (
  * Budget: column height = photo (flex-1) + filmstrip 16 + 72 + 16 = 104px; each frame 96×72 (4:3),
  * 8px apart; × is 32px, 16px in from the column's top-right.
  */
-function Viewer({ photos, at, onAt, onClose, active }: { photos: string[]; at: number; onAt: (i: number) => void; onClose: () => void; active: boolean }) {
+function Viewer({ photos, at, onAt, onClose, active, hideStrip }: { photos: string[]; at: number; onAt: (i: number) => void; onClose: () => void; active: boolean; hideStrip: boolean }) {
   const strip = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!active) return;
@@ -256,7 +281,7 @@ function Viewer({ photos, at, onAt, onClose, active }: { photos: string[]; at: n
   }, [at, photos.length, onAt, onClose, active]);
   useEffect(() => {
     strip.current?.children[at]?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-  }, [at]);
+  }, [at, hideStrip]);
 
   return (
     <div className="absolute inset-0 flex flex-col bg-black" role="region" aria-label="Photo" onClick={(e) => e.stopPropagation()}>
@@ -264,7 +289,7 @@ function Viewer({ photos, at, onAt, onClose, active }: { photos: string[]; at: n
       <div className="relative min-h-0 w-full flex-1">
         <BlurUp key={at} src={photos[at]} tiny={thumb(photos[at])} fit="object-contain" />
       </div>
-      <div ref={strip} className="flex h-[104px] shrink-0 gap-2 overflow-x-auto p-4">
+      <div ref={strip} className={cn("flex h-[104px] shrink-0 gap-2 overflow-x-auto p-4", hideStrip && "hidden")}>
         {photos.map((src, i) => (
           <button
             key={src}

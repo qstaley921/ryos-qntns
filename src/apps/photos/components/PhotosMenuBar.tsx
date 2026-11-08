@@ -3,15 +3,32 @@ import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { AppMenuBarMenus, type MenuDescriptor } from "@/components/shared/menubar/AppMenuBarMenus";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 
-// File › Close only: Photos is read-only (CHECKLIST-37 §13, no iPhoto tools).
+// File: Order Postcard, Play Slideshow, Close. View: Library, Previous/Next Photo, Back to Album.
+// An action the window can't do now is passed undefined and shows disabled.
 export function PhotosMenuBar({
   onClose,
-  onShowHelp,
   onShowAbout,
+  onOrderPostcard,
+  onPlay,
+  playLabel,
+  onLibrary,
+  onPrev,
+  onNext,
+  onBack,
+  onToggleStrip,
+  stripLabel,
 }: {
   onClose: () => void;
-  onShowHelp: () => void;
   onShowAbout: () => void;
+  onOrderPostcard?: () => void;
+  onPlay?: () => void;
+  playLabel: string;
+  onLibrary: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  onBack?: () => void;
+  onToggleStrip?: () => void;
+  stripLabel: string;
 }) {
   const { t } = useTranslation();
   const { isShareDialogOpen, setIsShareDialogOpen, isWindowsTheme, isMacOSTheme, appId, appName } =
@@ -20,7 +37,24 @@ export function PhotosMenuBar({
   const menus: MenuDescriptor[] = [
     {
       label: t("common.menu.file"),
-      items: [{ type: "action", label: t("common.menu.close"), onClick: onClose, shortcutId: "close" }],
+      items: [
+        { type: "action", label: "Order Postcard", onClick: onOrderPostcard ?? (() => {}), disabled: !onOrderPostcard },
+        { type: "action", label: playLabel, onClick: onPlay ?? (() => {}), disabled: !onPlay },
+        { type: "separator" },
+        { type: "action", label: t("common.menu.close"), onClick: onClose, shortcutId: "close" },
+      ],
+    },
+    {
+      label: "View",
+      items: [
+        { type: "action", label: "Library", onClick: onLibrary },
+        { type: "separator" },
+        { type: "action", label: "Previous Photo", onClick: onPrev ?? (() => {}), disabled: !onPrev, shortcut: "\u2190" },
+        { type: "action", label: "Next Photo", onClick: onNext ?? (() => {}), disabled: !onNext, shortcut: "\u2192" },
+        { type: "action", label: "Back to Album", onClick: onBack ?? (() => {}), disabled: !onBack, shortcut: "Esc" },
+        { type: "separator" },
+        { type: "action", label: stripLabel, onClick: onToggleStrip ?? (() => {}), disabled: !onToggleStrip },
+      ],
     },
   ];
 
@@ -32,9 +66,7 @@ export function PhotosMenuBar({
       appName={appName}
       isShareDialogOpen={isShareDialogOpen}
       setIsShareDialogOpen={setIsShareDialogOpen}
-      helpItemLabel="Photos Help"
       aboutItemLabel="About Photos"
-      onShowHelp={onShowHelp}
       onShowAbout={onShowAbout}
     >
       <AppMenuBarMenus menus={menus} />
