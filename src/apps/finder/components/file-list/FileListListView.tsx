@@ -126,7 +126,7 @@ export function FileListListView(vm: FileListViewModel) {
       className="relative font-geneva-12"
       {...containerDragHandlers}
     >
-      <Table key={listTableKey} className="min-w-[480px] table-fixed">
+      <Table key={listTableKey} className="table-fixed">
         <TableHeader>
           <TableRow className={`${listHeaderTextClass} border-none font-normal`}>
             <TableHead className="h-[24px] min-w-0 whitespace-nowrap font-normal">
