@@ -3,7 +3,7 @@
 // folders, Friends and Portfolio, hardcoded (bookmarks.ts). A site's home page opens in
 // a frame through the Worker's /site/ proxy (§28c); any click opens the real site in a
 // new tab. A proxy error or timeout = a card that links out.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { CaretLeft, CaretRight, ArrowSquareOut } from "@phosphor-icons/react";
 import type { AppProps, InternetExplorerInitialData } from "@/apps/base/types";
@@ -21,6 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemedIcon } from "@/components/shared/ThemedIcon";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useSound, Sounds } from "@/hooks/useSound";
 import { appMetadata, helpItems } from "../../metadata";
 import { proxied, proxyOk, loadBookmarks, type Bookmark, type Bookmarks } from "../../bookmarks";
 
@@ -133,6 +135,8 @@ function Safari({
   const [reload, setReload] = useState(0);
   const [framed, setFramed] = useState<boolean | null>(null); // null = asking the proxy
   const [aboutOpen, setAboutOpen] = useState(false);
+  // address-field progress, faked (a cross-origin frame reports none): 0 off, 1 jump to 10%, 2 ease to 90%, 3 snap to 100% + fade
+  const [bar, setBar] = useState(0);
   const site = trail[at];
 
   useEffect(() => {
@@ -140,20 +144,44 @@ function Safari({
   }, []);
 
   useEffect(() => {
-    if (!site) return;
+    if (!site) return setBar(0);
     let live = true;
     setFramed(null);
-    proxyOk(site.url).then((ok) => live && setFramed(ok));
+    setBar(1);
+    const ease = setTimeout(() => live && setBar(2), 50);
+    proxyOk(site.url).then((ok) => {
+      if (!live) return;
+      setFramed(ok);
+      if (!ok) setBar(0); // the card: clear at once
+    });
     return () => {
       live = false;
+      clearTimeout(ease);
     };
   }, [site, reload]);
+
+  useEffect(() => {
+    if (bar !== 3) return;
+    const id = setTimeout(() => setBar(0), 400); // after the snap (200ms) + fade (100ms delay, 200ms)
+    return () => clearTimeout(id);
+  }, [bar]);
 
   const open = (b: Bookmark) => {
     setTrail([...trail.slice(0, at + 1), b]);
     setAt(at + 1);
   };
   const linkOut = () => site && window.open(site.url, "_blank", "noopener,noreferrer");
+  // back to the Bookmarks screen as a new history step, so Back still reaches the failed site
+  const home = () => {
+    setTrail([...trail.slice(0, at + 1), null]);
+    setAt(at + 1);
+  };
+  const failed = !!site && framed === false;
+  const openRef = useRef<HTMLButtonElement>(null);
+  const { play: sosumi } = useSound(Sounds.ALERT_SOSUMI);
+  useEffect(() => {
+    if (failed) sosumi();
+  }, [failed, sosumi]);
 
   const menuBar = (
     <AppMenuBarShell
@@ -225,8 +253,23 @@ function Safari({
           <Button variant="ghost" size="icon" aria-label="Forward" disabled={at === trail.length - 1} onClick={() => setAt(at + 1)}>
             <CaretRight weight="bold" />
           </Button>
-          <div className="min-w-0 flex-1 truncate rounded-md border border-os-window bg-white px-3 py-1 text-center text-[12px] text-neutral-700 os-dark:bg-neutral-800 os-dark:text-neutral-200">
-            {site ? host(site.url) : "Bookmarks"}
+          <div className="relative min-w-0 flex-1 truncate rounded-md border border-os-window bg-white px-3 py-1 text-center text-[12px] text-neutral-700 os-dark:bg-neutral-800 os-dark:text-neutral-200">
+            {bar > 0 && (
+              // Safari 1–3's Aqua fill behind the address text. Width eases 10%→90% over 10s (decelerating), snaps to 100% on load, then fades.
+              // Reduced motion: no easing, just a full fill while loading.
+              <div
+                key={reload}
+                aria-hidden
+                className={`pointer-events-none absolute inset-y-0 left-0 bg-[linear-gradient(to_bottom,#e6f1fd_0%,#c3ddf8_50%,#a9cdf4_51%,#cbe3fa_100%)] os-dark:bg-[linear-gradient(to_bottom,#3a6ea8_0%,#2c5b91_50%,#234f84_51%,#2f6198_100%)] motion-reduce:w-full motion-reduce:transition-none ${
+                  bar === 1
+                    ? "w-[10%]"
+                    : bar === 2
+                      ? "w-[90%] transition-[width] duration-[10s] ease-[cubic-bezier(0.1,0.7,0.2,1)]"
+                      : "w-full opacity-0 transition-[width,opacity] duration-200 [transition-delay:0s,100ms]"
+                }`}
+              />
+            )}
+            <span className="relative">{site ? host(site.url) : "Bookmarks"}</span>
           </div>
           <Button variant="ghost" size="icon" aria-label="Open in new window" disabled={!site} onClick={linkOut}>
             <ArrowSquareOut weight="bold" />
@@ -262,9 +305,8 @@ function Safari({
         <div className="relative min-h-0 flex-1 bg-white os-dark:bg-neutral-900">
           {!site ? (
             <StartPage marks={marks} open={open} />
-          ) : framed === null ? (
-            <p className="p-4 text-[12px] text-neutral-500">Loading {host(site.url)}…</p>
           ) : framed ? (
+
             <iframe
               key={`${site.url}#${reload}`}
               src={proxied(site.url)}
@@ -273,21 +315,51 @@ function Safari({
               // no allow-same-origin: the page runs in an opaque origin, never the Worker's (the Worker's CSP says the same)
               sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
               referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={() => setBar((b) => (b ? 3 : b))}
             />
-          ) : (
-            <div className="flex size-full items-center justify-center p-4">
-              <div className="max-w-sm rounded-md border border-os-window p-4 text-center">
-                <p className="text-[13px] font-semibold">{site.title}</p>
-                {site.excerpt && <p className="mt-1 text-[12px] text-neutral-600 os-dark:text-neutral-300">{site.excerpt}</p>}
-                <p className="mt-2 text-[11px] text-neutral-500">This site can't be shown inside Safari.</p>
-                <Button className="mt-3" size="sm" onClick={linkOut}>
-                  Open {host(site.url)}
-                </Button>
-              </div>
-            </div>
-          )}
+          ) : null /* waiting: the address-field fill shows it; failed: the alert below */}
         </div>
       </div>
+      {/* Load failure (Worker error, non-2xx, 10s timeout): the system alert, same parts as ConfirmDialog's Aqua path.
+          Its confirm button is hard-wired to "Confirm", hence this copy. */}
+      <Dialog open={failed} onOpenChange={(o) => !o && home()}>
+        <DialogContent
+          className="max-w-[400px]"
+          onOpenAutoFocus={(e) => {
+            e.preventDefault(); // default button is Open in Browser, not the first one
+            openRef.current?.focus();
+          }}
+        >
+          <DialogTitle className="sr-only">Safari</DialogTitle>
+          <DialogHeader>Safari</DialogHeader>
+          <div className="p-6">
+            <div className="flex items-start gap-3">
+              <ThemedIcon name="warn.png" alt="" className="mt-1 size-8 [image-rendering:pixelated]" width={32} height={32} />
+              <div className="font-geneva-12 text-[12px] leading-tight text-neutral-900">
+                <p className="font-bold">Safari can't show “{site ? host(site.url) : ""}” here.</p>
+                <DialogDescription className="mt-2 text-[12px] text-neutral-900">
+                  The page didn't load inside Safari. You can open it in your browser instead.
+                </DialogDescription>
+              </div>
+            </div>
+            <DialogFooter className="mt-4 gap-2">
+              <Button variant="retro" className="h-7 font-geneva-12 text-[12px]" onClick={home}>
+                Cancel
+              </Button>
+              <Button
+                ref={openRef}
+                className="font-geneva-12 text-[12px]"
+                onClick={() => {
+                  linkOut();
+                  home();
+                }}
+              >
+                Open in Browser
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
       <AppHelpAboutDialogs
         appId="internet-explorer"
         helpItems={helpItems}
@@ -301,32 +373,102 @@ function Safari({
   );
 }
 
-function StartPage({ marks, open }: { marks: Bookmarks; open: (b: Bookmark) => void }) {
+// Safari 1–3's Bookmarks view: a Collections source list left, the folder's bookmarks as a striped
+// Bookmark / Address table right. Rows 20px, headers 24px, list 160px wide (base 4; 1px rules exempt).
+const HEAD =
+  "flex h-6 shrink-0 items-center border-b border-black/20 bg-[linear-gradient(to_bottom,#ffffff,#e6e6e6)] px-2 text-[11px] text-neutral-700 os-dark:border-white/20 os-dark:bg-[linear-gradient(to_bottom,#4a4a4a,#333333)] os-dark:text-neutral-200";
+const SELECTED = { "--os-color-selection-bg": "var(--os-accent-list-gradient, #3875d7)" } as CSSProperties;
+
+function FolderGlyph() {
+  // our own drawing: a blue Aqua folder, 16px
   return (
-    <div className="size-full overflow-auto p-4">
-      {FOLDERS.map(([k, label]) => (
-        <section key={k} className="mb-4">
-          <h2 className="mb-2 text-[13px] font-semibold">{label}</h2>
-          {marks[k].length === 0 ? (
-            <p className="text-[12px] text-neutral-500">No sites yet.</p>
-          ) : (
-            <ul className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2">
-              {marks[k].map((b) => (
-                <li key={b.id}>
-                  <button
-                    type="button"
-                    onClick={() => open(b)}
-                    className="w-full rounded-md border border-os-window p-2 text-left hover:bg-neutral-100 os-dark:hover:bg-neutral-800"
-                  >
-                    <span className="block truncate text-[12px] font-semibold">{b.title}</span>
-                    <span className="block truncate text-[11px] text-neutral-500">{b.excerpt || host(b.url)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ))}
+    <svg viewBox="0 0 16 16" className="size-4 shrink-0" aria-hidden>
+      <path d="M1 4V3h5l1 1h8v9H1z" fill="#6a9fe0" />
+      <path d="M1 6h14v7H1z" fill="#8dbaf0" />
+      <path d="M1 6h14" stroke="#c7defa" />
+    </svg>
+  );
+}
+
+function StartPage({ marks, open }: { marks: Bookmarks; open: (b: Bookmark) => void }) {
+  const [folder, setFolder] = useState<(typeof FOLDERS)[number][0]>("friends");
+  const [pick, setPick] = useState<string | null>(null);
+  const rows = marks[folder];
+  const picked = rows.find((b) => b.id === pick);
+
+  return (
+    <div className="flex size-full text-[12px]" style={SELECTED}>
+      <div className="flex w-40 shrink-0 flex-col border-r border-black/20 bg-[#e8edf5] os-dark:border-white/20 os-dark:bg-neutral-800">
+        <div className={HEAD}>Collections</div>
+        <div role="listbox" aria-label="Collections" className="py-1">
+          {FOLDERS.map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="option"
+              aria-selected={folder === k}
+              data-selected={folder === k ? "true" : undefined}
+              onClick={() => {
+                setFolder(k);
+                setPick(null);
+              }}
+              className="flex h-5 w-full items-center gap-1 px-2 text-left"
+            >
+              <FolderGlyph />
+              <span className="truncate">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        role="grid"
+        aria-label={FOLDERS.find(([k]) => k === folder)?.[1]}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && picked) open(picked);
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            const n = rows.findIndex((b) => b.id === pick) + (e.key === "ArrowDown" ? 1 : -1);
+            const b = rows[Math.max(0, Math.min(rows.length - 1, n))];
+            if (b) setPick(b.id);
+          }
+        }}
+        className="flex min-w-0 flex-1 flex-col overflow-auto outline-none"
+      >
+        <div className={`${HEAD} sticky top-0 px-0`}>
+          <span className="w-1/2 truncate border-r border-black/20 px-2 os-dark:border-white/20">Bookmark</span>
+          <span className="min-w-0 flex-1 truncate px-2">Address</span>
+        </div>
+        {rows.length === 0 ? (
+          <p className="px-2 py-1 text-neutral-500">No sites yet.</p>
+        ) : (
+          rows.map((b, i) => (
+            <div
+              key={b.id}
+              role="row"
+              aria-selected={pick === b.id}
+              data-selected={pick === b.id ? "true" : undefined}
+              onClick={() => setPick(b.id)}
+              onDoubleClick={() => open(b)}
+              title={b.excerpt || undefined}
+              className={`flex h-5 shrink-0 cursor-default items-center ${
+                pick === b.id ? "" : i % 2 ? "bg-[#edf3fe] os-dark:bg-neutral-800" : "bg-white os-dark:bg-neutral-900"
+              }`}
+            >
+              <span role="gridcell" className="flex w-1/2 min-w-0 items-center gap-1 px-2">
+                <ThemedIcon name="site.png" alt="" className="size-4 shrink-0 [image-rendering:pixelated]" />
+                <span className="truncate">{b.title}</span>
+              </span>
+              <span role="gridcell" className="min-w-0 flex-1 truncate px-2">
+                {b.url}
+              </span>
+            </div>
+          ))
+        )}
+        {/* stripes carry on below the last row, as in an NSTableView */}
+        <div className="min-h-0 flex-1 bg-[repeating-linear-gradient(to_bottom,var(--stripe-a)_0_20px,var(--stripe-b)_20px_40px)] [--stripe-a:#ffffff] [--stripe-b:#edf3fe] os-dark:[--stripe-a:#171717] os-dark:[--stripe-b:#262626]" style={rows.length % 2 ? { backgroundPosition: "0 20px" } : undefined} />
+      </div>
     </div>
   );
 }
