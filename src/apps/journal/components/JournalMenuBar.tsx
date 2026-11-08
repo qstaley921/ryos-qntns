@@ -4,6 +4,8 @@ import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 import { JOURNAL_VIEWS } from "../types";
 import type { JournalView } from "../types";
 import type { JournalLogic } from "../hooks/useJournalLogic";
+import { journalKinds } from "../journalEntries";
+import { defaultDayId } from "../sampleContent";
 
 export function JournalMenuBar({
   l,
@@ -17,6 +19,7 @@ export function JournalMenuBar({
   onToggleSidebar: () => void;
 }) {
   const { t } = l;
+  const kinds = journalKinds();
   const { isShareDialogOpen, setIsShareDialogOpen, isWindowsTheme, isMacOSTheme, appId, appName } =
     useAppMenuBarChrome("journal");
 
@@ -46,6 +49,21 @@ export function JournalMenuBar({
               },
             ],
           },
+          // §57 TODO: Journal has no Edit menu; nest Edit/Share in File once author-A's helper lands.
+          {
+            label: "Filter",
+            items: [
+              {
+                type: "radioGroup",
+                value: l.filter ?? "",
+                onValueChange: (v) => l.api.setFilter(v || null),
+                options: [
+                  { value: "", label: "All" },
+                  ...kinds.map((k) => ({ value: k, label: k })),
+                ],
+              },
+            ],
+          },
           {
             label: t("common.menu.view"),
             items: [
@@ -65,6 +83,15 @@ export function JournalMenuBar({
                 checked: showSidebar,
                 onChange: () => onToggleSidebar(),
                 disabled: l.journal.view !== "daily",
+              },
+              { type: "separator" },
+              {
+                type: "action",
+                label: "Go to Latest Day",
+                onClick: () => {
+                  l.api.selectDay(defaultDayId());
+                  if (l.journal.view !== "daily") l.api.setView("daily");
+                },
               },
             ],
           },

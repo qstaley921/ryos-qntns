@@ -20,6 +20,10 @@ interface CalendarMenuBarProps {
   view: CalendarView;
   onSetView: (view: CalendarView) => void;
   onGoToToday: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  showSidebar: boolean;
+  onToggleSidebar: () => void;
   instanceId?: string;
 }
 
@@ -34,6 +38,10 @@ export function CalendarMenuBar({
   view,
   onSetView,
   onGoToToday,
+  onPrev,
+  onNext,
+  showSidebar,
+  onToggleSidebar,
   instanceId,
 }: CalendarMenuBarProps) {
   const { t } = useTranslation();
@@ -78,16 +86,9 @@ export function CalendarMenuBar({
         },
         { type: "separator" },
         {
-          type: "action",
-          label: t("common.menu.close"),
-          onClick: onClose,
-          shortcutId: "close",
-        },
-      ],
-    },
-    {
-      label: t("common.menu.edit"),
-      items: [
+          type: "submenu",
+          label: t("common.menu.edit"),
+          items: [
         {
           type: "action",
           label: t("common.menu.undo"),
@@ -118,6 +119,15 @@ export function CalendarMenuBar({
           disabled: !hasSelectedEvent,
         },
       ],
+        },
+        { type: "separator" },
+        {
+          type: "action",
+          label: t("common.menu.close"),
+          onClick: onClose,
+          shortcutId: "close",
+        },
+      ],
     },
     {
       label: t("common.menu.view"),
@@ -130,6 +140,31 @@ export function CalendarMenuBar({
           type: "action",
           label: t("apps.calendar.menu.goToToday"),
           onClick: onGoToToday,
+        },
+        {
+          type: "action",
+          label: t("apps.calendar.menu.previous", { defaultValue: "Previous" }),
+          onClick: onPrev,
+        },
+        {
+          type: "action",
+          label: t("apps.calendar.menu.next", { defaultValue: "Next" }),
+          onClick: onNext,
+        },
+        { type: "separator" },
+        {
+          type: "action",
+          label: showSidebar
+            ? t("common.menu.hideSidebar", { defaultValue: "Hide Sidebar" })
+            : t("common.menu.showSidebar", { defaultValue: "Show Sidebar" }),
+          onClick: onToggleSidebar,
+        },
+        { type: "separator" },
+        {
+          type: "action",
+          label: t("apps.calendar.menu.bookATime", { defaultValue: "Book a Time" }),
+          onClick: () => onSetView("week"),
+          disabled: view === "week",
         },
       ],
     },

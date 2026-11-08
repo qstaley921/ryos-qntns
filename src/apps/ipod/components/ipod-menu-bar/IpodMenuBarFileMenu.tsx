@@ -9,6 +9,7 @@ import { MENUBAR_SEPARATOR_CLASS } from "@/components/shared/menubar/menubarStyl
 import { ShortcutHint } from "@/components/shared/menubar/ShortcutHint";
 import { IpodMenuBarLibrarySourceActions } from "./IpodMenuBarLibrarySourceActions";
 import { IpodMenuBarLibrarySwitchItem } from "./IpodMenuBarLibrarySwitchItem";
+import { IpodMenuBarShareMenu } from "./IpodMenuBarShareMenu";
 import type { IpodMenuBarViewModel } from "./useIpodMenuBar";
 
 export function IpodMenuBarFileMenu({ vm }: { vm: IpodMenuBarViewModel }) {
@@ -72,6 +73,8 @@ export function IpodMenuBarFileMenu({ vm }: { vm: IpodMenuBarViewModel }) {
           <IpodMenuBarLibrarySourceActions vm={vm} />
           <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
           <IpodMenuBarLibrarySwitchItem vm={vm} />
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <IpodMenuBarShareMenu vm={vm} />
           <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
           <MenubarItem
             onClick={onClose}

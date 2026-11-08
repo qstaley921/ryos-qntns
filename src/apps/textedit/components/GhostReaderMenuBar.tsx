@@ -83,19 +83,29 @@ export function GhostReaderMenuBar({
               Print…
             </MenubarItem>
           )}
+          <MenubarSub>
+            <MenubarSubTrigger className={ITEM}>{t("common.menu.edit")}</MenubarSubTrigger>
+            <MenubarSubContent className="px-0">
+              <MenubarItem onClick={() => document.execCommand("copy")} className={ITEM}>
+                {t("common.menu.copy")}
+                <ShortcutHint id="copy" />
+              </MenubarItem>
+            </MenubarSubContent>
+          </MenubarSub>
+          <MenubarSub>
+            <MenubarSubTrigger className={ITEM}>Share</MenubarSubTrigger>
+            <MenubarSubContent className="px-0">
+              {SHARE.map(([k, label]) => (
+                <MenubarItem key={k} disabled={!links[k]} onClick={() => window.open(links[k], "_blank", "noopener")} className={ITEM}>
+                  {label}
+                </MenubarItem>
+              ))}
+            </MenubarSubContent>
+          </MenubarSub>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
           <MenubarItem onClick={onClose} className={ITEM}>
             {t("common.menu.close")}
             <ShortcutHint id="close" />
-          </MenubarItem>
-        </MenubarContent>
-      </MenubarMenu>
-
-      <MenubarMenu>
-        <MenubarTrigger className={TRIGGER}>{t("common.menu.edit")}</MenubarTrigger>
-        <MenubarContent align="start" sideOffset={1} className="px-0">
-          <MenubarItem onClick={() => document.execCommand("copy")} className={ITEM}>
-            {t("common.menu.copy")}
-            <ShortcutHint id="copy" />
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>
@@ -139,16 +149,6 @@ export function GhostReaderMenuBar({
         </MenubarContent>
       </MenubarMenu>
 
-      <MenubarMenu>
-        <MenubarTrigger className={TRIGGER}>Share</MenubarTrigger>
-        <MenubarContent align="start" sideOffset={1} className="px-0">
-          {SHARE.map(([k, label]) => (
-            <MenubarItem key={k} disabled={!links[k]} onClick={() => window.open(links[k], "_blank", "noopener")} className={ITEM}>
-              {label}
-            </MenubarItem>
-          ))}
-        </MenubarContent>
-      </MenubarMenu>
     </AppMenuBarShell>
   );
 }

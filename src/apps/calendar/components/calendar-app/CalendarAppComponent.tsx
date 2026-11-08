@@ -177,6 +177,10 @@ export function CalendarAppComponent({
       view={view}
       onSetView={setView}
       onGoToToday={goToToday}
+      onPrev={handlePrev}
+      onNext={handleNext}
+      showSidebar={showCalendarSidebar}
+      onToggleSidebar={() => setShowCalendarSidebar((c) => !c)}
       instanceId={instanceId}
     />
   );
