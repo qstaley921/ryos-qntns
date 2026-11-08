@@ -9,7 +9,7 @@ export const appMetadata = {
   icon: "/icons/default/mail.png", // asset not shipped yet; registry owner to supply
 };
 export const helpItems = [
-  { icon: "✉️", title: "Write to QNTN", description: "One compose window: your phone or email, a message, Send." },
+  { icon: "✉️", title: "Write to QNTN", description: "One compose window: your name and email, a subject if you like, a message, Send." },
 ];
 
 export const MailApp: BaseApp = {

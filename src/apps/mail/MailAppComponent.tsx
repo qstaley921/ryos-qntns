@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppProps } from "@/apps/base/types";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { AppMenuBarMenus } from "@/components/shared/menubar/AppMenuBarMenus";
-import { checkContact, sendMessage } from "./api";
-import { contactKey, formatContact } from "./contact";
+import { sendMessage } from "./api";
+import { formatEmail, isPersonal } from "./contact";
 import { SendIcon } from "./SendIcon";
 
 const PAUSE = 800;
-const INVALID = "Invalid phone number/email";
-const NOT_LISTED = "Not in QNTNs contact. Try again or send without verification.";
+const INVALID = "Invalid email";
+const NOT_PERSONAL = "Use your personal email (Gmail, iCloud, Outlook…).";
 
 // Send-only compose window: no inbox, no mailboxes.
 export function MailAppComponent({
@@ -25,45 +25,27 @@ export function MailAppComponent({
 }: AppProps) {
   const { isWindowsTheme } = useThemeFlags();
   const chrome = useAppMenuBarChrome("mail", "Mail");
+  const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [subject, setSubject] = useState("Say hello");
   const [valid, setValid] = useState(false);
   const [message, setMessage] = useState("");
-  const [matched, setMatched] = useState(false);
   const [help, setHelp] = useState("");
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const known = useRef(new Map<string, boolean>());
-  const turn = useRef(0);
 
-  // After a pause on a valid contact: check once per distinct value.
+  // After a pause on a typed email: say what is wrong with it.
   useEffect(() => {
-    const mine = ++turn.current;
-    setMatched(false);
-    if (!contact) return setHelp("");
-    if (!valid) {
-      setHelp("");
-      const t = setTimeout(() => setHelp(INVALID), PAUSE);
-      return () => clearTimeout(t);
-    }
     setHelp("");
-    const t = setTimeout(async () => {
-      const key = await contactKey(contact);
-      let ok = known.current.get(key);
-      if (ok === undefined) {
-        const r = await checkContact(key);
-        if (r === null) return; // unknown: no mark, no help
-        ok = r;
-        known.current.set(key, ok);
-      }
-      if (mine !== turn.current) return;
-      setMatched(ok);
-      if (!ok) setHelp(NOT_LISTED);
-    }, PAUSE);
+    if (!contact || (valid && isPersonal(contact))) return;
+    const t = setTimeout(() => setHelp(valid ? NOT_PERSONAL : INVALID), PAUSE);
     return () => clearTimeout(t);
   }, [contact, valid]);
 
-  const canSend = !sending && !sent && message.trim() !== "";
+  // Mirrors the Worker: name ≤100, no control chars; a valid email; a message.
+  const nameOk = name.trim() !== "" && name.trim().length <= 100;
+  const canSend = !sending && !sent && nameOk && valid && isPersonal(contact) && message.trim() !== "";
 
   const send = async () => {
     if (!canSend) return;
@@ -71,9 +53,12 @@ export function MailAppComponent({
     setHelp("");
     setStatus("Sending…");
     try {
-      // The key goes only when the check matched, so the email never disagrees with the screen.
-      await sendMessage(message.trim(), matched ? await contactKey(contact) : "");
-      setContact("");
+      await sendMessage({
+        message: message.trim(),
+        name: name.trim(),
+        email: contact,
+        subject: subject.trim(),
+      });
       setSent(true);
       setStatus("Sent. Thank you.");
     } catch {
@@ -82,8 +67,8 @@ export function MailAppComponent({
     setSending(false);
   };
 
-  const field = "flex items-center gap-2 border-b border-black/20 px-3 py-1.5 text-[13px]";
-  const label = "w-16 shrink-0 text-right text-black/50";
+  const field = "flex items-center gap-2 border-b border-black/20 px-3 py-2 text-[13px]";
+  const label = "shrink-0 text-black/50";
 
   return (
     <AppWindowShell
@@ -125,10 +110,12 @@ export function MailAppComponent({
       }}
     >
       <div className="flex h-full w-full flex-col bg-white text-black">
-        {/* Mail 2–3 New Message toolbar: icon in a glossy capsule, label under it.
-            Only Send does anything here, so Attach/Address/Fonts/Colors are left out.
-            Budget: 8 pad + 28 capsule + 4 gap + 16 label + 8 pad = 64px; 1px rule exempt. */}
+        {/* Mail 2–3 New Message toolbar: Send (icon in a glossy
+            capsule, label under it) at the right end. Attach/Address/Fonts/Colors left out.
+            Budget: 8 pad + 28 capsule + 4 gap + 16 label + 8 pad = 64px.
+*/}
         <div className="flex items-center justify-between border-b border-black/30 bg-gradient-to-b from-[#e8e8e8] to-[#c4c4c4] px-3 py-2">
+          <span />
           <button
             type="button"
             onClick={send}
@@ -142,41 +129,72 @@ export function MailAppComponent({
               {sending ? "Sending…" : "Send"}
             </span>
           </button>
-          <span className="text-[12px] text-black/60">
-            {matched ? "Verified" : "Unverified"}
-          </span>
         </div>
         <label className={field}>
           <span className={label}>To:</span>
           <span className="flex-1">QNTN</span>
         </label>
         <label className={field}>
+          <span className={label}>Name:</span>
+          <input
+            className="flex-1 bg-transparent outline-none"
+            placeholder="Your name"
+            autoComplete="name"
+            maxLength={100}
+            required
+            value={name}
+            readOnly={sending || sent}
+            onChange={(e) => {
+              // No control chars: the Worker refuses a name with any (CR/LF are headers).
+              setName(e.target.value.replace(/[\u0000-\u001f\u007f]/g, ""));
+              setStatus("");
+            }}
+          />
+        </label>
+        <label className={field}>
           <span className={label}>From:</span>
           <input
             className="flex-1 bg-transparent outline-none"
-            placeholder="Phone or email"
-            autoComplete="off"
+            type="email"
+            placeholder="Your email"
+            autoComplete="email"
             inputMode="email"
+            required
             value={contact}
             readOnly={sending || sent}
-            aria-invalid={!!contact && !valid && help === INVALID}
+            aria-invalid={!!help}
             onChange={(e) => {
-              const next = formatContact(e.target.value);
+              const next = formatEmail(e.target.value);
               setContact(next.value);
               setValid(next.valid);
               setStatus("");
             }}
           />
         </label>
-        <div className={`${field} min-h-[28px] text-[12px]`} aria-live="polite">
-          <span className={label} />
-          <span className="flex-1 text-black/60">
-            {help || status || "Feedback is anonymous: only a one-way key of your contact is sent."}
-          </span>
+        <label className={field}>
+          <span className={label}>Subject:</span>
+          <input
+            className="flex-1 bg-transparent outline-none"
+            autoComplete="off"
+            maxLength={200}
+            value={subject}
+            readOnly={sending || sent}
+            onChange={(e) => {
+              setSubject(e.target.value.replace(/[\u0000-\u001f\u007f]/g, ""));
+              setStatus("");
+            }}
+          />
+        </label>
+        {/* Live region stays mounted (announcements need it present before text arrives); the row's border and height only exist while there is text. */}
+        <div
+          className={help || status ? `${field} min-h-[28px] text-[12px]` : "sr-only"}
+          aria-live="polite"
+        >
+          <span className="flex-1 text-black/60">{help || status}</span>
         </div>
         <textarea
           className="min-h-0 flex-1 resize-none bg-white p-3 text-[13px] outline-none"
-          placeholder="What is it like being on the other side of me?"
+          placeholder="Write your message…"
           value={message}
           readOnly={sending || sent}
           onChange={(e) => {

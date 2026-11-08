@@ -1,35 +1,13 @@
-// Ported from QNTNs-ghost assets/js/qntns/{contact-key,goal-feedback}.js (formatContact).
-// The contact is only read to derive the key; only the key is ever sent.
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
+// The email goes with the message (§81b).
+// Same strict check as worker/src/feedback.js, so a valid field is never a 400.
+const EMAIL = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i;
 
-const mask = (d: string) =>
-  d.length <= 3
-    ? `(${d}`
-    : d.length <= 6
-      ? `(${d.slice(0, 3)}) ${d.slice(3)}`
-      : `(${d.slice(0, 3)}) ${d.slice(3, 6)} - ${d.slice(6)}`;
-
-export const formatContact = (raw: string) => {
-  const text = raw.replace(/\s+/g, "");
-  if (!text) return { value: "", valid: false };
-  if (/^[\d(]/.test(text) && !text.includes("@")) {
-    const digits = text.replace(/\D/g, "").slice(0, 10);
-    return { value: digits ? mask(digits) : "", valid: digits.length === 10 };
-  }
-  const value = text.toLowerCase();
+export const formatEmail = (raw: string) => {
+  const value = raw.replace(/\s+/g, "").toLowerCase().slice(0, 254);
   return { value, valid: EMAIL.test(value) };
 };
 
-const normaliseContact = (s: string) => {
-  const t = s.trim();
-  if (t.includes("@")) return t.toLowerCase();
-  const d = t.replace(/\D/g, "");
-  return d.length === 10 ? "1" + d : d;
-};
-
-export const contactKey = async (s: string) => {
-  const n = normaliseContact(s);
-  if (!n) return "";
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(n));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-};
+// Consumer mail providers only (§81d). Keep in step with PERSONAL_DOMAINS in
+// QNTNs-ghost worker/src/feedback.js. shortcut: a custom personal domain is refused, edit the list.
+const PERSONAL = new Set(["gmail.com","googlemail.com","icloud.com","me.com","mac.com","outlook.com","hotmail.com","live.com","msn.com","yahoo.com","ymail.com","aol.com","proton.me","protonmail.com","pm.me","hey.com","fastmail.com","gmx.com","zoho.com"]);
+export const isPersonal = (email: string) => PERSONAL.has(email.slice(email.lastIndexOf("@") + 1));
