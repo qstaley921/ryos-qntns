@@ -2665,7 +2665,7 @@ export function useIpodLogic({
           showStatus(t("apps.ipod.status.shuffleOn"));
           setMenuDirection("forward");
           setMenuMode(false);
-          setCameFromNowPlayingMenuItem(false);
+          setCameFromNowPlayingMenuItem(true);
           clearReturnToNowPlayingSongMenu();
         },
         showChevron: false,
