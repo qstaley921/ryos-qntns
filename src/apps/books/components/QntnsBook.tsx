@@ -11,9 +11,9 @@ import { primeBookCover } from "../utils/useBookCover";
 import type { BookOriginRect, BooksLibraryEntry } from "../hooks/useBooksLogic";
 import { QNTNS_BOOK_PREFIX } from "./BookCover";
 import { Button } from "@/components/ui/button";
-import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { Input } from "@/components/ui/input";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { BookCheckoutForm } from "./BookCheckoutForm";
 
 /** A book the reader can buy (CHECKLIST-36 §14d): a price tag, a lock and
  *  the post's page. */
@@ -72,8 +72,8 @@ const CALLOUT_W = 256;
 const CALLOUT_GAP = 12;
 const CALLOUT_INSET = 12;
 
-/** Store's callout for one book (§14d): Buy goes to the book's qntns.com
- *  page; Restore purchase takes the password and, once the Worker accepts
+/** Store's callout for one book (§14d): Buy opens the checkout sheet
+ *  (§14l); Restore purchase takes the password and, once the Worker accepts
  *  it, the book moves to Library. Positioned beside the book inside `host`. */
 export function StoreCallout({
   sale,
@@ -88,18 +88,21 @@ export function StoreCallout({
   onClose: () => void;
   onRestored: () => void;
 }) {
-  const launchApp = useLaunchApp();
   const { isMacOSTheme } = useThemeFlags();
   const ref = useRef<HTMLDivElement>(null);
   const [phrase, setPhrase] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // While the sheet is up its clicks and Escape belong to it, not the callout.
+  const [buying, setBuying] = useState(false);
+  const buyingRef = useRef(false);
+  buyingRef.current = buying;
 
   useEffect(() => {
     const down = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      if (!buyingRef.current && !ref.current?.contains(e.target as Node)) onClose();
     };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const key = (e: KeyboardEvent) => !buyingRef.current && e.key === "Escape" && onClose();
     // Next tick: the click that opened it must not close it.
     const t = window.setTimeout(() => document.addEventListener("pointerdown", down), 0);
     document.addEventListener("keydown", key);
@@ -159,15 +162,11 @@ export function StoreCallout({
       <Button
         variant="default"
         className="mt-3 w-full"
-        onClick={() =>
-          launchApp("internet-explorer", {
-            initialData: { mini: true, path: new URL(sale.book.url, "https://www.qntns.com/").pathname },
-            multiWindow: true,
-          })
-        }
+        onClick={() => setBuying(true)}
       >
         {sale.owned ? "Buy again" : `Buy ${sale.price}`}
       </Button>
+      <BookCheckoutForm sale={sale} open={buying} onOpenChange={setBuying} />
       {sale.owned ? (
         <p className="mt-3 border-t pt-3 leading-4">Already in your Library.</p>
       ) : (

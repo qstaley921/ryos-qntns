@@ -177,14 +177,14 @@ export const listAudioPosts = memo(async (): Promise<GhostAudioPost[]> => {
 // Books (CHECKLIST-36 §14): #password posts, with html (the <content> pointer,
 // the buy button) and tags (#$20 price, #preorder; internal tags ride include=tags).
 // shortcut: first 100 books, no paging; page when there are more.
-export type GhostBook = Pick<GhostDoc, "id" | "slug" | "title" | "url" | "feature_image" | "tags"> & { html: string };
+export type GhostBook = Pick<GhostDoc, "id" | "slug" | "title" | "url" | "feature_image" | "tags"> & { html: string; custom_excerpt?: string | null };
 export const listBooks = memo(async (): Promise<GhostBook[]> => {
   const r = await get<{ posts: GhostBook[] }>("posts", {
     filter: "tag:hash-password",
     limit: "100",
     formats: "html",
     include: "tags",
-    fields: "id,slug,title,url,feature_image,html",
+    fields: "id,slug,title,url,feature_image,html,custom_excerpt", // custom_excerpt: checkout sheet blurb (§14l)
   });
   return r.posts;
 }, []);
