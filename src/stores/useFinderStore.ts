@@ -28,6 +28,10 @@ interface FinderStoreState {
   getViewTypeForPath: (path: string) => ViewType;
   getDefaultViewTypeForPath: (path: string) => ViewType;
 
+  // Ghost posts this reader opened here: id -> last opened (ms). Local only.
+  reads: Record<string, number>;
+  markRead: (id: string) => void;
+
   // Instance actions
   createInstance: (instanceId: string, initialPath?: string) => void;
   removeInstance: (instanceId: string) => void;
@@ -45,6 +49,9 @@ export const useFinderStore = create<FinderStoreState>()(
   persist(
     (set, get) => ({
       instances: {},
+
+      reads: {},
+      markRead: (id) => set((s) => ({ reads: { ...s.reads, [id]: Date.now() } })),
 
       pathViewPreferences: {},
       setViewTypeForPath: (path, type) =>
@@ -139,6 +146,7 @@ export const useFinderStore = create<FinderStoreState>()(
       partialize: (state) => ({
         instances: state.instances,
         pathViewPreferences: state.pathViewPreferences,
+        reads: state.reads,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -171,6 +179,7 @@ export const useFinderStore = create<FinderStoreState>()(
             pathViewPreferences?: Record<string, ViewType>;
           };
           if (!anyState.pathViewPreferences) anyState.pathViewPreferences = {};
+          if (!state.reads) state.reads = {};
         }
       },
     }

@@ -22,6 +22,8 @@ interface JournalStore {
   journal: JournalState;
   sidebarWidth: number;
   notice: JournalNotice | null;
+  filter: string | null;
+  setFilter: (kind: string | null) => void;
   setView: (view: JournalView) => void;
   toggleFeature: (feature: JournalFeatureId) => void;
   moveFragment: (id: string, position: FragmentPosition) => void;
@@ -44,7 +46,7 @@ interface JournalStore {
   dismissNotice: () => void;
 }
 
-const STORE_VERSION = 4;
+const STORE_VERSION = 5;
 
 function commit(
   get: () => JournalStore,
@@ -63,6 +65,8 @@ export const useJournalStore = create<JournalStore>()(
       journal: normalizeJournalState(undefined),
       sidebarWidth: JOURNAL_SIDEBAR_DEFAULT_WIDTH,
       notice: null,
+      filter: null,
+      setFilter: (filter) => set({ filter }),
       setView: (view) => commit(get, set, { type: "setView", view }, null),
       toggleFeature: (feature) =>
         commit(get, set, { type: "toggleFeature", feature }, null),
@@ -125,6 +129,7 @@ export const useJournalStore = create<JournalStore>()(
       partialize: (state) => ({
         journal: state.journal,
         sidebarWidth: state.sidebarWidth,
+        filter: state.filter,
       }),
       migrate: (persisted, version) => {
         if (!persisted || typeof persisted !== "object") return persisted;
@@ -133,11 +138,11 @@ export const useJournalStore = create<JournalStore>()(
           sidebarWidth?: unknown;
         };
         if (version < 3 && saved.journal && typeof saved.journal === "object") {
-          saved.journal = { ...saved.journal, view: "compare" };
+          saved.journal = { ...saved.journal, view: "daily" };
         }
         // Sample days changed. Drop a saved layout so the new posts and
         // their clustered cards replace the previous demo.
-        if (version < 4) return { sidebarWidth: saved.sidebarWidth };
+        if (version < 5) return { sidebarWidth: saved.sidebarWidth };
         return saved;
       },
       merge: (persisted, current) => {
@@ -146,6 +151,7 @@ export const useJournalStore = create<JournalStore>()(
           ...current,
           journal: normalizeJournalState(saved?.journal),
           sidebarWidth: clampSidebarWidth(saved?.sidebarWidth),
+          filter: typeof (persisted as { filter?: unknown })?.filter === "string" ? (persisted as { filter: string }).filter : null,
           notice: null,
         };
       },

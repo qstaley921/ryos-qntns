@@ -766,7 +766,7 @@ async function saveDefaultContents(
 // Function to generate an empty initial state (just for typing)
 const getEmptyFileSystemState = (): Record<string, FileSystemItem> => ({});
 
-export const FILES_STORE_VERSION = 14; // Add Meditations as a default Books EPUB
+export const FILES_STORE_VERSION = 15; // Drop the default Meditations EPUB
 export const FILES_STORE_PERSIST_KEY = "ryos:files";
 
 type FilesPersistedState = Pick<FilesStoreState, "items" | "libraryState">;
@@ -809,8 +809,6 @@ const mergeFilesState = (
 };
 
 const DEFAULT_MEDITATIONS_BOOK_PATH = "/Books/Meditations - Marcus Aurelius.epub";
-const DEFAULT_MEDITATIONS_BOOK_NAME = "Meditations - Marcus Aurelius.epub";
-const DEFAULT_MEDITATIONS_BOOK_SIZE = 1378157;
 
 const DEFAULT_APPLICATIONS_FOLDER_ALIAS_NAME = "Applications";
 
@@ -929,55 +927,14 @@ function migrateV13System7ProminentDesktopApps(
   return newState;
 }
 
-/** v14: add the default Meditations EPUB to existing loaded libraries once. */
-function migrateV14DefaultMeditationsBook(
-  items: Record<string, FileSystemItem>,
-  libraryState: LibraryState | undefined,
-  now: number
+/** v15: the bundled Meditations EPUB is no longer shipped (CHECKLIST-36
+ *  §14b); drop the seeded copy so a saved library doesn't keep a dead book. */
+function migrateV15DropMeditationsBook(
+  items: Record<string, FileSystemItem>
 ): Record<string, FileSystemItem> {
-  if (
-    libraryState === "cleared" ||
-    items[DEFAULT_MEDITATIONS_BOOK_PATH] ||
-    // Existing libraries can already contain the bundled title under its
-    // shorter filename. Do not seed a second copy (or undo a trash action).
-    items["/Books/Meditations.epub"]
-  ) {
-    return items;
-  }
-
-  const booksDir = items["/Books"];
-  if (booksDir?.status === "trashed") {
-    return items;
-  }
-
-  const newState = { ...items };
-  if (!booksDir) {
-    newState["/Books"] = {
-      path: "/Books",
-      name: "Books",
-      isDirectory: true,
-      type: "directory",
-      icon: "/icons/default/books-folder.png",
-      status: "active",
-      createdAt: now,
-      modifiedAt: now,
-    };
-  }
-
-  newState[DEFAULT_MEDITATIONS_BOOK_PATH] = {
-    path: DEFAULT_MEDITATIONS_BOOK_PATH,
-    name: DEFAULT_MEDITATIONS_BOOK_NAME,
-    isDirectory: false,
-    type: "epub",
-    icon: "/icons/default/books.png",
-    status: "active",
-    uuid: uuidv4(),
-    size: DEFAULT_MEDITATIONS_BOOK_SIZE,
-    createdAt: now,
-    modifiedAt: now,
-  };
-
-  return newState;
+  if (!items[DEFAULT_MEDITATIONS_BOOK_PATH]) return items;
+  const { [DEFAULT_MEDITATIONS_BOOK_PATH]: _dropped, ...rest } = items;
+  return rest;
 }
 
 const initialFilesData: FilesStoreState = {
@@ -2024,13 +1981,11 @@ export const useFilesStore = create<FilesStoreState>()(
           }
 
           return {
-            items: migrateV14DefaultMeditationsBook(
+            items: migrateV15DropMeditationsBook(
               migrateV13System7ProminentDesktopApps(
                 migrateV12DesktopDefaultShortcuts(newState, now),
                 now
-              ),
-              oldState.libraryState,
-              now
+              )
             ),
             libraryState: oldState.libraryState || "loaded",
           };
@@ -2044,13 +1999,11 @@ export const useFilesStore = create<FilesStoreState>()(
           const now = Date.now();
 
           return {
-            items: migrateV14DefaultMeditationsBook(
+            items: migrateV15DropMeditationsBook(
               migrateV13System7ProminentDesktopApps(
                 migrateV12DesktopDefaultShortcuts(oldState.items, now),
                 now
-              ),
-              oldState.libraryState,
-              now
+              )
             ),
             libraryState: oldState.libraryState || "loaded",
           };
@@ -2064,28 +2017,21 @@ export const useFilesStore = create<FilesStoreState>()(
           const now = Date.now();
 
           return {
-            items: migrateV14DefaultMeditationsBook(
-              migrateV13System7ProminentDesktopApps(oldState.items, now),
-              oldState.libraryState,
-              now
+            items: migrateV15DropMeditationsBook(
+              migrateV13System7ProminentDesktopApps(oldState.items, now)
             ),
             libraryState: oldState.libraryState || "loaded",
           };
         }
 
-        if (version < 14) {
+        if (version < 15) {
           const oldState = persistedState as {
             items: Record<string, FileSystemItem>;
             libraryState?: LibraryState;
           };
-          const now = Date.now();
 
           return {
-            items: migrateV14DefaultMeditationsBook(
-              oldState.items,
-              oldState.libraryState,
-              now
-            ),
+            items: migrateV15DropMeditationsBook(oldState.items),
             libraryState: oldState.libraryState || "loaded",
           };
         }

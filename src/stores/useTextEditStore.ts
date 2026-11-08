@@ -178,3 +178,36 @@ export const useTextEditStore = create<TextEditStoreState>()(
     }
   )
 );
+
+// Reading prefs for Ghost documents (CHECKLIST-36 §12a): one set for every
+// TextEdit window, kept in localStorage apart from the IndexedDB instances.
+export const READER_FONTS = {
+  site: { label: "OpenDyslexic", stack: '"OpenDyslexic", Arial, sans-serif' },
+  lucida: { label: "Lucida Grande", stack: '"LucidaGrande", "Lucida Grande", sans-serif' },
+  geneva: { label: "Geneva", stack: '"Geneva-12", Geneva, sans-serif' },
+  garamond: { label: "Garamond", stack: '"EB Garamond", Georgia, serif' },
+  monaco: { label: "Monaco", stack: '"Monaco", ui-monospace, monospace' },
+} as const;
+export type ReaderFont = keyof typeof READER_FONTS;
+// Zoom on a 16px body: 12, 16, 20, 24, 32px, all base 4.
+export const READER_SIZES = [0.75, 1, 1.25, 1.5, 2] as const;
+export const READER_DEFAULT_SIZE = 1;
+
+interface ReaderPrefs {
+  font: ReaderFont;
+  size: number; // index into READER_SIZES
+  wide: boolean; // View alt "width"
+  update: (p: Partial<Omit<ReaderPrefs, "update">>) => void;
+}
+
+export const useReaderPrefs = create<ReaderPrefs>()(
+  persist(
+    (set) => ({
+      font: "site",
+      size: READER_DEFAULT_SIZE,
+      wide: false,
+      update: (p) => set(p),
+    }),
+    { name: "ryos:textedit-reader", version: 1 }
+  )
+);
