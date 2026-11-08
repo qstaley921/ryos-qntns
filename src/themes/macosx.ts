@@ -1,4 +1,5 @@
 import { OsTheme } from "./types";
+import { WALLPAPER_DIR } from "@/utils/wallpapers";
 
 export const macosx: OsTheme = {
   id: "macosx",
@@ -16,6 +17,6 @@ export const macosx: OsTheme = {
     supportsDarkMode: true,
   },
   wallpaperDefaults: {
-    photo: "/wallpapers/photos/aqua/abstract-7.jpg",
+    photo: `${WALLPAPER_DIR}photos/aqua/abstract-7.jpg`,
   },
 };

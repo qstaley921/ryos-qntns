@@ -5,6 +5,9 @@ import { abortableFetch } from "./abortableFetch";
 /** QNTNs wordmark on beige, drawn in CSS by DesktopDynamicWallpaper (CHECKLIST-35 §35). */
 export const QNTNS_WALLPAPER = "dynamic://qntns";
 
+/** Built-in wallpaper folder under the build base (Ghost serves the build at /assets/r-<stamp>/, CHECKLIST-35 §8b). */
+export const WALLPAPER_DIR = `${import.meta.env.BASE_URL ?? "/"}wallpapers/`;
+
 /** ryOS's built-in wallpapers are off: the picker, shuffle and video backgrounds all read this empty list. */
 const EMPTY_MANIFEST: WallpaperManifest = {
   version: 0,
@@ -55,7 +58,7 @@ export async function loadRyosWallpaperManifest(): Promise<WallpaperManifest> {
     // Bypass HTTP caches to ensure we always see the newest manifest.
     // Server headers also set no-cache for this file, but this defends against
     // any intermediary or conflicting rules.
-    manifestPromise = abortableFetch("/wallpapers/manifest.json", {
+    manifestPromise = abortableFetch(`${WALLPAPER_DIR}manifest.json`, {
       cache: "no-store",
       timeout: 15000,
       retry: { maxAttempts: 1, initialDelayMs: 250 },
@@ -70,18 +73,26 @@ export async function loadRyosWallpaperManifest(): Promise<WallpaperManifest> {
   return manifestPromise;
 }
 
+/** Built-in wallpapers are off (see EMPTY_MANIFEST), so there are no placeholders to fetch. */
+export async function loadWallpaperPlaceholders(): Promise<
+  Record<string, WallpaperPlaceholder>
+> {
+  return {};
+}
+
+// Upstream loader, unused until built-in wallpapers come back.
 /**
  * Loads blur-up placeholders (`/wallpapers/placeholders.json`). This file is a
  * progressive enhancement, so failures resolve to an empty map rather than
  * throwing. Unlike the manifest it is allowed to be cached aggressively (the
  * payload is large and regenerated alongside the manifest).
  */
-export async function loadWallpaperPlaceholders(): Promise<
+export async function loadRyosWallpaperPlaceholders(): Promise<
   Record<string, WallpaperPlaceholder>
 > {
   if (placeholdersCache) return placeholdersCache;
   if (!placeholdersPromise) {
-    placeholdersPromise = abortableFetch("/wallpapers/placeholders.json", {
+    placeholdersPromise = abortableFetch(`${WALLPAPER_DIR}placeholders.json`, {
       timeout: 15000,
       retry: { maxAttempts: 1, initialDelayMs: 250 },
     })
@@ -146,5 +157,5 @@ export function thumbPathForSource(source: string): string | null {
   const key = placeholderKeyFromSource(source);
   if (!key || !key.startsWith("photos/")) return null;
   const webp = key.replace(/\.[^.]+$/, "") + ".webp";
-  return `/wallpapers/thumbs/${webp}`;
+  return `${WALLPAPER_DIR}thumbs/${webp}`;
 }

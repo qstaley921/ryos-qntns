@@ -31,7 +31,13 @@ if (html.includes("{{")) throw new Error("dist/index.html contains {{, which Han
 
 const STAGE = mkdtempSync(join(tmpdir(), "qntns-ryos-"));
 const OUT_DIR = join(STAGE, "assets", `r-${stamp}`);
-cpSync(DIST, OUT_DIR, { recursive: true, filter: (p) => !/\.zip$/.test(p) && p !== join(DIST, "index.html") });
+// Left out: resources/ (110 MB of icon catalogs no src file references, §8d) and
+// the service worker, which the Ghost base never registers (§8c).
+const SKIP = new Set(["index.html", "resources", "sw.js"].map((n) => join(DIST, n)));
+cpSync(DIST, OUT_DIR, {
+  recursive: true,
+  filter: (p) => !/\.zip$/.test(p) && !SKIP.has(p) && !/^workbox-.*\.js$/.test(p.slice(DIST.length + 1)),
+});
 
 // Hand-written absolute public paths -> BASE. A quote, backtick or "(" before
 // the slash; anything already under /assets/r- is Vite's own and is left alone.
@@ -105,4 +111,6 @@ else console.warn(`gscan not found at ${GSCAN}; this ZIP is UNVALIDATED.`);
 const OUT = join(DIST, `qntns-ryos-${version}.zip`);
 execFileSync("zip", ["-r", "-q", "-X", OUT, ".", "-x", "*.DS_Store"], { cwd: STAGE, stdio: "inherit" });
 rmSync(STAGE, { recursive: true, force: true });
+// Ghost's default theme.uploadLimits.compressedBytes is 1 GiB (core/shared/config/defaults.json); Ghost(Pro) publishes none.
+console.log(`${(statSync(OUT).size / 2 ** 20).toFixed(1)} MB zip (Ghost default cap 1024 MB)`);
 console.log(`${OUT}\nbuild ${version}\nlive check: curl -s -o /dev/null -w '%{http_code}\\n' https://qntns.com${BASE}version.json`);

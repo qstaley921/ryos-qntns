@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useRef, useCallback } from "react";
-import { loadWallpaperManifest } from "@/utils/wallpapers";
+import { WALLPAPER_DIR, loadWallpaperManifest } from "@/utils/wallpapers";
 
 /** Duration each landscape video plays before crossfading to the next (ms) */
 const VIDEO_DURATION_MS = 30_000;
@@ -99,7 +99,7 @@ export function LandscapeVideoBackground({
     loadWallpaperManifest()
       .then((manifest) => {
         if (cancelled) return;
-        const videoPaths = manifest.videos.map((p) => `/wallpapers/${p}`);
+        const videoPaths = manifest.videos.map((p) => `${WALLPAPER_DIR}${p}`);
         // Shuffle so it's different each session
         const shuffled = [...videoPaths].sort(() => Math.random() - 0.5);
         dispatch({ type: "initializeVideos", videos: shuffled });

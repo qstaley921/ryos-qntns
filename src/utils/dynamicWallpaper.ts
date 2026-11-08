@@ -24,7 +24,7 @@
 // asset at the same time, so the desktop stays in sync across a user's devices
 // (see `pickDeterministicCandidate` and `useShuffleWallpaper`).
 
-import type { WallpaperManifest } from "@/utils/wallpapers";
+import { WALLPAPER_DIR, type WallpaperManifest } from "@/utils/wallpapers";
 import type { DynamicWallpaperToolId } from "@/shared/tools/wallpaper";
 import {
   getEffectiveTimezone,
@@ -166,7 +166,7 @@ export function getShuffleCandidatePaths(
   if (target.kind === "tiles") relative = manifest.tiles ?? [];
   else if (target.kind === "videos") relative = manifest.videos ?? [];
   else relative = manifest.photos?.[target.category] ?? [];
-  return relative.map((p) => `/wallpapers/${p}`);
+  return relative.map((p) => `${WALLPAPER_DIR}${p}`);
 }
 
 /** Pick a random candidate, preferring one different from `exclude`. */

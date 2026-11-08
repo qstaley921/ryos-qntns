@@ -23,6 +23,7 @@ import {
   loadWallpaperManifest,
   getWallpaperPlaceholder,
   thumbPathForSource,
+  WALLPAPER_DIR,
 } from "@/utils/wallpapers";
 import type { WallpaperManifest as WallpaperManifestType } from "@/utils/wallpapers";
 import { useWallpaperPlaceholders } from "@/hooks/useWallpaperPlaceholders";
@@ -604,14 +605,14 @@ export function WallpaperPicker({ onSelect }: WallpaperPickerProps) {
   const tileWallpapers = useMemo(
     () =>
       manifest
-        ? (manifest.tiles as string[]).map((p: string) => `/wallpapers/${p}`)
+        ? (manifest.tiles as string[]).map((p: string) => `${WALLPAPER_DIR}${p}`)
         : [],
     [manifest]
   );
   const videoWallpapers = useMemo(
     () =>
       manifest
-        ? (manifest.videos as string[]).map((p: string) => `/wallpapers/${p}`)
+        ? (manifest.videos as string[]).map((p: string) => `${WALLPAPER_DIR}${p}`)
         : [],
     [manifest]
   );
@@ -621,7 +622,7 @@ export function WallpaperPicker({ onSelect }: WallpaperPickerProps) {
     for (const [cat, arr] of Object.entries(
       manifest.photos as Record<string, string[]>
     )) {
-      r[cat] = arr.map((p: string) => `/wallpapers/${p}`);
+      r[cat] = arr.map((p: string) => `${WALLPAPER_DIR}${p}`);
     }
     return r;
   }, [manifest]);

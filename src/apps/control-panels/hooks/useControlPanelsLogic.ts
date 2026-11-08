@@ -7,6 +7,7 @@ import { helpItems } from "..";
 import { useFileSystem } from "@/apps/finder/hooks/useFileSystem";
 import { clearAllAppStates } from "@/stores/useAppStore";
 import { ensureIndexedDBInitialized, STORES } from "@/utils/indexedDB";
+import { WALLPAPER_DIR } from "@/utils/wallpapers";
 import {
   haltDebouncedPersistWrites,
   resumeDebouncedPersistWrites,
@@ -167,7 +168,7 @@ const PHOTO_WALLPAPERS: Record<PhotoCategory, string[]> = {
 // Transform photo paths
 Object.entries(PHOTO_WALLPAPERS).forEach(([category, photos]) => {
   PHOTO_WALLPAPERS[category as PhotoCategory] = photos.map(
-    (name) => `/wallpapers/photos/${category}/${name}.jpg`
+    (name) => `${WALLPAPER_DIR}photos/${category}/${name}.jpg`
   );
 });
 

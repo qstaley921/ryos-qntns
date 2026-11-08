@@ -17,7 +17,7 @@
  * silently applying a wrong wallpaper.
  */
 
-import type { WallpaperManifest } from "@/utils/wallpapers";
+import { WALLPAPER_DIR, type WallpaperManifest } from "@/utils/wallpapers";
 import { stripDiacritics } from "@/apps/chats/utils/fuzzySearch";
 
 export interface WallpaperMatch {
@@ -94,7 +94,7 @@ const buildCandidates = (manifest: WallpaperManifest): Candidate[] => {
 };
 
 const toMatch = (candidate: Candidate): WallpaperMatch => ({
-  path: `/wallpapers/${candidate.relPath}`,
+  path: `${WALLPAPER_DIR}${candidate.relPath}`,
   label: candidate.label,
 });
 

@@ -281,38 +281,41 @@ export function useSound(soundPath: string, volume: number = 0.3) {
   return { play, playLoop, stop, fadeOut, fadeIn };
 }
 
+// Under the build base, so they resolve in the Ghost theme too (CHECKLIST-35 §8b).
+const SOUND_DIR = `${import.meta.env.BASE_URL ?? "/"}sounds/`;
+
 // Predefined sound paths for easy access
 export const Sounds = {
-  ALERT_SOSUMI: "/sounds/AlertSosumi.mp3",
-  WINDOW_CLOSE: "/sounds/WindowClose.mp3",
-  WINDOW_OPEN: "/sounds/WindowOpen.mp3",
-  WINDOW_EXPAND: "/sounds/WindowExpand.mp3",
-  WINDOW_COLLAPSE: "/sounds/WindowCollapse.mp3",
-  WINDOW_ZOOM_MINIMIZE: "/sounds/WindowZoomMinimize.mp3",
-  WINDOW_ZOOM_MAXIMIZE: "/sounds/WindowZoomMaximize.mp3",
-  BUTTON_CLICK: "/sounds/ButtonClickDown.mp3",
-  BEEP: "/sounds/Beep.mp3",
-  MENU_OPEN: "/sounds/MenuOpen.mp3",
-  MENU_CLOSE: "/sounds/MenuClose.mp3",
+  ALERT_SOSUMI: `${SOUND_DIR}AlertSosumi.mp3`,
+  WINDOW_CLOSE: `${SOUND_DIR}WindowClose.mp3`,
+  WINDOW_OPEN: `${SOUND_DIR}WindowOpen.mp3`,
+  WINDOW_EXPAND: `${SOUND_DIR}WindowExpand.mp3`,
+  WINDOW_COLLAPSE: `${SOUND_DIR}WindowCollapse.mp3`,
+  WINDOW_ZOOM_MINIMIZE: `${SOUND_DIR}WindowZoomMinimize.mp3`,
+  WINDOW_ZOOM_MAXIMIZE: `${SOUND_DIR}WindowZoomMaximize.mp3`,
+  BUTTON_CLICK: `${SOUND_DIR}ButtonClickDown.mp3`,
+  BEEP: `${SOUND_DIR}Beep.mp3`,
+  MENU_OPEN: `${SOUND_DIR}MenuOpen.mp3`,
+  MENU_CLOSE: `${SOUND_DIR}MenuClose.mp3`,
   // Window movement and resize sounds
-  WINDOW_MOVE_MOVING: "/sounds/WindowMoveMoving.mp3",
-  WINDOW_MOVE_STOP: "/sounds/WindowMoveStop.mp3",
-  WINDOW_RESIZE_RESIZING: "/sounds/WindowResizeResizing.mp3",
-  WINDOW_RESIZE_STOP: "/sounds/WindowResizeStop.mp3",
+  WINDOW_MOVE_MOVING: `${SOUND_DIR}WindowMoveMoving.mp3`,
+  WINDOW_MOVE_STOP: `${SOUND_DIR}WindowMoveStop.mp3`,
+  WINDOW_RESIZE_RESIZING: `${SOUND_DIR}WindowResizeResizing.mp3`,
+  WINDOW_RESIZE_STOP: `${SOUND_DIR}WindowResizeStop.mp3`,
   // Minesweeper sounds
-  CLICK: "/sounds/Click.mp3",
-  ALERT_BONK: "/sounds/AlertBonk.mp3",
-  ALERT_INDIGO: "/sounds/AlertIndigo.mp3",
-  MSN_NUDGE: "/sounds/MSNNudge.mp3",
+  CLICK: `${SOUND_DIR}Click.mp3`,
+  ALERT_BONK: `${SOUND_DIR}AlertBonk.mp3`,
+  ALERT_INDIGO: `${SOUND_DIR}AlertIndigo.mp3`,
+  MSN_NUDGE: `${SOUND_DIR}MSNNudge.mp3`,
   // Video player sounds
-  VIDEO_TAPE: "/sounds/VideoTapeIn.mp3",
+  VIDEO_TAPE: `${SOUND_DIR}VideoTapeIn.mp3`,
   // Photo booth sounds
-  PHOTO_SHUTTER: "/sounds/PhotoShutter.mp3",
+  PHOTO_SHUTTER: `${SOUND_DIR}PhotoShutter.mp3`,
   // Boot sound
-  BOOT: "/sounds/Boot.mp3",
-  VOLUME_CHANGE: "/sounds/Volume.mp3",
+  BOOT: `${SOUND_DIR}Boot.mp3`,
+  VOLUME_CHANGE: `${SOUND_DIR}Volume.mp3`,
   // iPod sounds
-  IPOD_CLICK_WHEEL: "/sounds/WheelsOfTime.m4a",
+  IPOD_CLICK_WHEEL: `${SOUND_DIR}WheelsOfTime.m4a`,
 } as const;
 
 // Lazily preload sounds after the first user interaction (click or touch)
