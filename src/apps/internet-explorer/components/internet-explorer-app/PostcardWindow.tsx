@@ -73,7 +73,7 @@ export function PostcardWindow({
       const u = new URL(doc.url ?? "https://www.qntns.com/", location.href);
       const data = pc.readArticle(root, { url: `${u.host}${u.pathname}` });
       host.innerHTML = pc.renderPostcard(data);
-      card = pc.attachPostcard(host, data, { onClose: () => !gone && closeRef.current(), isFront: () => frontRef.current } as { onClose?: () => void });
+      card = pc.attachPostcard(host, data, { onClose: () => !gone && closeRef.current(), isFront: () => !!frontRef.current, fit: true });
       card!.open();
     });
     return () => {
@@ -117,7 +117,7 @@ export function PostcardWindow({
         {failed ? (
           <p className="m-auto text-os-text-secondary">-</p>
         ) : (
-          <div ref={hostRef} className="ryos-postcard-window min-h-0 flex-1" />
+          <div ref={hostRef} className="ryos-postcard-window ryos-aqua-scroll min-h-0 flex-1" />
         )}
       </div>
     </AppWindowShell>

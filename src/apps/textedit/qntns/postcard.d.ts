@@ -2,5 +2,5 @@
 declare module "@/apps/paint/wall/qntns/postcard.js" {
   export function readArticle(root?: ParentNode, opts?: { url?: string }): unknown;
   export function renderPostcard(data: unknown): string;
-  export function attachPostcard(root: HTMLElement, data: unknown, opts?: { onClose?: () => void }): { open(): void; close(): void; destroy(): void };
+  export function attachPostcard(root: HTMLElement, data: unknown, opts?: { onClose?: () => void; isFront?: () => boolean; fit?: boolean }): { open(): void; close(): void; destroy(): void };
 }

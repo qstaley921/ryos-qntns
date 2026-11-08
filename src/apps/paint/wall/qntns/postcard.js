@@ -4380,7 +4380,7 @@ const attachAutocomplete = (el) => {
  * parses a whole body; only the ones actually stepped onto are ever built.
  */
 // `onClose` (CHECKLIST-37 §79d): the RyOS Postcard window closes itself when the editor does.
-export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose, isFront } = {}) => {
+export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose, isFront, fit } = {}) => {
     const el = root.querySelector("[data-postcard]");
     if (!el) return () => {};
 
@@ -5927,8 +5927,22 @@ export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose, isF
         opener = document.activeElement;
         el.hidden = false;
         document.body.style.overflow = "hidden";
+        const fresh = fit && !readDraft(key)?.window;
         restore();
-        Promise.all([loadCardFonts(), loadFigures(data)]).then(paint);
+        Promise.all([loadCardFonts(), loadFigures(data)]).then(() => {
+            paint();
+            /* §79g: a window host asks for the whole passage on the front. With no
+               saved window, open it to the cap and take A− steps (the reader's own
+               size control, so the fit rules are the drawing's) until nothing is
+               hidden below or the smallest step is reached. */
+            if (!fresh || deck) return;
+            const grow = () => { state.count = Number.MAX_SAFE_INTEGER; paint(); };
+            grow();
+            while (view?.hiddenAfter && state.textStep > TEXT_STEP_MIN) {
+                state.textStep -= 1;
+                grow();
+            }
+        });
         el.querySelector(FOCUSABLE)?.focus();
     }
 

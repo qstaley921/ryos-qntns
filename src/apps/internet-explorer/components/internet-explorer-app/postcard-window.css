@@ -6,13 +6,117 @@
 .ryos-postcard-window {
   position: relative;
   container-type: size;
+  /* §79g: the site's page body under the card (theme tokens.css --color-page, #d9cdbf). */
+  background: var(--color-page);
+}
+
+/* §79h: THE FLOOR IS 320. The actions row is the widest thing that has to hold:
+   3 settings squares (96) + their 2 gaps (16) + 8 + share 32 + 8 + download 32
+   + 8 + "$4 · Mail" (24px padding each side around ~62px of 14px bold text, ~110) = ~310,
+   so 320 is the next base-4 width at which every 32px control still sits on one
+   line beside the card. The text fit (§79g) is in trim units and holds at any
+   width. Below 320 the card stops shrinking and the window body scrolls: the
+   popover keeps its floor size (card 320 x 480, + 56 across and 160 down, the
+   same room as --postcard-w's own sums) and overflows the host. */
+.ryos-postcard-window {
+  overflow: auto;
 }
 
 .ryos-postcard-window .qntns-postcard {
   position: absolute;
-  --postcard-w: min(calc(100cqw - 56px), calc((100cqh - 160px) * 2 / 3));
+  --postcard-w: max(320px, min(calc(100cqw - 56px), calc((100cqh - 160px) * 2 / 3)));
+  min-width: calc(320px + 56px);
+  min-height: calc(480px + 160px);
 }
 
 .ryos-postcard-window .qntns-postcard__scrim {
   display: none;
+}
+
+/* §79h: THE TIGER AQUA SCROLL BAR, on any box with .ryos-aqua-scroll (only the
+   postcard window for now; written to be lifted into the theme-wide sheet,
+   CHECKLIST-35). Both axes; a blue gel thumb the length of the visible
+   fraction (the browser sizes it); both arrows paired at the far end, Tiger's
+   default. 16px, not Aqua's 15: the control metric rounded to base 4. The 1px
+   borders and the 1px/2px track stripes are hairlines and texture, not spacing
+   (the CLAUDE.md hairline exemption). WebKit/Blink only; anything without
+   ::-webkit-scrollbar gets its own native bar. Nothing here sets scrollbar-width
+   or scrollbar-color: in Chrome either one switches these rules off. */
+.ryos-aqua-scroll::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+/* The groove: a pale pinstriped trough, darker at its edges. */
+.ryos-aqua-scroll::-webkit-scrollbar-track:vertical {
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.035) 0 1px, transparent 1px 2px),
+    linear-gradient(to right, #b8b8b8, #e4e4e4 25%, #f8f8f8 55%, #ececec 85%, #cfcfcf);
+  border-left: 1px solid #a6a6a6;
+}
+.ryos-aqua-scroll::-webkit-scrollbar-track:horizontal {
+  background:
+    repeating-linear-gradient(to right, rgba(0, 0, 0, 0.035) 0 1px, transparent 1px 2px),
+    linear-gradient(to bottom, #b8b8b8, #e4e4e4 25%, #f8f8f8 55%, #ececec 85%, #cfcfcf);
+  border-top: 1px solid #a6a6a6;
+}
+
+/* The gel: the primary aqua-button's blue (aqua.css .aqua-button.primary), lit
+   across its width like a capsule, with a highlight band near the leading edge. */
+.ryos-aqua-scroll::-webkit-scrollbar-thumb {
+  border: 1px solid #1d4f9e;
+  border-radius: 8px;
+}
+.ryos-aqua-scroll::-webkit-scrollbar-thumb:vertical {
+  background: linear-gradient(to right, #2a62bf, #9cc4f4 22%, #d6e8fb 34%, #5c9be6 52%, #3a83e2 72%, #7fb6f2 92%, #4f8fe0);
+}
+.ryos-aqua-scroll::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(to bottom, #2a62bf, #9cc4f4 22%, #d6e8fb 34%, #5c9be6 52%, #3a83e2 72%, #7fb6f2 92%, #4f8fe0);
+}
+.ryos-aqua-scroll::-webkit-scrollbar-thumb:active {
+  filter: brightness(0.9);
+}
+
+/* Both arrows at the end, none at the start. */
+.ryos-aqua-scroll::-webkit-scrollbar-button:start {
+  display: none;
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:end:decrement,
+.ryos-aqua-scroll::-webkit-scrollbar-button:end:increment {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:vertical:end {
+  border-left: 1px solid #a6a6a6;
+  background-color: #ececec;
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:horizontal:end {
+  border-top: 1px solid #a6a6a6;
+  background-color: #ececec;
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:end:active {
+  background-color: #c4c4c4;
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:vertical:end:decrement {
+  border-top: 1px solid #a6a6a6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M4 1 8 7H0z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to right, #d4d4d4, #f6f6f6 50%, #dcdcdc);
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:vertical:end:increment {
+  border-top: 1px solid #a6a6a6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M4 7 8 1H0z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to right, #d4d4d4, #f6f6f6 50%, #dcdcdc);
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:horizontal:end:decrement {
+  border-left: 1px solid #a6a6a6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M1 4 7 0V8z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to bottom, #d4d4d4, #f6f6f6 50%, #dcdcdc);
+}
+.ryos-aqua-scroll::-webkit-scrollbar-button:horizontal:end:increment {
+  border-left: 1px solid #a6a6a6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M7 4 1 0V8z' fill='%23333'/%3E%3C/svg%3E"), linear-gradient(to bottom, #d4d4d4, #f6f6f6 50%, #dcdcdc);
+}
+
+.ryos-aqua-scroll::-webkit-scrollbar-corner {
+  background: #ececec;
 }
