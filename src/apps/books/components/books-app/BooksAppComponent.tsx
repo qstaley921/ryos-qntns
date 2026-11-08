@@ -234,6 +234,28 @@ export function BooksAppComponent({
   // macOS X notitlebar uses a dark glass titlebar: light icon + shadow.
   // Classic/Windows themes use a dark icon with no shadow.
   const isDarkTitlebar = isMacOSTheme;
+  // Touch: the title bar is invisible (opacity 0) until revealed, but its
+  // buttons still take hits. A tap that lands while it is hidden must only
+  // reveal it: let the touch reach the frame (which shows the bar) and swallow
+  // the click. Mouse behaviour is unchanged.
+  const tappedWhileHiddenRef = useRef(false);
+  const titleBarButtonTouch = {
+    onTouchStart: (e: React.TouchEvent<HTMLElement>) => {
+      const bar = e.currentTarget.closest(".title-bar");
+      tappedWhileHiddenRef.current =
+        !!bar && parseFloat(getComputedStyle(bar).opacity) < 0.5;
+      if (!tappedWhileHiddenRef.current) e.stopPropagation();
+    },
+    shouldSwallowClick: () => {
+      const swallow = tappedWhileHiddenRef.current;
+      tappedWhileHiddenRef.current = false;
+      return swallow;
+    },
+  };
+  // 48px tap target (base 4) inside the 24px bar: -12px margin keeps the
+  // bar's height unchanged.
+  const TITLE_BAR_BUTTON_CLASS =
+    "shrink-0 w-12 h-12 min-h-12 max-h-12 -my-3 flex items-center justify-center transition-colors";
   const bookmarkTitleBarButton = isReading ? (
     <button
       type="button"
@@ -249,11 +271,12 @@ export function BooksAppComponent({
       }
       onClick={(e) => {
         e.stopPropagation();
+        if (titleBarButtonTouch.shouldSwallowClick()) return;
         readerRef.current?.toggleBookmark();
       }}
       onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      className={`shrink-0 w-5 h-5 min-h-5 max-h-5 flex items-center justify-center transition-colors cursor-pointer ${
+      onTouchStart={titleBarButtonTouch.onTouchStart}
+      className={`${TITLE_BAR_BUTTON_CLASS} cursor-pointer ${
         isCurrentPageBookmarked
           ? "text-red-500 hover:text-red-400"
           : isDarkTitlebar
@@ -267,7 +290,7 @@ export function BooksAppComponent({
       }}
     >
       <BookmarkSimple
-        size={14}
+        size={20}
         weight={isCurrentPageBookmarked ? "fill" : "bold"}
       />
     </button>
@@ -279,11 +302,12 @@ export function BooksAppComponent({
       title={t("apps.books.reader.backToShelf")}
       onClick={(e) => {
         e.stopPropagation();
+        if (titleBarButtonTouch.shouldSwallowClick()) return;
         if (isReading) closeBook();
       }}
       onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      className={`shrink-0 w-5 h-5 min-h-5 max-h-5 flex items-center justify-center transition-colors ${
+      onTouchStart={titleBarButtonTouch.onTouchStart}
+      className={`${TITLE_BAR_BUTTON_CLASS} ${
         !isReading
           ? "text-transparent cursor-default"
           : isDarkTitlebar
@@ -298,7 +322,7 @@ export function BooksAppComponent({
       }}
       disabled={!isReading}
     >
-      <SquaresFour size={14} weight="bold" />
+      <SquaresFour size={20} weight="bold" />
     </button>
   );
 
