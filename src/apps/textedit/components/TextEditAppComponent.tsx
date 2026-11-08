@@ -3,10 +3,10 @@ import { JSONContent } from "@tiptap/core";
 import { AppProps } from "@/apps/base/types";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
 import { TextEditMenuBar } from "./TextEditMenuBar";
-import { EditorProvider } from "./EditorProvider";
 import { useEditorContext } from "./EditorContext";
 import { EditorToolbar } from "./EditorToolbar";
 import { TextEditor } from "./TextEditor";
+import { TextEditEmpty } from "./TextEditEmpty";
 import { GhostReader, type GhostReaderData } from "./GhostReader";
 import { SpeechManager } from "./SpeechManager";
 import { DialogManager, DialogControls } from "./DialogManager";
@@ -52,7 +52,7 @@ const CONTENT_PERSIST_DEBOUNCE_MS = 500;
 const CONTENT_PERSIST_MAX_WAIT_MS = 2000;
 
 // Inner component that has access to editor context
-function TextEditContent({
+export function TextEditContent({
   isWindowOpen,
   onClose,
   isForeground,
@@ -773,9 +773,6 @@ export function TextEditAppComponent(props: AppProps) {
   if ((props.initialData as Partial<GhostReaderData> | undefined)?.ghost) {
     return <GhostReader {...props} />;
   }
-  return (
-    <EditorProvider>
-      <TextEditContent {...props} />
-    </EditorProvider>
-  );
+  // §63j: read-only site: the stock editor stays in the file but is never mounted.
+  return <TextEditEmpty {...props} />;
 }

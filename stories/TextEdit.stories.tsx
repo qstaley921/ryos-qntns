@@ -1,7 +1,7 @@
 import { AppMount } from "./mount";
 
 export default { title: "Apps/TextEdit", component: AppMount, args: { id: "textedit" } };
-export const Empty = {}; // the stock editor, for any non-Ghost file
+export const Empty = {}; // §63j: no document → read-only empty state, never the editor
 
 // A Ghost post, read-only (CHECKLIST-36 §12). `html` skips the Content API fetch.
 // Body exercises: heading demotion (h2 → h3), a |T| drop cap, a [footnote],
