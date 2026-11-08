@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CaretLeft, CaretRight, DownloadSimple, FilmStrip, SidebarSimple } from "@phosphor-icons/react";
 import type { AppProps } from "@/apps/base/types";
 import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
@@ -83,14 +84,15 @@ export function PhotosAppComponent({
 
   const isLib = sel === LIBRARY;
   // §13h: Library is every album's photos, flat: source-list order, then photo order in each post. No new call.
-  const lib = (docs ?? []).flatMap((d) => (albums[d.id]?.photos ?? []).map((src) => ({ src, slug: d.slug })));
+  const lib = (docs ?? []).flatMap((d) => (albums[d.id]?.photos ?? []).map((src) => ({ src, id: d.id })));
   const album = isLib ? null : albums[sel];
   const shown = isLib ? lib.map((p) => p.src) : album?.photos ?? null;
   const current = docs?.find((d) => d.id === sel);
   // Order Postcard: the open album, or in Library the open photo's own post.
-  const postcardSlug = isLib ? (big !== null ? lib[big]?.slug : undefined) : current?.slug;
+  const postcardId = isLib ? (big !== null ? lib[big]?.id : undefined) : current?.id;
+  // §13l: §79d's postcard-only window for that post (no longer the Mini framing of /<slug>/?postcard).
   const orderPostcard = () =>
-    postcardSlug && launchApp("internet-explorer", { initialData: { mini: true, path: `/${postcardSlug}/?postcard` }, multiWindow: true });
+    postcardId && launchApp("internet-explorer", { initialData: { postcard: { id: postcardId, type: "post" } }, multiWindow: true });
   const playShow = () =>
     album?.own && play(spots[sel] ?? 0, { ...album.own, onstop: (spot: number) => setSpots((s) => ({ ...s, [sel]: spot })) });
   const sideLabel = hideSide ? "Show Sidebar" : "Hide Sidebar";
@@ -139,7 +141,7 @@ export function PhotosAppComponent({
         <PhotosMenuBar
           onClose={onClose}
           onShowAbout={() => setIsAboutOpen(true)}
-          onOrderPostcard={postcardSlug ? orderPostcard : undefined}
+          onOrderPostcard={postcardId ? orderPostcard : undefined}
           onPlay={album?.own ? playShow : undefined}
           playLabel={spots[sel] ? "Resume Slideshow" : "Play Slideshow"}
           onLibrary={() => go(LIBRARY)}
@@ -237,12 +239,12 @@ export function PhotosAppComponent({
               </div>
             </>
           )}
-          {postcardSlug && (
+          {postcardId && (
             <div className="metal-inset-btn-group">
             <button
               type="button"
               className="metal-inset-btn gap-1 px-2 text-[11px]"
-              // §79a: the site's own postcard editor in a Mini window. Own window, so an open Safari is left alone.
+              // §79a/§13l: its own postcard window, so an open Safari is left alone.
               onClick={orderPostcard}
             >
               Order Postcard
@@ -269,6 +271,10 @@ export function PhotosAppComponent({
     </AppWindowShell>
   );
 }
+
+// §13k overlay: the lifted photo's box (viewport px), pinch origin within it, and its live transform.
+type Lift = { left: number; top: number; width: number; height: number; ox: number; oy: number; scale: number; dx: number; dy: number; back: boolean };
+const RETURN_MS = 200; // the snap back into the window; Kal's snaps instantly, base-4 like BlurUp's 200ms fade
 
 // Viewer toolbar button: the fork's Aqua metal-inset icon button (24px wide, 22px min tall, from aqua.css; disabled dims its icon). Groups sit 8px apart (gap-2).
 const BAR_BTN = "metal-inset-btn metal-inset-icon";
@@ -307,12 +313,93 @@ function Viewer({ photos, at, onAt, onClose, active, hideStrip }: { photos: stri
     strip.current?.children[at]?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [at, hideStrip]);
 
+  /*
+   * §13j: a tap on the photo's left/right half steps back/forward; a horizontal swipe steps (left = next).
+   * Tap = under 10px of travel; swipe = 30px with |dx| > 1.2·|dy| (KalStaleyDotCom's axis rule); ends clamp as ← →.
+   * §13k: two fingers lift the photo into a fixed overlay over everything (port of KalStaleyDotCom 03-02's
+   * pinch: scale 1–3×, moves with the fingers' midpoint, black/55 backdrop). Unlike Kal, the overlay stays
+   * while any finger is down (one finger drags it) and animates back over RETURN_MS when the last lifts.
+   * A gesture that lifted never steps.
+   */
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const base = useRef({ d: 1, cx: 0, cy: 0 });
+  const tap = useRef<{ x: number; y: number } | null>(null);
+  const timer = useRef(0);
+  const liftRef = useRef<Lift | null>(null);
+  const [lift, setLift] = useState<Lift | null>(null);
+  const show = (l: Lift | null) => { liftRef.current = l; setLift(l); };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const two = () => { const [a, b = a] = [...pts.current.values()]; return { a, b, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; };
+  // Re-anchor on every finger count change, so the photo never jumps when a finger lands or lifts.
+  const rebase = () => {
+    const l = liftRef.current;
+    if (!l || !pts.current.size) return;
+    const { a, b, cx, cy } = two();
+    base.current = { d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y) / l.scale), cx: cx - l.dx, cy: cy - l.dy };
+  };
+  const step = (d: number) => onAt(Math.min(Math.max(at + d, 0), photos.length - 1));
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (!pts.current.size) tap.current = { x: e.clientX, y: e.clientY };
+    pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.current.size < 2) return;
+    tap.current = null;
+    if (e.pointerType === "touch" && (!liftRef.current || liftRef.current.back)) {
+      clearTimeout(timer.current);
+      const r = e.currentTarget.getBoundingClientRect();
+      const { cx, cy } = two();
+      show({ left: r.left, top: r.top, width: r.width, height: r.height, ox: cx - r.left, oy: cy - r.top, scale: 1, dx: 0, dy: 0, back: false });
+    }
+    rebase();
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pts.current.has(e.pointerId)) return;
+    pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const l = liftRef.current;
+    if (!l || l.back) return;
+    const { a, b, cx, cy } = two();
+    const scale = pts.current.size > 1 ? Math.max(1, Math.min(3, Math.hypot(a.x - b.x, a.y - b.y) / base.current.d)) : l.scale;
+    show({ ...l, scale, dx: cx - base.current.cx, dy: cy - base.current.cy });
+  };
+  const up = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pts.current.delete(e.pointerId)) return;
+    const l = liftRef.current;
+    if (l && !l.back) {
+      if (pts.current.size) return rebase();
+      show({ ...l, scale: 1, dx: 0, dy: 0, back: true });
+      timer.current = window.setTimeout(() => show(null), RETURN_MS);
+      return;
+    }
+    const t = tap.current;
+    tap.current = null;
+    if (!t || e.type === "pointercancel" || pts.current.size) return;
+    const dx = e.clientX - t.x, dy = e.clientY - t.y;
+    if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.2) step(dx < 0 ? 1 : -1);
+    else if (Math.hypot(dx, dy) < 10) {
+      const r = e.currentTarget.getBoundingClientRect();
+      step(e.clientX < r.left + r.width / 2 ? -1 : 1);
+    }
+  };
+
   return (
     <div className="absolute inset-0 flex flex-col bg-black" role="region" aria-label="Photo" onClick={(e) => e.stopPropagation()}>
       {/* §13f: the photo alone on flat black; no blurred copy under it (it bloomed past the letterbox). */}
-      <div className="relative min-h-0 w-full flex-1">
+      {/* touch-none: the page never scrolls or zooms under these gestures. Hidden (not removed) while lifted, so its pointers keep arriving. */}
+      <div className={cn("relative min-h-0 w-full flex-1 touch-none select-none", lift && "opacity-0")}
+        onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
         <BlurUp key={at} src={photos[at]} fit="object-contain" />
       </div>
+      {/* Above every ryOS layer (the fork's highest is z-[10050]). Same box as the stage, so the contain fit lines up. */}
+      {lift && createPortal(
+        <div aria-hidden="true" className={cn("pointer-events-none fixed inset-0 z-[10100] bg-black/55 transition-opacity", lift.back && "opacity-0")}
+          style={{ transitionDuration: `${RETURN_MS}ms` }}>
+          <img src={photos[at]} alt="" draggable={false} className="absolute max-w-none select-none object-contain"
+            style={{ left: lift.left, top: lift.top, width: lift.width, height: lift.height,
+              transformOrigin: `${lift.ox}px ${lift.oy}px`,
+              transform: `translate(${lift.dx}px, ${lift.dy}px) scale(${lift.scale})`,
+              transition: lift.back ? `transform ${RETURN_MS}ms ease-out` : "none" }} />
+        </div>, document.body,
+      )}
       <div ref={strip} className={cn("flex h-[104px] shrink-0 gap-2 overflow-x-auto p-4", hideStrip && "hidden")}>
         {photos.map((src, i) => (
           <button
