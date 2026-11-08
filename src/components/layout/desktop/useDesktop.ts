@@ -17,7 +17,6 @@ import { useShallow } from "zustand/react/shallow";
 import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { useAppStore } from "@/stores/useAppStore";
 import type { LaunchOriginRect } from "@/stores/useAppStore";
-import { STORES, dbOperations } from "@/utils/indexedDB";
 import { useTranslation } from "react-i18next";
 import { useWallpaper } from "@/hooks/useWallpaper";
 import { useShuffleWallpaper } from "@/hooks/useShuffleWallpaper";
@@ -52,14 +51,12 @@ import {
 import { useShortViewport } from "./desktopConstants";
 import type { DesktopFolder } from "./DesktopIconGrid";
 import { listHomeContent } from "@/lib/ghost";
-import { createClientLogger } from "@/utils/logger";
 import type {
   DesktopProps,
   DesktopItemId,
   DesktopItemDefinition,
 } from "./desktopTypes";
 
-const log = createClientLogger("Desktop");
 import { useDesktopVideoWallpaper } from "./useDesktopVideoWallpaper";
 
 export function useDesktop({
@@ -99,7 +96,6 @@ export function useDesktop({
   const [contextMenuShortcutPath, setContextMenuShortcutPath] = useState<
     string | null
   >(null);
-  const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
 
   const {
     currentTheme,
@@ -161,9 +157,6 @@ export function useDesktop({
   const getItemsInPath = useFilesStore((state) => state.getItemsInPath);
   const updateItemMetadata = useFilesStore((state) => state.updateItemMetadata);
   const createAlias = useFilesStore((state) => state.createAlias);
-  const removeItem = useFilesStore((state) => state.removeItem);
-  const emptyTrash = useFilesStore((state) => state.emptyTrash);
-  const getTrashItems = useFilesStore((state) => state.getTrashItems);
   const trashItem = desktopAndTrashItems.find((item) => item.path === "/Trash");
   const trashIcon = trashItem?.icon || "/icons/trash-empty.png";
 
@@ -416,17 +409,6 @@ export function useDesktop({
     }
   };
 
-  const handleShortcutDelete = () => {
-    if (!contextMenuShortcutPath) return;
-    const shortcut = getItem(contextMenuShortcutPath);
-    if (shortcut) {
-      removeItem(contextMenuShortcutPath);
-    }
-    clearSelection();
-    setContextMenuPos(null);
-    setContextMenuShortcutPath(null);
-  };
-
   const handleOpenApp = (appId: string) => {
     if (appId === "macintosh-hd") {
       localStorage.setItem("ryos:app:finder:initial-path", "/");
@@ -439,27 +421,6 @@ export function useDesktop({
     }
     clearSelection();
     setContextMenuPos(null);
-  };
-
-  const handleEmptyTrash = () => {
-    setIsEmptyTrashDialogOpen(true);
-  };
-
-  const confirmEmptyTrash = async () => {
-    const contentUUIDsToDelete = emptyTrash();
-
-    try {
-      for (const uuid of contentUUIDsToDelete) {
-        await dbOperations.delete(STORES.TRASH, uuid);
-      }
-      log.debug("Cleared trash content from IndexedDB", {
-        deletedContentCount: contentUUIDsToDelete.length,
-      });
-    } catch (err) {
-      console.error("Error clearing trash content from IndexedDB:", err);
-    }
-
-    setIsEmptyTrashDialogOpen(false);
   };
 
   const sortedApps = [...apps]
@@ -686,12 +647,6 @@ export function useDesktop({
             setContextMenuShortcutPath(null);
           },
         },
-        { type: "separator" },
-        {
-          type: "item",
-          label: t("apps.finder.contextMenu.moveToTrash"),
-          onSelect: handleShortcutDelete,
-        },
       ];
     } else if (contextMenuAppId) {
       if (contextMenuAppId === "trash") {
@@ -719,9 +674,6 @@ export function useDesktop({
         },
       ];
     } else {
-      const trashItems = getTrashItems();
-      const isTrashEmpty = trashItems.length === 0;
-
       return [
         {
           type: "submenu",
@@ -737,13 +689,6 @@ export function useDesktop({
               ],
             },
           ],
-        },
-        { type: "separator" },
-        {
-          type: "item",
-          label: t("apps.finder.contextMenu.emptyTrash"),
-          onSelect: handleEmptyTrash,
-          disabled: isTrashEmpty,
         },
         { type: "separator" },
         {
@@ -871,8 +816,5 @@ export function useDesktop({
     getContextMenuItems,
     isMarqueeSelecting,
     marqueeElementRef,
-    isEmptyTrashDialogOpen,
-    setIsEmptyTrashDialogOpen,
-    confirmEmptyTrash,
   };
 }

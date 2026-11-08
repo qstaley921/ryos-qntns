@@ -1,5 +1,4 @@
 import { RightClickMenu } from "@/components/ui/right-click-menu";
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import type { DesktopProps } from "./desktopTypes";
 import { useDesktop } from "./useDesktop";
 import { DesktopIconGrid } from "./DesktopIconGrid";
@@ -109,13 +108,6 @@ export function Desktop(props: DesktopProps) {
         position={d.contextMenuPos}
         onClose={d.closeContextMenu}
         items={d.getContextMenuItems()}
-      />
-      <ConfirmDialog
-        isOpen={d.isEmptyTrashDialogOpen}
-        onOpenChange={d.setIsEmptyTrashDialogOpen}
-        onConfirm={d.confirmEmptyTrash}
-        title={d.t("apps.finder.dialogs.emptyTrash.title")}
-        description={d.t("apps.finder.dialogs.emptyTrash.description")}
       />
     </div>
   );
