@@ -42,6 +42,26 @@ const Wall: React.FC<{ slug?: string; host: React.RefObject<HTMLDivElement | nul
   return <div ref={host} className={`paint-wall h-full w-full overflow-auto ${OS_NATIVE_CHROME_SKIP_CLASS}`} />;
 };
 
+// Items mount when the menu opens, so `off` is read fresh from the wall's button each time.
+const Item: React.FC<{ host: React.RefObject<HTMLDivElement | null>; text: string; sel: string }> = ({ host, text, sel }) => {
+  const btn = () => host.current?.querySelector<HTMLButtonElement>(sel);
+  const b = btn();
+  const off = !b || b.disabled || b.getAttribute("aria-disabled") === "true";
+  return (
+    <MenubarItem className="text-md h-6 px-3" disabled={off} onClick={() => btn()?.click()}>
+      {text}
+    </MenubarItem>
+  );
+};
+const Menu: React.FC<{ label: string; host: React.RefObject<HTMLDivElement | null>; items: [string, string][] }> = ({ label, host, items }) => (
+  <MenubarMenu>
+    <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">{label}</MenubarTrigger>
+    <MenubarContent align="start" sideOffset={1} className="px-0">
+      {items.map(([t, sel]) => <Item key={t} host={host} text={t} sel={sel} />)}
+    </MenubarContent>
+  </MenubarMenu>
+);
+
 export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
   isWindowOpen,
   onClose,
@@ -61,18 +81,33 @@ export const PaintAppComponent: React.FC<AppProps<PaintInitialData>> = ({
       isForeground={isForeground}
       menuBar={
         <MenuBar inWindowFrame={isWindowsTheme}>
-          <MenubarMenu>
-            <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">File</MenubarTrigger>
-            <MenubarContent align="start" sideOffset={1} className="px-0">
-              {/* Clicks the wall's own (hidden) Postcard button, so the handler is unchanged. */}
-              <MenubarItem
-                className="text-md h-6 px-3"
-                onClick={() => host.current?.querySelector<HTMLElement>("[data-graffiti-postcard]")?.click()}
-              >
-                Postcard…
-              </MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
+          {/* §63g: every item clicks a control the wall already has; disabled when that control is. */}
+          <Menu label="File" host={host} items={[
+            ["Postcard…", "[data-graffiti-postcard]"],
+            ["Undo", "[data-graffiti-undo]"],
+            ["Redo", "[data-graffiti-redo]"],
+            // §57 TODO: nest Edit ▸ / Share ▸ here once author-A's helper lands.
+          ]} />
+          <Menu label="Tools" host={host} items={[
+            ["Hand", '[data-graffiti-tool="hand"]'],
+            ["Pen", '[data-graffiti-tool="pencil"]'],
+            ["Fountain Pen", '[data-graffiti-tool="pen"]'],
+            ["Pencil", '[data-graffiti-tool="graphite"]'],
+            ["Smudge", '[data-graffiti-tool="smudge"]'],
+            ["Watercolor", '[data-graffiti-tool="watercolor"]'],
+            ["Water", '[data-graffiti-tool="water"]'],
+            ["Lasso", '[data-graffiti-tool="lasso"]'],
+            ["Eraser", '[data-graffiti-tool="eraser"]'],
+          ]} />
+          <Menu label="View" host={host} items={[
+            ["Zoom In", '[data-graffiti-zoom="1"]'],
+            ["Zoom Out", '[data-graffiti-zoom="-1"]'],
+            ["Fit Wall", "[data-graffiti-fit]"],
+          ]} />
+          <Menu label="Insert" host={host} items={[
+            ["Link Card", '[data-graffiti-tool="link"]'],
+            ["Meme", '[data-graffiti-tool="image"]'],
+          ]} />
         </MenuBar>
       }
       windowFrameProps={{
