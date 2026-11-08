@@ -18,7 +18,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import { useTranslation } from "react-i18next";
 import { Plus } from "@phosphor-icons/react";
 import { useDashboardStore } from "@/stores/useDashboardStore";
-import { QNTNS_WIDGETS, QntnsWidget, isQntnsWidget, type QntnsWidgetType } from "../widgets";
+import { CAN_ADD_WIDGETS, QNTNS_WIDGETS, QntnsWidget, isQntnsWidget, type QntnsWidgetType } from "../widgets";
 import { orderWidgetsForMobile } from "@/stores/dashboardLayout";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
@@ -188,10 +188,17 @@ export function DashboardAppComponent({
     resetToDefaults,
   } = useDashboardLogic();
 
+  // §82: a saved widget that is no longer offered (hidden, or ryOS's own) is dropped on load;
+  // if that leaves nothing, the defaults (Spending + Fund) load instead of an empty dashboard.
+  useEffect(() => {
+    const saved = useDashboardStore.getState().widgets;
+    if (!saved.some((w) => isQntnsWidget(w.type))) resetToDefaults();
+    else for (const w of saved) if (!isQntnsWidget(w.type)) removeWidget(w.id);
+  }, [removeWidget, resetToDefaults]);
+
   const visibleWidgets = useMemo(
     () => {
-      // Saved ryOS widgets (the store's clock/calendar/weather defaults) stay in the store but never render.
-      const ours = widgets.filter((w) => isQntnsWidget(w.type));
+            const ours = widgets.filter((w) => isQntnsWidget(w.type));
       return isMobile ? orderWidgetsForMobile(ours, mobileOrder) : ours;
     },
     [isMobile, mobileOrder, widgets],
@@ -457,7 +464,7 @@ export function DashboardAppComponent({
 
               {/* Widget strip */}
               <AnimatePresence>
-                {isPickerOpen && (
+                {CAN_ADD_WIDGETS && isPickerOpen && (
                   <div data-dashboard-strip>
                     <WidgetStrip
                       onAdd={handleAddWidget}
@@ -469,7 +476,7 @@ export function DashboardAppComponent({
               </AnimatePresence>
 
               {/* + / × toggle button */}
-              <motion.button
+              {CAN_ADD_WIDGETS && <motion.button
                 data-dashboard-add-btn
                 type="button"
                 initial={{ opacity: 0, scale: 0 }}
@@ -507,7 +514,7 @@ export function DashboardAppComponent({
                 title={t("apps.dashboard.widgets.addWidget")}
               >
                 <Plus size={18} weight="bold" />
-              </motion.button>
+              </motion.button>}
             </motion.div>
           )}
         </AnimatePresence>,

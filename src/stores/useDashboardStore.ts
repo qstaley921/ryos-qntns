@@ -115,24 +115,20 @@ interface DashboardStoreState {
   resetToDefaults: () => void;
 }
 
+// CHECKLIST-37 §82: Spending and Fund side by side (sizes from the dashboard's QNTNS_WIDGETS).
+// WidgetType names only ryOS's widgets; the store persists any string, as handleAddWidget relies on.
 const DEFAULT_WIDGETS: DashboardWidget[] = [
   {
-    id: "default-clock",
-    type: "clock",
+    id: "default-spending",
+    type: "spending" as WidgetType,
     position: { x: 80, y: 120 },
-    size: { width: 170, height: 170 },
+    size: { width: 360, height: 360 },
   },
   {
-    id: "default-calendar",
-    type: "calendar",
-    position: { x: 300, y: 100 },
-    size: { width: 240, height: 350 },
-  },
-  {
-    id: "default-weather",
-    type: "weather",
-    position: { x: 580, y: 120 },
-    size: { width: 340, height: 180 },
+    id: "default-fund",
+    type: "fund" as WidgetType,
+    position: { x: 480, y: 120 },
+    size: { width: 360, height: 360 },
   },
 ];
 

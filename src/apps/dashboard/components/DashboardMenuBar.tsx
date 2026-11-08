@@ -8,7 +8,7 @@ import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
 import { useTranslation } from "react-i18next";
 import { WidgetBarIcon } from "@/components/layout/dashboard/WidgetBarIcon";
-import { QNTNS_WIDGETS, type QntnsWidgetType } from "../widgets";
+import { CAN_ADD_WIDGETS, QNTNS_WIDGETS, type QntnsWidgetType } from "../widgets";
 
 interface DashboardMenuBarProps {
   onClose: () => void;
@@ -39,24 +39,28 @@ export function DashboardMenuBar({
     {
       label: t("common.menu.file"),
       items: [
-        {
-          type: "submenu",
-          label: t("apps.dashboard.menu.addWidget"),
-          items: QNTNS_WIDGETS.map(
-            (w): MenuItemDescriptor => ({
-              type: "action",
-              label: (
-                <>
-                  <WidgetBarIcon icon={w.icon} size={14} alt="" />
-                  {w.label}
-                </>
-              ),
-              onClick: () => onAddWidget(w.type),
-              className: WIDGET_MENU_ITEM_CLASS,
-            })
-          ),
-        },
-        { type: "separator" },
+        ...(CAN_ADD_WIDGETS
+          ? ([
+              {
+                type: "submenu",
+                label: t("apps.dashboard.menu.addWidget"),
+                items: QNTNS_WIDGETS.map(
+                  (w): MenuItemDescriptor => ({
+                    type: "action",
+                    label: (
+                      <>
+                        <WidgetBarIcon icon={w.icon} size={14} alt="" />
+                        {w.label}
+                      </>
+                    ),
+                    onClick: () => onAddWidget(w.type),
+                    className: WIDGET_MENU_ITEM_CLASS,
+                  })
+                ),
+              },
+              { type: "separator" },
+            ] as MenuItemDescriptor[])
+          : []),
         {
           type: "action",
           label: t("apps.dashboard.menu.resetWidgets"),
