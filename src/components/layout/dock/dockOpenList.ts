@@ -34,7 +34,8 @@ export function computeDockOpenItems(
       continue;
     }
     const appId = instance.appId;
-    if (!appId) {
+    // §62: Stickies never shows in the dock, even while open.
+    if (!appId || appId === "stickies") {
       continue;
     }
     (openByApp[appId] ??= []).push(instance);

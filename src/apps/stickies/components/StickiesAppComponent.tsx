@@ -23,6 +23,7 @@ export function StickiesAppComponent({
   useEffect(() => { requestCloudSyncDomainCheck("stickies"); }, []);
 
   const closeAppInstance = useAppStore((state) => state.closeAppInstance);
+  const bringInstanceToForeground = useAppStore((state) => state.bringInstanceToForeground);
   
   const {
     translatedHelpItems,
@@ -145,6 +146,8 @@ export function StickiesAppComponent({
               key={note.id}
               note={note}
               onSelect={() => {
+                // §62: clicking a sticky makes Stickies frontmost (menu bar, Quit).
+                if (instanceId) bringInstanceToForeground(instanceId);
                 handleNoteClick(note.id);
                 bringToFront(note.id);
               }}

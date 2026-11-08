@@ -52,10 +52,23 @@ const getNextPosition = (existingNotes: StickyNote[]) => {
   return { x: newX, y: newY };
 };
 
+// §62: welcome note, present only when no saved state exists (first launch).
+// Left side, below the menu bar; offsets are base 4.
+const WELCOME_NOTE: StickyNote = {
+  id: "welcome",
+  content:
+    "I've broken everything, yes. My girlfriend said it was too hard to navigate the old QNTNs so I said screw it. I'm done designing interfaces, done with managing complexity. Let's use an existing interface. One big caveat ... some of the features are still broken. Don't worry. I'll get there as I find more time.",
+  color: "yellow",
+  position: { x: 32, y: 48 },
+  size: { width: 220, height: 240 },
+  createdAt: 0,
+  updatedAt: 0,
+};
+
 export const useStickiesStore = create<StickiesState>()(
   persist(
     (set, get) => ({
-      notes: [],
+      notes: [WELCOME_NOTE],
 
       addNote: (color: StickyColor = "yellow") => {
         const id = crypto.randomUUID();
