@@ -7,6 +7,7 @@ import { EditorProvider } from "./EditorProvider";
 import { useEditorContext } from "./EditorContext";
 import { EditorToolbar } from "./EditorToolbar";
 import { TextEditor } from "./TextEditor";
+import { GhostReader, type GhostReaderData } from "./GhostReader";
 import { SpeechManager } from "./SpeechManager";
 import { DialogManager, DialogControls } from "./DialogManager";
 import { useTextEditState } from "../hooks/useTextEditState";
@@ -768,6 +769,10 @@ function TextEditContent({
 
 // Main component wrapper
 export function TextEditAppComponent(props: AppProps) {
+  // A Ghost document from Finder opens read-only (CHECKLIST-36 §12).
+  if ((props.initialData as Partial<GhostReaderData> | undefined)?.ghost) {
+    return <GhostReader {...props} />;
+  }
   return (
     <EditorProvider>
       <TextEditContent {...props} />

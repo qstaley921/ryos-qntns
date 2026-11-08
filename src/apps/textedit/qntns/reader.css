@@ -1,0 +1,62 @@
+/* TextEdit's reading window for a Ghost document (CHECKLIST-36 §12).
+   §53: drawn as OS X TextEdit draws a document, not the QNTNs theme. The body
+   passes (footnotes, drop caps, code) keep their layout; every theme colour and
+   chrome face is pointed at the OS tokens the stock TextEdit uses, so the page is
+   the OS's white sheet with OS text. Only the reading font stays OpenDyslexic. */
+.qntns-reader {
+  --color-background: var(--os-color-input-bg, #fff);
+  --color-page: var(--os-color-input-bg, #fff);
+  --color-surface: var(--os-color-panel-bg, #ececec);
+  --color-surface-strong: var(--os-color-input-bg, #fff);
+  --color-card: var(--os-color-panel-bg, #ececec);
+  --color-card-border: var(--os-color-separator, #c8c8c8);
+  --color-chip: var(--os-color-panel-bg, #ececec);
+  --color-text: var(--os-color-text-primary, #000);
+  --color-ink: var(--os-color-text-primary, #000);
+  --color-text-muted: var(--os-color-text-secondary, #555);
+  --color-accent: var(--os-color-text-primary, #000);
+  --color-accent-contrast: var(--os-color-input-bg, #fff);
+  --color-accent-soft: var(--os-color-selection-bg, #b5d5ff);
+  --color-border: var(--os-color-separator, #c8c8c8);
+  --color-focus: var(--os-color-input-focus-border, #3b99fc);
+  --font-ui: var(--os-font-ui, "Lucida Grande", sans-serif);
+  --font-display: var(--os-font-ui, "Lucida Grande", sans-serif);
+  --font-meta: "Monaco", ui-monospace, monospace;
+  background: var(--os-color-input-bg, #fff);
+  color: var(--os-color-text-primary, #000);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.qntns-reader a {
+  color: var(--os-color-link, #0000ee);
+}
+.qntns-reader ::selection {
+  background: var(--os-color-selection-bg, #b5d5ff);
+}
+/* TextEdit's sheet: text from the window's left edge at a document margin, not a centred column. */
+.qntns-reader__page {
+  max-width: var(--content-measure);
+  padding: 24px 32px;
+}
+/* The theme's .qntns-content__body has a top gap under a title; here there is no title. */
+.qntns-reader .qntns-content__body {
+  margin-top: 0;
+}
+/* An Aqua push button, as the OS draws one in a document. */
+.qntns-reader__goal {
+  font: 13px var(--os-font-ui, "Lucida Grande", sans-serif); /* 13px: the Aqua control font size, a type metric */
+  color: var(--os-color-text-primary, #000);
+  background: linear-gradient(#fff, #e8e8e8);
+  border: 1px solid var(--os-color-input-border, #a5a5a5); /* 1px hairline: a rule, not a measurement */
+  border-radius: 12px;
+  padding: 4px 16px;
+  cursor: pointer;
+}
+.qntns-reader__empty {
+  text-align: center;
+}
+.qntns-reader__comments {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--os-color-separator, #c8c8c8); /* 1px hairline: a rule */
+}

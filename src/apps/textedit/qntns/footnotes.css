@@ -1,0 +1,422 @@
+/* ---- Footnotes -------------------------------------------------------------
+   Three objects: the numbered mark in the sentence, the popover it opens, and
+   the list at the foot of the page. assets/js/qntns/footnotes.js builds all
+   three; nothing here is authored by hand in Ghost.
+
+   Every measurement is base 4. The two exemptions are named where they are
+   taken: the 1px borders, which are rules rather than measurements, and the
+   160px divider, which is a length the design specified directly. */
+
+/* ---- The mark in the sentence ---------------------------------------------
+   A <button> that has to look like nothing. The browser gives a button a font,
+   a background, a border, a padding and a colour of its own, and every one of
+   them is wrong inside a paragraph — so all five are reset and the mark
+   inherits the sentence it interrupts.
+
+   NOT UNDERLINED, unlike every other link in prose. content.css gives a prose
+   link a dotted rule because a link has to be found while the reader is
+   reading. A footnote mark does not have that problem: `[3]` in the middle of
+   a sentence is already an interruption, and adding a rule under a bracketed
+   numeral would make it look like a link to a page rather than a note on the
+   line. cursor: pointer is the whole affordance, which is what the brief asked
+   for.
+
+   font-variant-numeric: tabular-nums so [9] and [10] are the same width and a
+   column of marks down a page does not wobble.
+
+   vertical-align: baseline explicitly. A button is inline-block and browsers
+   align inline-blocks on their MARGIN box, which drops the numeral a couple of
+   pixels below the text around it. */
+.qntns-fn-mark {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    /* SUPERSCRIPT, AND THE WHOLE `[3]` RISES — bracket and numeral together.
+       A raised numeral beside baseline brackets reads as a typo, and the
+       brackets are what make the mark unambiguous (see the note in
+       footnotes.js), so they are not dropped to buy the effect.
+
+       12px against the body's 16 is one step down the scale and a 4px drop,
+       so it is on grid rather than a `smaller` keyword the theme cannot
+       predict.
+
+       THE RAISE IS 4px AND IT FITS THE LINE BOX WITHOUT GROWING IT:
+         body prose  16px x 1.75 line-height  = 28px line box
+         half-leading                          = (28 - 16) / 2 = 6px
+         room above the baseline               ~ 6 + 12 (ascent) = 18px
+         this mark    12px box raised 4px      = 16px above the baseline
+       16 < 18, so a paragraph containing a mark keeps the same leading as one
+       that does not. line-height: 1 rather than inherit is what makes the box
+       exactly its font size and that sum knowable; at `inherit` it would be
+       21px and would push the line open.
+
+       vertical-align was `baseline` here, stated because a button is
+       inline-block and browsers align inline-blocks on their MARGIN box, which
+       dropped the numeral below the text around it. A length is measured from
+       that same baseline, so the reason still holds — this is the correction
+       plus the raise, not a replacement for it. */
+    font-size: var(--type-step--2);
+    line-height: 1;
+    vertical-align: 4px;
+    color: var(--color-accent);
+    cursor: pointer;
+    /* The mark is a unit and must never break across a line: `[10]` split into
+       `[1` and `0]` at a wrap is unreadable. */
+    white-space: nowrap;
+}
+
+.qntns-fn-mark:hover {
+    background: var(--color-accent-soft);
+}
+
+.qntns-fn-mark:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+/* ---- The list at the foot -------------------------------------------------
+   THE RULE IS 72px AND LEFT ALIGNED, which is the one thing here that is not
+   derived from anything: it is a length the design specified and 72 is a
+   multiple of 4 (and of 8), so nothing is being bent to fit it. It was 160 for
+   one build and read as a second divider competing with the one in the body;
+   72 is short enough to read as a tick marking where the apparatus starts.
+   Left aligned rather than
+   centred because it is the start of a new region rather than a separator
+   between two — the divider in the body (content.css) sits BETWEEN blocks and
+   is centred for that reason; this one hangs off the left margin the way a
+   footnote rule does in print.
+
+   The REGION is centred in the page column like every other block, because it
+   is part of the article; the rule inside it is what hangs left. Those are two
+   different alignments and conflating them is what would put a 160px stub in
+   the middle of the page. */
+.qntns-fn {
+    max-width: var(--content-measure);
+    margin-top: var(--space-48);
+    margin-inline: auto;
+}
+
+/* THE SELECTOR CARRIES THE PARENT ON PURPOSE, and dropping it breaks this
+   rule outright. The footnote rule is an <hr>, and it sits inside
+   .qntns-content__body — so `.qntns-content__body hr` in content.css, which
+   styles the divider a writer types as `---`, matches it too. That selector
+   scores a class plus an element; a bare `.qntns-fn__rule` scores one class
+   and loses, whatever order the files are imported in. The result was a
+   footnote rule 80% of the reading measure wide with 48px of air under it,
+   because it was quietly being drawn as a body divider.
+
+   Naming the parent takes this to two classes, which wins. It is the smallest
+   fix that does; !important would also work and would say nothing about why. */
+.qntns-content__body .qntns-fn__rule {
+    width: 72px;
+    max-width: 72px;
+    height: 0;
+    margin: 0 0 var(--space-16);
+    border: 0;
+    /* 1px hairline — the exemption CLAUDE.md names. It is deliberately finer
+       than the 2px divider in the body: that one separates two passages of
+       equal weight, this one introduces an apparatus that is subordinate to
+       the text above it. */
+    border-top: 1px solid var(--color-ink);
+}
+
+/* THE NUMBERS ARE THE BROWSER'S. list-style-position: outside hangs them in
+   the margin so the note text forms a straight left edge regardless of whether
+   the number is one digit or two — inside would indent the first line of each
+   note by the width of its own number and rag that edge.
+
+   padding-inline-start is the room the numbers hang in. 24px fits `10.` at
+   this size with the 8px gap the grid wants after it. */
+.qntns-fn__list {
+    margin: 0;
+    padding-inline-start: var(--space-24);
+    /* Same face as the body prose, per the brief — the notes are prose, not
+       metadata, and only the COLOUR is borrowed from the meta row. */
+    font-family: var(--font-reader);
+    font-size: var(--type-step--1);
+    line-height: 1.5;
+    color: var(--color-meta);
+}
+
+/* THE SPACE BETWEEN TWO NOTES IS A TOP MARGIN AND NOTHING ELSE.
+   ---------------------------------------------------------------------------
+   Stating margin-bottom: 0 is not redundant even though nothing here sets one.
+   A note is built as paragraphs, and a <p> carries a browser default margin on
+   BOTH sides; the rule below zeroes those, but an item that ever holds
+   something else — a list, a blockquote pulled into a note — would bring its
+   own bottom margin back and the gap between two notes would silently become
+   the larger of the two rather than the one chosen here. One side owning the
+   space is what makes it a single number.
+
+   It also means the LAST note ends flush with the bottom of the region rather
+   than trailing space under it, which matters because the footnote list is the
+   last thing on the page.
+
+   The gap is one blank line — --space-24, the same gap the body puts between
+   two paragraphs — rather than the 12px it was. These are short paragraphs of
+   prose, not entries in a list, and at 12 two notes ran together into one
+   grey block. The theme's global `li + li { margin-top: var(--space-2) }` is
+   what is being overridden; that value is for a list of items, not a list of
+   passages. */
+.qntns-fn__list > li {
+    margin-bottom: 0;
+}
+
+.qntns-fn__list > li + li {
+    margin-top: var(--space-24);
+}
+
+/* THE PARAGRAPHS INSIDE A NOTE ARE BUILT, NOT AUTHORED, so their margins are
+   set here rather than inherited from the browser's <p> defaults — which are
+   an em top AND bottom and would double up against the item spacing above.
+   Zero, then one gap between siblings, is the same shape .qntns-fn-pop__body
+   uses, and the two are kept the same on purpose: one note should not read
+   differently in the popover and in the list. */
+.qntns-fn__item > p {
+    margin: 0;
+}
+
+.qntns-fn__item > p + p {
+    margin-top: var(--space-8);
+}
+
+/* A note's own links take the meta colour rather than the accent, so the note
+   reads as one grey block; the dotted rule from content.css is what marks them
+   as links, and it is enough at this size. Inherit rather than restate the
+   token so the two can never drift. */
+.qntns-fn__item a {
+    color: inherit;
+}
+
+/* ---- The popover ----------------------------------------------------------
+   Fixed to the viewport, not to the paragraph. A note opened from the last
+   line of a long post has nowhere below it to go, and anchoring the panel to
+   the mark would mean measuring the mark, measuring the viewport and choosing
+   a side — three layout reads and a whole class of edge case, to land the
+   panel somewhere the reader then has to find. Centred over the page is one
+   place, always the same place, and the reader's eye already knows it from
+   the comments drawer.
+
+   `hidden` on the element is the closed state; footnotes.js toggles it. That
+   is deliberately not a class: `hidden` removes the panel from the
+   accessibility tree as well as from the page, so a screen reader cannot land
+   inside a closed footnote. No open/close animation for the same reason the
+   markup is minimal — see the note on the scrim below. */
+.qntns-fn-pop {
+    position: fixed;
+    z-index: 100;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-16);
+}
+
+.qntns-fn-pop[hidden] {
+    display: none;
+}
+
+/* THE SAME SCRIM AS THE COMMENTS DRAWER — ink at 0.45, not black, and not
+   opaque. It is the same statement: the post is still there and still legible,
+   and this is over it rather than instead of it. The value is repeated rather
+   than tokenised because drawer.css owns the original and a shared token would
+   imply the two are required to move together, which nobody has decided. */
+.qntns-fn-pop__scrim {
+    position: absolute;
+    inset: 0;
+    background: var(--color-ink);
+    opacity: 0.45;
+    cursor: pointer;
+}
+
+/* A SQUARE. border-radius: 0 is stated rather than assumed — the theme has no
+   rounded corners anywhere and this is the shape the brief named.
+
+   --color-beige-dark is the footer surface, which is the darker of the two
+   page beiges. Using it here is what lifts the panel off the page behind it
+   without a shadow: the card shadow (--shadow-hard) is the vocabulary of
+   things that sit ON the page, and this sits OVER it.
+
+   THE PANEL IS A FIXED FRAME AND DOES NOT SCROLL. It carries no padding and
+   no overflow: the body inside it does both. That is not tidiness — the close
+   button is absolutely positioned, and an absolutely positioned child of a
+   SCROLLING ancestor scrolls with the content, so putting the overflow here
+   would send the X travelling up out of the box on the first flick of a long
+   note. Same for the fade. The panel holds the two things that stay put; the
+   body is the one thing that moves.
+
+   overflow: hidden clips the body's own corners to the panel's border, so a
+   line of text cannot ride over the hairline while it scrolls.
+
+   80vh leaves the scrim reachable above and below, which is the same argument
+   the drawer's 20% strip makes: the way out has to stay pressable. */
+.qntns-fn-pop__panel {
+    position: relative;
+    display: flex;
+    width: min(100%, 480px);
+    max-height: 80vh;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-ink);   /* hairline exemption */
+    border-radius: 0;
+    background: var(--color-beige-dark);
+    color: var(--color-ink);
+}
+
+/* NO FOCUS RING ON THE BODY WHEN IT IS FOCUSED PROGRAMMATICALLY. footnotes.js
+   focuses it on open so the keyboard lands inside the popover rather than back
+   in the post behind it, and so the arrow keys scroll the note. That focus is
+   a move, not a selection, and a ring around the whole note would say a
+   control is active.
+
+   :focus-visible is left alone deliberately — a reader who TABS to the note
+   still gets a ring, because for them it really is a stop in the tab order and
+   they need to know where they are. `:focus:not(:focus-visible)` is the pair
+   of rules that tells those two cases apart. */
+.qntns-fn-pop__body:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.qntns-fn-pop__body:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: -4px;
+}
+
+/* THE SAME 32px CONTROL AS EVERY OTHER ONE in the theme — navy fill, 1px navy
+   border, beige glyph, no fill change on hover. The send button, the sound
+   toggle, the share button and a pagination step are all this object.
+
+   Positioned rather than laid out: it sits in the corner the padding above
+   reserved for it, so the note text never has to know it is there. */
+.qntns-fn-pop__close {
+    position: absolute;
+    top: var(--space-24);
+    right: var(--space-24);
+    display: flex;
+    width: var(--space-32);
+    height: var(--space-32);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--color-ink);   /* hairline exemption */
+    border-radius: 0;
+    background: var(--color-ink);
+    color: var(--color-page);
+    cursor: pointer;
+}
+
+.qntns-fn-pop__close:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+/* Left aligned and in the body's own reading face, per the brief. The note is
+   a sentence, not a label.
+
+   THIS IS THE SCROLLER. min-height: 0 is what makes it one: a flex item's
+   default min-height is auto, which refuses to shrink below its content, so
+   without this line the panel grows past 80vh and nothing ever overflows.
+
+   THE SCROLLBAR IS HIDDEN, and the fade below is what pays for it. A hidden
+   scrollbar removes the only signal that there is more text, so something else
+   has to say so — that is the whole reason the two are specified together
+   rather than as two preferences. `scrollbar-width: none` is the standard
+   property, Firefox and Chrome honour it; the ::-webkit- rule is for Safari,
+   which does not. Both are needed and neither is redundant.
+
+   The bottom padding is 48px rather than 24 so the last line clears the fade
+   sitting over it. 48 = 24 of ordinary inset + the 24 the gradient occupies. */
+.qntns-fn-pop__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--space-24);
+    padding-bottom: var(--space-48);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    font-family: var(--font-reader);
+    font-size: var(--type-step-0);
+    line-height: 1.5;
+    text-align: left;
+}
+
+.qntns-fn-pop__body::-webkit-scrollbar {
+    display: none;
+}
+
+/* THE TEXT WRAPS AROUND THE X, AND THIS EMPTY FLOAT IS HOW.
+   ---------------------------------------------------------------------------
+   The close button cannot do this itself. It is absolutely positioned, which
+   takes it out of flow entirely, and out-of-flow boxes do not displace text —
+   that is what "out of flow" means. It has to stay that way, too: it is a
+   child of the panel rather than of this scroller precisely so it does not
+   scroll away on a long note.
+
+   So the button's FOOTPRINT is reserved by a float that nothing can see. A
+   float is in flow, so line boxes shorten around it, and only the lines beside
+   it are affected — every line below the float runs the full width of the
+   note. That is the difference from the padding this replaces: a
+   padding-inline-end narrowed the whole note, top to bottom, to keep a gutter
+   clear for a 32px button in the first two lines.
+
+   48 = the 32px control + 16px of clearance, on both axes. The button's right
+   edge already sits flush with this element's content edge — panel inset 24,
+   body padding 24 — so the 16 in the width is the gap on the button's LEFT,
+   where the text is, and the 16 in the height is the gap BELOW it, before the
+   text closes back under. Both are the space asked for and both are on grid.
+
+   ::before rather than a real element so nothing has to be added to the
+   markup, and so the reserved box can never be moved by a note whose first
+   child is a heading or a list. It must be the first thing in the body for the
+   float to sit at the top of the text. */
+.qntns-fn-pop__body::before {
+    content: "";
+    float: right;
+    width: var(--space-48);
+    height: var(--space-48);
+}
+
+/* NOTHING IN HERE MAY ESTABLISH A NEW BLOCK FORMATTING CONTEXT. A block that
+   does — overflow other than visible, display: flow-root, a float of its own —
+   refuses to overlap the float above and is pushed clear of it instead, so the
+   first paragraph would drop below the button rather than wrap beside it. This
+   is the reason the paragraphs are left as plain blocks with only margins set. */
+.qntns-fn-pop__body > p {
+    margin: 0;
+}
+
+.qntns-fn-pop__body > p + p {
+    margin-top: var(--space-12);
+}
+
+/* ---- The bottom fade ------------------------------------------------------
+   A gradient from transparent to the panel's own surface, pinned to the bottom
+   of the FRAME rather than to the end of the text — which is why it lives in
+   the panel and not in the scroller.
+
+   pointer-events: none because it lies over the note: without it, a link in
+   the last visible line would be unpressable for no reason a reader could see.
+   aria-hidden because it is a gradient and has nothing to say.
+
+   footnotes.js sets `hidden` on it once the note is scrolled to its end. A
+   fade that never turns off sits permanently over the last line, which is the
+   one line a reader who scrolled all the way down is trying to read.
+
+   32px tall: two lines of leading at this size, which is enough for the fall
+   to read as a fade rather than as a band. */
+.qntns-fn-pop__fade {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: var(--space-32);
+    background: linear-gradient(to bottom, transparent, var(--color-beige-dark));
+    pointer-events: none;
+}
+
+.qntns-fn-pop__fade[hidden] {
+    display: none;
+}

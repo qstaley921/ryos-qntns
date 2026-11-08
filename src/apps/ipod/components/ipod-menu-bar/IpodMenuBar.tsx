@@ -5,6 +5,7 @@ import { IpodMenuBarFileMenu } from "./IpodMenuBarFileMenu";
 import { IpodMenuBarControlsMenu } from "./IpodMenuBarControlsMenu";
 import { IpodMenuBarViewMenu } from "./IpodMenuBarViewMenu";
 import { IpodMenuBarLibraryMenu } from "./IpodMenuBarLibraryMenu";
+import { IpodMenuBarShareMenu } from "./IpodMenuBarShareMenu";
 
 export function IpodMenuBar(props: IpodMenuBarProps) {
   const vm = useIpodMenuBar(props);
@@ -26,6 +27,7 @@ export function IpodMenuBar(props: IpodMenuBarProps) {
       <IpodMenuBarControlsMenu vm={vm} />
       <IpodMenuBarViewMenu vm={vm} />
       <IpodMenuBarLibraryMenu vm={vm} />
+      <IpodMenuBarShareMenu vm={vm} />
     </AppMenuBarShell>
   );
 }

@@ -12,34 +12,11 @@ import {
 } from "@/types/lyrics";
 import { LyricLine } from "@/types/lyrics";
 import type { FuriganaSegment } from "@/utils/romanization";
-import { getAppPublicOrigin } from "@/utils/runtimeConfig";
-import { getCachedSongMetadata } from "@/utils/songMetadataCache";
-import { ApiRequestError } from "@/api/core";
-import {
-  clearSongCachedData,
-  fetchSongLyrics,
-  listSongs,
-  patchSongMetadata,
-} from "@/api/songs";
 import i18n from "@/lib/i18n";
-import { useChatsStore } from "./useChatsStore";
-import {
-  fetchYouTubeOembed,
-  parseYouTubeTitle,
-} from "@/utils/youtubeMetadata";
-import { parseYouTubeVideoId } from "@/utils/youtubeUrl";
-import { insertTrackKeepingPlayback } from "@/shared/media/libraryInsert";
 import { clampLyricOffset } from "@/shared/songs/lyricOffsetWrite";
 import { publishLyricOffset } from "@/lib/lyricOffsetPublish";
-import { sortTracksLikeServerOrder } from "@/stores/ipodTrackOrder";
 import { shouldUpdatePlaybackTime } from "@/stores/playbackTime";
 import { createIndexedDBPersistStorage } from "@/utils/indexedDBPersistStorage";
-import {
-  hasFetchedTrackMetadataChanges,
-  hasLibraryTrackMetadataChanges,
-  resolveSyncedCoverColor,
-  shouldUpdateTrackLyricsSource,
-} from "@/stores/ipodTrackMetadataSync";
 import { loadDefaultTracks } from "@/stores/ipodPreload";
 import {
   saveAppleMusicLibrary,
@@ -76,28 +53,6 @@ import type {
 
 export const IPOD_BACKLIGHT_TIMEOUT_OPTIONS = ["2s", "10s", "always-on", "off"] as const;
 export type IpodBacklightTimeout = (typeof IPOD_BACKLIGHT_TIMEOUT_OPTIONS)[number];
-
-function parseRyosShareTrackId(input: string): string | null {
-  try {
-    const url = new URL(input);
-    const publicOrigin = new URL(getAppPublicOrigin());
-    const isRyosShareHost =
-      url.hostname === "os.ryo.lu" ||
-      url.host === publicOrigin.host ||
-      (typeof window !== "undefined" && url.host === window.location.host);
-
-    if (
-      isRyosShareHost &&
-      (url.pathname.startsWith("/ipod/") ||
-        url.pathname.startsWith("/karaoke/"))
-    ) {
-      return url.pathname.split("/")[2] || null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
 
 /** User playlist from the Apple Music library. */
 export interface AppleMusicPlaylist {
@@ -365,7 +320,7 @@ interface IpodData {
   backlightTimeout: IpodBacklightTimeout;
   /** Click-wheel tick sound. Missing values stay on. */
   clickerEnabled: boolean;
-  theme: "classic" | "black" | "u2";
+  theme: "mini" | "classic" | "black" | "u2";
   /**
    * On-screen UI variant for the iPod display.
    *
@@ -537,10 +492,10 @@ const initialIpodData: IpodData = {
   showVideo: false,
   displayMode: DisplayMode.Video,
   backlightOn: true,
-  backlightTimeout: "2s",
+  backlightTimeout: "always-on", // QNTNs §55c
   clickerEnabled: true,
-  theme: "classic",
-  uiVariant: "modern",
+  theme: "mini", // green 1st-gen iPod mini (CHECKLIST-36 §56)
+  uiVariant: "classic", // the mini's grey monochrome LCD
   lcdFilterOn: true,
   showLyrics: true,
   lyricsAlignment: LyricsAlignment.Alternating,
@@ -649,7 +604,7 @@ export interface IpodState extends IpodData {
   setClickerEnabled: (enabled: boolean) => void;
   toggleLcdFilter: () => void;
   toggleFullScreen: () => void;
-  setTheme: (theme: "classic" | "black" | "u2") => void;
+  setTheme: (theme: "mini" | "classic" | "black" | "u2") => void;
   /** Switch between the monochrome classic LCD and the iOS-6 modern skin. */
   setUiVariant: (variant: "classic" | "modern") => void;
   addTrack: (track: Track) => void;
@@ -713,8 +668,8 @@ export interface IpodState extends IpodData {
   ) => Promise<Track | null>;
   /** Apply a room lyric offset without writing it again. */
   applySharedLyricOffset: (trackId: string, offsetMs: number) => void;
-  /** Load the default library if no tracks exist */
-  initializeLibrary: () => Promise<void>;
+  /** Replace the library with qntns.com's audio posts (CHECKLIST-36 §23). */
+  initializeLibrary: (forceRefresh?: boolean) => Promise<void>;
 
   /** Sync library with server - checks for updates and ensures all default tracks are present */
   syncLibrary: () => Promise<{
@@ -1063,13 +1018,20 @@ export function sanitizePersistedIpodStateForRehydrate(
   if (!isRecord(persistedState)) return {};
 
   const state = { ...persistedState } as PersistedIpodData;
+  // QNTNs §55c: green mini + classic screen only, backlight always on; old saved choices migrate.
+  state.theme = "mini";
+  state.uiVariant = "classic";
+  state.backlightTimeout = "always-on";
   for (const key of INDEXED_DB_BACKED_APPLE_MUSIC_KEYS) {
     delete state[key];
   }
 
-  if (state.librarySource !== "youtube" && state.librarySource !== "appleMusic") {
+  if (state.librarySource !== "youtube") {
     delete state.librarySource;
   }
+  // QNTNs §23: tracks are re-read from Ghost on open; never rehydrate a stale
+  // (or old ryOS YouTube) list.
+  delete state.tracks;
 
   const currentSongId = sanitizePersistedString(state.currentSongId);
   if (currentSongId === undefined) delete state.currentSongId;
@@ -1144,49 +1106,12 @@ const lyricOffsetSaveTimers: Map<string, ReturnType<typeof setTimeout>> = new Ma
  * Only saves if user is authenticated.
  * Allows updates for songs with empty createdBy (not shared by anyone).
  */
+// QNTNs: no ryOS song server; offsets stay local.
 async function saveLyricOffsetToServer(
-  trackId: string,
-  lyricOffset: number
+  _trackId: string,
+  _lyricOffset: number
 ): Promise<boolean> {
-  // Get auth state from chats store
-  const { username, isAuthenticated } = useChatsStore.getState();
-  
-  // Skip if not authenticated
-  if (!username || !isAuthenticated) {
-    debug(`[iPod Store] Skipping lyric offset save for ${trackId} - user not logged in`);
-    return false;
-  }
-
-  debug(`[iPod Store] Saving lyric offset for ${trackId}: ${lyricOffset}ms...`);
-  
-  try {
-    const data = await patchSongMetadata(
-      trackId,
-      { lyricOffset },
-      { username, isAuthenticated }
-    );
-    if (data.success) {
-      debug(`[iPod Store] ✓ Saved lyric offset for ${trackId}: ${lyricOffset}ms (by ${data.createdBy || username})`);
-      return true;
-    }
-    console.warn(`[iPod Store] Server returned failure for ${trackId}:`, data);
-    return false;
-  } catch (error) {
-    if (error instanceof ApiRequestError) {
-      if (error.status === 401) {
-        console.warn(`[iPod Store] Unauthorized - user must be logged in to save lyric offset`);
-        return false;
-      }
-      if (error.status === 403) {
-        debug(`[iPod Store] Cannot save lyric offset for ${trackId} - song owned by another user`);
-        return false;
-      }
-      console.warn(`[iPod Store] Failed to save lyric offset for ${trackId}: ${error.status} - ${error.message}`);
-      return false;
-    }
-    console.error(`[iPod Store] Error saving lyric offset for ${trackId}:`, error);
-    return false;
-  }
+  return false;
 }
 
 // Store the last offset value for each track (to flush on demand)
@@ -1242,58 +1167,12 @@ export async function flushPendingLyricOffsetSave(trackId: string): Promise<void
  * Called when user selects a different lyrics source from search.
  * This clears cached translations and furigana since they're based on the old lyrics.
  */
+// QNTNs: no ryOS song server; lyrics sources stay local.
 async function saveLyricsSourceToServer(
-  trackId: string,
-  lyricsSource: LyricsSource | null,
-  options?: { cover?: string }
-): Promise<void> {
-  // Get auth state from chats store
-  const { username, isAuthenticated } = useChatsStore.getState();
-  
-  // Skip if not authenticated
-  if (!username || !isAuthenticated) {
-    debug(`[iPod Store] Skipping lyrics source save for ${trackId} - user not logged in`);
-    return;
-  }
-
-  try {
-    const data = await patchSongMetadata(
-      trackId,
-      {
-        ...(lyricsSource && {
-          lyricsSource,
-          // Update song metadata from lyricsSource (KuGou has more accurate metadata)
-          title: lyricsSource.title,
-          artist: lyricsSource.artist,
-          album: lyricsSource.album,
-        }),
-        ...(options?.cover ? { cover: options.cover } : {}),
-        // Clear translations, furigana, soramimi, and cover color since lyrics/cover changed
-        clearTranslations: true,
-        clearFurigana: true,
-        clearSoramimi: true,
-        clearLyrics: true,
-        clearCoverColor: true,
-      },
-      { username, isAuthenticated }
-    );
-    debug(`[iPod Store] Saved lyrics source for ${trackId}, cleared translations/furigana/coverColor (by ${data.createdBy || username})`);
-  } catch (error) {
-    if (error instanceof ApiRequestError) {
-      if (error.status === 401) {
-        console.warn(`[iPod Store] Unauthorized - user must be logged in to save lyrics source`);
-        return;
-      }
-      if (error.status === 403) {
-        debug(`[iPod Store] Cannot save lyrics source for ${trackId} - song owned by another user`);
-        return;
-      }
-      console.warn(`[iPod Store] Failed to save lyrics source for ${trackId}: ${error.status}`);
-      return;
-    }
-    console.error(`[iPod Store] Error saving lyrics source for ${trackId}:`, error);
-  }
-}
+  _trackId: string,
+  _lyricsSource: LyricsSource | null,
+  _options?: { cover?: string }
+): Promise<void> {}
 
 export const useIpodStore = create<IpodState>()(
   persist(
@@ -1661,13 +1540,6 @@ export const useIpodStore = create<IpodState>()(
         const currentTrack = getActiveIpodCurrentTrack(state);
         const trackId = currentTrack?.id;
         
-        // Clear server-side cache for translations, furigana, soramimi, and cover color
-        if (trackId) {
-          clearSongCachedData(trackId, { clearCoverColor: true }).catch((err) => {
-            console.error("[iPod Store] Failed to clear server cache:", err);
-          });
-        }
-        
         // Clear local cover glow color so extraction re-runs after cover refresh,
         // then bust lyrics caches and force a refetch (with returnMetadata).
         set((s) => {
@@ -1861,416 +1733,30 @@ export const useIpodStore = create<IpodState>()(
         const { tracks } = get();
         return JSON.stringify(tracks, null, 2);
       },
-      initializeLibrary: async () => {
+      initializeLibrary: async (forceRefresh = false) => {
+        const { tracks, version } = await loadDefaultTracks(forceRefresh);
         const current = get();
-        // Only initialize if the library is in uninitialized state
-        if (current.libraryState === "uninitialized") {
-          const { tracks, version } = await loadDefaultTracks();
-          set({
-            tracks,
-            currentSongId: tracks[0]?.id ?? null,
-            currentLyrics: null,
-            currentFuriganaMap: null,
-            libraryState: "loaded",
-            lastKnownVersion: version,
-            playbackHistory: [], // Clear playback history when initializing library
-            historyPosition: -1,
-          });
-        }
+        const keep = tracks.some((t) => t.id === current.currentSongId);
+        set({
+          tracks,
+          currentSongId: keep ? current.currentSongId : tracks[0]?.id ?? null,
+          ...(keep ? {} : { currentLyrics: null, currentFuriganaMap: null, playbackHistory: [], historyPosition: -1 }),
+          libraryState: "loaded",
+          lastKnownVersion: version,
+        });
       },
-      addTrackFromVideoId: async (urlOrId: string, autoPlay: boolean = true, options?: { keepPlayback?: boolean }): Promise<Track | null> => {
-        const keepPlayback = options?.keepPlayback === true;
-        const rememberWithoutPlaying = (track: Track) => {
-          set((state) => ({
-            tracks: insertTrackKeepingPlayback(state.tracks, {
-              ...track,
-              createdAt: track.createdAt ?? Date.now(),
-              importOrder: track.importOrder ?? 0,
-              updatedAt: track.updatedAt ?? Date.now(),
-            }),
-            libraryState: "loaded",
-          }));
-        };
-        const videoId =
-          parseRyosShareTrackId(urlOrId) ??
-          parseYouTubeVideoId(urlOrId);
-        if (!videoId) {
-          throw new Error("Invalid YouTube URL or video ID");
-        }
-
-        // Check if track already exists in library - skip fetching metadata if so
-        const existingTrack = get().tracks.find((track) => track.id === videoId);
-        if (existingTrack) {
-          debug(`[iPod Store] Track ${videoId} already exists in library, skipping metadata fetch`);
-          if (keepPlayback) return existingTrack;
-          // Set as current track and optionally autoplay
-          const currentState = get();
-          const isSameTrack = currentState.currentSongId === videoId;
-          set({
-            currentSongId: videoId,
-            currentLyrics: isSameTrack ? currentState.currentLyrics : null,
-            currentFuriganaMap: isSameTrack
-              ? currentState.currentFuriganaMap
-              : null,
-            isPlaying: autoPlay,
-          });
-          return existingTrack;
-        }
-
-        const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-        // Check song metadata cache first before fetching from external APIs
-        try {
-          const cachedMetadata = await getCachedSongMetadata(videoId);
-          if (cachedMetadata) {
-            debug(`[iPod Store] Using cached metadata for ${videoId}`);
-            const newTrack: Track = {
-              id: videoId,
-              url: youtubeUrl,
-              title: cachedMetadata.title,
-              artist: cachedMetadata.artist,
-              album: cachedMetadata.album,
-              cover: cachedMetadata.cover,
-              coverColor: cachedMetadata.coverColor,
-              lyricOffset: cachedMetadata.lyricOffset ?? 500,
-              lyricsSource: cachedMetadata.lyricsSource,
-              createdAt: cachedMetadata.createdAt,
-              importOrder: cachedMetadata.importOrder,
-              updatedAt: cachedMetadata.updatedAt,
-            };
-
-            try {
-              if (keepPlayback) {
-                rememberWithoutPlaying(newTrack);
-              } else {
-                get().addTrack(newTrack);
-                if (!autoPlay) {
-                  set(stopPlayback());
-                }
-              }
-              return newTrack;
-            } catch (error) {
-              console.error("Error adding track from cache to store:", error);
-              return null;
-            }
-          }
-        } catch (error) {
-          console.warn(`[iPod Store] Failed to check song metadata cache for ${videoId}, falling back to API:`, error);
-        }
-
-        // Cache miss - fetch metadata from external APIs
-        let rawTitle = `Video ID: ${videoId}`; // Default title
-        let authorName: string | undefined = undefined; // Store author_name
-
-        try {
-          const oembed = await fetchYouTubeOembed(videoId);
-          if (oembed.ok) {
-            rawTitle = oembed.rawTitle || rawTitle;
-            authorName = oembed.authorName; // Extract author_name
-          } else {
-            throw new Error(
-              `Failed to fetch video info (${oembed.status}). Please check the YouTube URL.`
-            );
-          }
-        } catch (error) {
-          console.error(`Error fetching oEmbed data for ${urlOrId}:`, error);
-          throw error; // Re-throw to be handled by caller
-        }
-
-        const trackInfo = {
-          title: rawTitle,
-          artist: undefined as string | undefined,
-          album: undefined as string | undefined,
-          cover: undefined as string | undefined,
-          coverColor: undefined as string | undefined,
-          lyricsSource: undefined as {
-            hash: string;
-            albumId: string | number;
-            title: string;
-            artist: string;
-            album?: string;
-          } | undefined,
-        };
-
-        // Single call to fetch-lyrics with returnMetadata: searches Kugou, fetches lyrics+cover, returns metadata
-        // This consolidates search + fetch into one call
-        try {
-          const fetchData = await fetchSongLyrics(videoId, {
-            title: rawTitle,
-            returnMetadata: true,
-            retry: { maxAttempts: 1, initialDelayMs: 250 },
-          });
-
-          // Use metadata from server (Kugou source) if available
-          if (fetchData.metadata?.lyricsSource) {
-            const meta = fetchData.metadata;
-            debug(`[iPod Store] Got metadata from Kugou for ${videoId}:`, {
-              title: meta.title,
-              artist: meta.artist,
-              cover: meta.cover,
-            });
-            
-            trackInfo.title = meta.title || trackInfo.title;
-            trackInfo.artist = meta.artist;
-            trackInfo.album = meta.album;
-            trackInfo.cover = meta.cover;
-            trackInfo.coverColor = meta.coverColor;
-            trackInfo.lyricsSource = meta.lyricsSource;
-          }
-        } catch (error) {
-          console.warn(`[iPod Store] Failed to fetch lyrics for ${videoId}:`, error);
-        }
-
-        // If no Kugou match found (no lyricsSource), fall back to AI title parsing
-        if (!trackInfo.lyricsSource) {
-          debug(`[iPod Store] No Kugou match for ${videoId}, falling back to AI parse`);
-          const parsed = await parseYouTubeTitle(rawTitle, authorName);
-          trackInfo.title = parsed.title;
-          trackInfo.artist = parsed.artist;
-          trackInfo.album = parsed.album;
-        }
-
-        const newTrack: Track = {
-          id: videoId,
-          url: youtubeUrl,
-          title: trackInfo.title,
-          artist: trackInfo.artist,
-          album: trackInfo.album,
-          cover: trackInfo.cover,
-          coverColor: trackInfo.coverColor,
-          lyricOffset: 500, // Default 500ms offset for new tracks
-          lyricsSource: trackInfo.lyricsSource,
-        };
-
-        try {
-          if (keepPlayback) {
-            rememberWithoutPlaying(newTrack);
-          } else {
-            get().addTrack(newTrack);
-            if (!autoPlay) {
-              set(stopPlayback());
-            }
-          }
-          return newTrack;
-        } catch (error) {
-          console.error("Error adding track to store:", error);
-          return null;
-        }
-      },
+      addTrackFromVideoId: async () => null,
 
       syncLibrary: async () => {
-        try {
-          // Force refresh to get latest tracks from server (bypass cache)
-          const { tracks: serverTracks, version: serverVersion } =
-            await loadDefaultTracks(true);
-          const current = get();
-          const wasEmpty = current.tracks.length === 0;
-
-          // Create a map of server tracks by ID for efficient lookup
-          const serverTrackMap = new Map(
-            serverTracks.map((track) => [track.id, track])
-          );
-
-          let newTracksAdded = 0;
-          let tracksUpdated = 0;
-
-          // Process existing tracks: merge server timestamps + metadata when on server
-          const updatedTracks = current.tracks.map((currentTrack) => {
-            const serverTrack = serverTrackMap.get(currentTrack.id);
-            if (serverTrack) {
-              const hasMetadataChanges = hasLibraryTrackMetadataChanges(
-                currentTrack,
-                serverTrack
-              );
-              const shouldUpdateLyricsSource = shouldUpdateTrackLyricsSource(
-                currentTrack,
-                serverTrack
-              );
-
-              const mergedCreatedAt = Math.max(
-                currentTrack.createdAt ?? 0,
-                serverTrack.createdAt ?? 0
-              );
-              const mergedUpdatedAt = Math.max(
-                currentTrack.updatedAt ?? 0,
-                serverTrack.updatedAt ?? 0
-              );
-              const mergedBase = {
-                ...currentTrack,
-                createdAt: mergedCreatedAt || undefined,
-                updatedAt: mergedUpdatedAt || undefined,
-                importOrder: serverTrack.importOrder ?? currentTrack.importOrder,
-              };
-
-              if (hasMetadataChanges || shouldUpdateLyricsSource) {
-                tracksUpdated++;
-                return {
-                  ...mergedBase,
-                  title: serverTrack.title,
-                  artist: serverTrack.artist,
-                  album: serverTrack.album,
-                  cover: serverTrack.cover,
-                  coverColor: resolveSyncedCoverColor(
-                    currentTrack,
-                    serverTrack
-                  ),
-                  url: serverTrack.url,
-                  lyricOffset: serverTrack.lyricOffset,
-                  ...(shouldUpdateLyricsSource && {
-                    lyricsSource: serverTrack.lyricsSource,
-                  }),
-                };
-              }
-              return mergedBase;
-            }
-            return currentTrack;
-          });
-
-          // Find tracks that are on the server but not in the user's library
-          const existingIds = new Set(current.tracks.map((track) => track.id));
-          const tracksToAdd = serverTracks.filter(
-            (track) => !existingIds.has(track.id)
-          );
-          newTracksAdded = tracksToAdd.length;
-
-          // Union then sort like GET /api/songs (newest first, then importOrder)
-          let finalTracks = sortTracksLikeServerOrder([
-            ...tracksToAdd,
-            ...updatedTracks,
-          ]);
-
-          // Fetch metadata for tracks not in the default library
-          // These are user-added tracks that might have updated metadata in Redis
-          const tracksNotInDefaultLibrary = finalTracks.filter(
-            (track) => !serverTrackMap.has(track.id)
-          );
-
-          if (tracksNotInDefaultLibrary.length > 0) {
-            debug(`[iPod Store] Fetching metadata for ${tracksNotInDefaultLibrary.length} tracks not in default library`);
-            
-            try {
-              // Batch fetch metadata for tracks not in default library
-              type FetchedSongMetadata = {
-                id: string;
-                title?: string;
-                artist?: string;
-                album?: string;
-                cover?: string;
-                coverColor?: string;
-                lyricOffset?: number;
-                lyricsSource?: LyricsSource;
-                createdAt?: number;
-                importOrder?: number;
-                updatedAt?: number;
-              };
-              const data = await listSongs<FetchedSongMetadata>({
-                include: "metadata",
-                ids: tracksNotInDefaultLibrary.map((t) => t.id),
-              });
-              const fetchedSongs = data.songs || [];
-              const fetchedMap = new Map<string, FetchedSongMetadata>(
-                fetchedSongs.map((s: FetchedSongMetadata) => [s.id, s])
-              );
-
-              // Update tracks with fetched metadata
-              finalTracks = finalTracks.map((track) => {
-                const fetched = fetchedMap.get(track.id);
-                if (fetched) {
-                  const shouldUpdateLyricsSource = shouldUpdateTrackLyricsSource(
-                    track,
-                    fetched
-                  );
-                  const hasChanges = hasFetchedTrackMetadataChanges(track, fetched);
-
-                  if (hasChanges) {
-                    tracksUpdated++;
-                    return {
-                      ...track,
-                      // Update with server metadata, preserving existing values if server doesn't have them
-                      title: fetched.title || track.title,
-                      artist: fetched.artist ?? track.artist,
-                      album: fetched.album ?? track.album,
-                      cover: fetched.cover ?? track.cover,
-                      coverColor: resolveSyncedCoverColor(track, fetched),
-                      lyricOffset: fetched.lyricOffset ?? track.lyricOffset,
-                      createdAt: Math.max(
-                        track.createdAt ?? 0,
-                        fetched.createdAt ?? 0
-                      ) || undefined,
-                      importOrder: fetched.importOrder ?? track.importOrder,
-                      updatedAt: Math.max(
-                        track.updatedAt ?? 0,
-                        fetched.updatedAt ?? 0
-                      ) || undefined,
-                      // Update lyricsSource from server if it's new or different
-                      ...(shouldUpdateLyricsSource && {
-                        lyricsSource: fetched.lyricsSource,
-                      }),
-                    };
-                  }
-                }
-                const mergedCreated = Math.max(
-                  track.createdAt ?? 0,
-                  fetched?.createdAt ?? 0
-                );
-                const mergedUpdated = Math.max(
-                  track.updatedAt ?? 0,
-                  fetched?.updatedAt ?? 0
-                );
-                return {
-                  ...track,
-                  createdAt: mergedCreated || undefined,
-                  importOrder: fetched?.importOrder ?? track.importOrder,
-                  updatedAt: mergedUpdated || undefined,
-                };
-              });
-            } catch (error) {
-              console.warn(`[iPod Store] Failed to fetch metadata for user tracks:`, error);
-            }
-          }
-
-          finalTracks = sortTracksLikeServerOrder(finalTracks);
-
-          const orderChanged =
-            finalTracks.length !== current.tracks.length ||
-            finalTracks.some((t, i) => t.id !== current.tracks[i]?.id);
-
-          // Update store if there were any changes
-          if (newTracksAdded > 0 || tracksUpdated > 0 || orderChanged) {
-            const nextCurrentSongId =
-              wasEmpty && finalTracks.length > 0
-                ? finalTracks[0]?.id ?? null
-                : current.currentSongId;
-            const isSameTrack = nextCurrentSongId === current.currentSongId;
-            set({
-              tracks: finalTracks,
-              lastKnownVersion: serverVersion,
-              libraryState: "loaded",
-              // If library was empty and we added tracks, set first song as current
-              currentSongId: nextCurrentSongId,
-              currentLyrics: isSameTrack ? current.currentLyrics : null,
-              currentFuriganaMap: isSameTrack ? current.currentFuriganaMap : null,
-              // Reset playing state if we're setting a new current track
-              isPlaying:
-                wasEmpty && finalTracks.length > 0 ? false : current.isPlaying,
-            });
-          } else {
-            // Even if no changes, update the version and state
-            set({
-              lastKnownVersion: serverVersion,
-              libraryState: "loaded",
-            });
-          }
-
-          return {
-            newTracksAdded,
-            tracksUpdated,
-            totalTracks: finalTracks.length,
-          };
-        } catch (error) {
-          console.error("Error syncing library:", error);
-          throw error;
-        }
+        const before = get().tracks;
+        await get().initializeLibrary(true);
+        const after = get().tracks;
+        const known = new Set(before.map((t) => t.id));
+        return {
+          newTracksAdded: after.filter((t) => !known.has(t.id)).length,
+          tracksUpdated: 0,
+          totalTracks: after.length,
+        };
       },
       setTrackLyricsSource: (trackId, lyricsSource, options) => {
         set((state) => {
@@ -2383,7 +1869,8 @@ export const useIpodStore = create<IpodState>()(
       // Apple Music actions
       // -----------------------------------------------------------------
       setLibrarySource: (source) => {
-        if (get().librarySource === source) return;
+        // QNTNs §23: no Apple Music; the Ghost library is the only one.
+        if (source === "appleMusic" || get().librarySource === source) return;
         // Pause and reset transient playback state so the YouTube /
         // Apple Music players don't fight for the audio element when
         // we hot-swap libraries.
@@ -2571,7 +2058,7 @@ export const useIpodStore = create<IpodState>()(
             ? state.appleMusicTracks
             : [track, ...state.appleMusicTracks];
           return {
-            librarySource: "appleMusic",
+            // QNTNs §23: never switch to Apple Music (that would load MusicKit).
             appleMusicTracks: nextTracks,
             appleMusicPlaybackQueue: null,
             appleMusicPlaybackHistory: [],
@@ -2693,7 +2180,6 @@ export const useIpodStore = create<IpodState>()(
         ...sanitizePersistedIpodStateForRehydrate(persistedState),
       }),
       partialize: (state) => ({
-        tracks: state.tracks,
         currentSongId: state.currentSongId,
         loopAll: state.loopAll,
         loopCurrent: state.loopCurrent,
@@ -2726,15 +2212,12 @@ export const useIpodStore = create<IpodState>()(
         ipodMenuMode: state.ipodMenuMode,
       }),
       onRehydrateStorage: () => {
-        return (state, error) => {
+        return (_state, error) => {
           if (error) {
             console.error("Error rehydrating iPod store:", error);
-          } else if (state && state.libraryState === "uninitialized") {
-            // Only auto-initialize if library state is uninitialized
-            Promise.resolve(state.initializeLibrary()).catch((err) =>
-              console.error("Initialization failed on rehydrate", err)
-            );
           }
+          // QNTNs §23: no fetch here; the iPod reads Ghost when it opens
+          // (useLibraryUpdateChecker), never at desktop boot.
         };
       },
     }

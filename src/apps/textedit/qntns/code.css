@@ -1,0 +1,386 @@
+/*
+ * THE CODE BLOCK.
+ * ===========================================================================
+ * Ghost's code card emits <pre><code class="language-x">. assets/js/qntns/code.js
+ * wraps that pair in .qntns-code and fills in the gutter, the copy button and
+ * the syntax spans. EVERY SELECTOR BELOW ASSUMES THE WRAPPER EXISTS — a page
+ * where the script did not run keeps the bare <pre> rule in type.css, which is
+ * plain but readable. That is the degrade-to-HTML path and it is deliberate:
+ * nothing here styles a naked <pre>, so there is no half-built state where the
+ * gutter is drawn but empty.
+ *
+ * THE 4px GRID, SPENT.
+ * ---------------------------------------------------------------------------
+ *   font-size      14px  (0.875rem)
+ *   line-height    24px  — a multiple of 4, and the row height the gutter
+ *                          numbers are aligned to. 24/14 is 1.714, which is
+ *                          loose for a monospace face and deliberately so:
+ *                          the numbered gutter reads as rows, not as prose.
+ *   gutter width   56px  — three digits of IBM Plex Mono at 14px measure
+ *                          3 x 8.4px = 25.2px (the face is 600/1000 em wide).
+ *                          56 - 25.2 = 30.8px of slack, centred, so ~15px a
+ *                          side. Four digits would measure 33.6px and still
+ *                          fit with 11px a side, so a 1000-line block does not
+ *                          break the column — it just tightens.
+ *   code padding   16px vertical, 24px horizontal
+ *   button         40px square, inset 8px from the top and right
+ *   hard shadow    8px 8px, no blur
+ *
+ * THE 1px BORDER IS THE NAMED EXEMPTION from the base-4 rule — it is a
+ * hairline rule, not a measurement. Nothing else here is off-grid.
+ *
+ * EVERY SPACING TOKEN HERE IS FROM qntns/tokens.css, WHERE THE NUMBER IN THE
+ * NAME IS THE PIXEL VALUE — --space-16 is 16px. The base tokens.css defines a
+ * SECOND, UNRELATED SCALE under names that look the same: there --space-4 is
+ * 1rem. qntns/tokens.css is imported after it in screen.css and wins, so a
+ * rule written against the base scale silently gets a quarter of the space it
+ * asked for. This block was first written with --space-4 for its padding and
+ * came out 32px tall instead of 56px, which is how the copy button ended up
+ * hanging out of the bottom of a one-line block. Do not mix the two scales.
+ *
+ * WHY THE SHADOW IS A HARD OFFSET AND NOT --shadow-card. Every radius token in
+ * this theme is 0. A soft blurred shadow under a sharp-cornered box reads as a
+ * mistake; a solid offset block reads as intent, and it is the same navy as
+ * the border so the whole component is two colours and one accent.
+ */
+
+.qntns-code {
+    /* SYNTAX COLOURS ARE SCOPED HERE, NOT IN tokens.css. They are the only
+       place in the theme that needs a hue other than the navy/warm pair, and
+       putting them in the global sheet would invite their reuse somewhere the
+       palette has not been checked. Each is dark enough to clear 4.5:1 against
+       --color-card; that is a calculation to confirm, not an eyeball. */
+    --code-keyword: #7a2f4e;
+    --code-string: #3d5c2a;
+    --code-comment: #7d7466;
+    --code-number: #8a4a1f;
+    --code-name: #1f4e6b;
+    --code-punct: var(--color-text-muted);
+
+    --code-line-height: 1.5rem;
+    --code-gutter: 3.5rem;
+
+    position: relative;
+    margin-block: var(--space-24);
+    border: var(--border-width) solid var(--color-accent);
+    background: var(--color-card);
+    box-shadow: 0.5rem 0.5rem 0 0 var(--color-accent);
+
+    /* IT WAS A TWO-COLUMN GRID AND IT CANNOT BE ONE ANY MORE.
+       The gutter used to be a fixed column beside a code column that could not
+       wrap, which is what kept a row of numbers in step with a row of code. The
+       copy button now floats and the code wraps around it, so one source line
+       can be several visual rows tall — and a parallel column of fixed-height
+       rows would drift out of step with the code from the first wrapped line
+       onward. The numbers moved inside their own lines; see
+       `.qntns-code__line::before`. What is left here is an ordinary block, so
+       that a float declared inside it can reach the lines below it.
+
+       AND NOTHING BETWEEN THE FLOAT AND THE CODE MAY ESTABLISH A BLOCK
+       FORMATTING CONTEXT. That is not style advice, it is the mechanism: a
+       float only intrudes into line boxes inside its own formatting context, so
+       an `overflow` or a `display: flow-root` anywhere between the button and
+       the <pre> switches this feature off completely and silently. The old
+       `.qntns-code__scroll` wrapper did exactly that with `overflow-x: auto`,
+       which is why it is gone rather than merely emptied. */
+    display: block;
+
+    /* THE BUTTON'S OWN HEIGHT IS THE COMPONENT'S FLOOR, stated rather than
+       assumed. The button needs 8px inset + 40px + 8px inset = 56px of content
+       box, and the two 1px borders are added on top because everything here is
+       border-box (screen.css). A one-line block's content measures 16 + 24 + 16
+       = 56px too, so on paper the two are exactly equal — but "exactly equal"
+       is not a thing to leave to chance in the one case where being 1px short
+       pushes the button through the bottom edge. A block shorter than its own
+       button grows instead of breaking. */
+    min-height: calc(3.5rem + 2 * var(--border-width));
+}
+
+/* THE GUTTER IS PAINT, NOT LAYOUT.
+   Nothing sits in it any more — the numbers are drawn by each line's own
+   ::before — so all this has to do is put the band and its rule behind them and
+   run the full height of the block however tall the code turns out to be. */
+.qntns-code::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: var(--code-gutter);
+    border-inline-end: var(--border-width) solid var(--color-border);
+    background: var(--color-background);
+}
+
+.qntns-code__pre {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: var(--code-line-height);
+    color: var(--color-text);
+
+    /* THE BLOCK WRAPS NOW, AND THAT IS A REAL CHANGE IN BEHAVIOUR.
+       It was `white-space: pre` with a sideways scroll, on the reasoning that
+       Ghost preserves the author's own wrapping and the block should not
+       second-guess it. That is still true of where the author put their
+       newlines — `pre-wrap` keeps every one of them — but a line longer than
+       the column now folds instead of scrolling out of view.
+
+       IT HAS TO. A floated button has nothing to push out of its way unless the
+       text can fold, so "the copy button no longer sits on top of the first
+       line" and "long lines scroll" cannot both be true. The reader gets to see
+       the whole line without dragging, which is the better half of the trade.
+
+       `anywhere` rather than `break-word` because the lines that actually
+       overflow here are URLs and shell commands with no space in them for a
+       hundred characters, and `break-word` leaves those overflowing. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding-block: var(--space-16);
+
+    /* AND THIS ONE LINE IS WHAT MAKES THE FLOAT WORK AT ALL.
+       The baseline `pre` rule in type.css carries `overflow-x: auto`, for the
+       naked-<pre> degrade path where a long line has to scroll. It inherits
+       straight through to this element, and `overflow-x` other than `visible`
+       establishes a block formatting context — so the <pre> refused to overlap
+       the copy button and shrank to fit beside it instead. Every line then came
+       out at the narrow width, including the ones far below the button, which
+       looks exactly like a float that has leaked downward and is not one.
+       Measured: 410.7px of a 478px column, on every line.
+
+       The wrapper's comment says nothing between the button and the <pre> may
+       make a BFC. This is the <pre> itself making one, from a rule written in
+       another file for another situation. Resetting it here is the same job as
+       the `margin: 0` and `border: 0` above: undo the baseline, because the
+       wrapped block draws its own everything. */
+    overflow: visible;
+}
+
+/* <code> IS AN INLINE ELEMENT AND THE LINES INSIDE IT ARE BLOCKS.
+
+   That combination is the bug this rule exists to prevent, and it is invisible
+   in the stylesheet: putting block-level children inside an inline box makes
+   the browser break the inline into ANONYMOUS block boxes around them, and an
+   anonymous box beside a float shrinks to fit rather than letting the float
+   shorten its line boxes. The result is the copy button reading as a column —
+   every row stopping at the same x, including the rows well below the button's
+   bottom edge, which is the opposite of what a float does.
+
+   One declaration, and it has to stay. The lines became block elements when the
+   gutter moved inside them; before that the <code> held one continuous run of
+   inline text and being inline was correct. */
+.qntns-code__pre code {
+    display: block;
+
+    /* type.css sets `code, pre` to the system monospace stack for the degrade
+       path, and the `code` half of that beats the inherited IBM Plex Mono from
+       .qntns-code__pre — same specificity, and it is not inherited, it is
+       declared. Without this the block renders in SFMono while the stylesheet
+       above says otherwise. */
+    font-family: inherit;
+}
+
+/* ONE BLOCK PER SOURCE LINE, carrying its own number.
+
+   The padding on the start edge is the gutter plus the code's own inset, so the
+   text lands exactly where it did when the gutter was a real column. The
+   min-height is what stops a blank source line collapsing to nothing, which is
+   the one thing a fixed-height row got for free. */
+.qntns-code__line {
+    position: relative;
+    display: block;
+    min-height: var(--code-line-height);
+    padding-inline: calc(var(--code-gutter) + var(--space-24)) var(--space-24);
+}
+
+/* THE NUMBER IS GENERATED CONTENT, AND THAT IS DOING TWO JOBS RATHER THAN ONE.
+   It draws the number, and it keeps the number out of the selection, out of the
+   clipboard and out of the accessibility tree — all three of which the old
+   gutter needed `user-select: none` and `aria-hidden` to arrange. A drag-select
+   still picks up the code alone.
+
+   Positioned rather than in flow so it cannot shorten a line box: it sits in
+   the band at the TOP of its line, so a line that wraps to three rows still
+   shows one number, against its first row, which is the whole reason the
+   numbers moved in here. */
+.qntns-code__line::before {
+    content: attr(data-line);
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    width: var(--code-gutter);
+    text-align: center;
+    color: var(--color-text-muted);
+
+    /* Tabular figures so 001 and 111 occupy the same width. IBM Plex Mono is
+       already fixed-advance, so this is belt and braces for the fallback stack,
+       where it is not free. */
+    font-variant-numeric: tabular-nums;
+}
+
+/* FLOATED, NOT ABSOLUTE, AND THAT IS THE WHOLE FEATURE.
+   Absolute positioning takes the button out of flow, which is exactly why the
+   code used to run underneath it: nothing in flow knew it was there. A float
+   stays in flow enough to shorten the line boxes beside it, so the first line
+   or two fold around the button instead of disappearing behind it.
+
+   The margin is what holds it 8px off the top and end edges — a float has no
+   `inset`, so the offsets that used to be `inset-block-start` and
+   `inset-inline-end` are margins now, and the bottom margin is what stops the
+   line under the button hugging it.
+
+   IT MUST STAY FIRST IN THE MARKUP. A float only reaches content that follows
+   it in source order. code.js appends the button before the <pre> for this
+   reason and the two facts have to move together. */
+.qntns-code__copy {
+    float: inline-end;
+
+    /* WITHOUT THESE TWO LINES THE BUTTON CANNOT BE CLICKED AT ALL, and that is
+       not a theory: measured live on /podcast/ 2026-09-01, elementFromPoint at
+       the centre of the button returned a .qntns-code__line, and a click
+       dispatched there never reached the button. Only the top 8px sliver above
+       the first line was hittable.
+
+       A float paints BELOW in-flow content (CSS 2.1 Appendix E, layer 4 against
+       layer 7), and hit-testing follows paint order. The line spans are
+       `display: block` and span the full width of the <pre> — the float only
+       shortens their LINE BOXES, never their boxes — so each one lies flat over
+       the button and eats the press. Both were then positioned with `z-index:
+       auto`, so the later one in source order won.
+
+       `position: relative` alone is not enough for the same reason: it makes
+       the button a positioned box in layer 8, but .qntns-code__line is already
+       relative (it is the containing block for the ::before line number), so
+       the tie goes to the span. The z-index is what breaks the tie. It floats
+       exactly as before — a relatively positioned float still floats, so the
+       code still folds around it. */
+    position: relative;
+    z-index: 1;
+    margin: var(--space-8) var(--space-8) var(--space-8) var(--space-16);
+    min-width: 2.5rem;
+    height: 2.5rem;
+
+    /* GRID, NOT FLEX, BECAUSE A COLUMN CAN BE ANIMATED AND A CHILD CANNOT.
+       The label is always in the DOM now; what changes on `.is-copied` is the
+       width of the track it sits in, 0fr to 1fr, and the gap in front of it.
+       Both are transitionable, so the button GROWS into the word instead of
+       snapping to it — which is the whole of the fault. Nothing here can be
+       done by transitioning the label itself: it has no width of its own to go
+       from, and it did not exist a frame earlier. */
+    display: inline-grid;
+    grid-template-columns: auto 0fr;
+    gap: 0;
+    align-items: center;
+
+    /* justify-CONTENT, not justify-ITEMS. The resting button is 40px wide by
+       `min-width` and its one 20px icon plus 16px of padding is 36, so 4px of
+       free space has to be shared out and only justify-content does that.
+       justify-items must stay at its `stretch` default: it is what makes the
+       label exactly as wide as its track, and a centred item would size itself
+       to the word instead and hang out of a zero-width column unclipped —
+       measured, the label stayed 59px wide with the track at 0. */
+    justify-content: center;
+    padding-inline: var(--space-8);
+    border: 0;
+
+    /* A drag-select across the block must not pick up the word "Copied" — the
+       code is what the reader is selecting. The numbers get this for free by
+       being generated content; the label is a real element and has to say so. */
+    user-select: none;
+    -webkit-user-select: none;
+    border-radius: var(--radius-control);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    cursor: pointer;
+    transition:
+        opacity var(--duration-fast) var(--ease-standard),
+        grid-template-columns var(--duration-rule) var(--ease-standard),
+        gap var(--duration-rule) var(--ease-standard);
+}
+
+/* THE CONFIRMED SIZE. One class holds it, so the grow and the shrink are the
+   same transition run in two directions and cannot drift apart. code.js adds
+   it beside the tick and removes it on the same 1500ms timer that restores the
+   icon. */
+.qntns-code__copy.is-copied {
+    grid-template-columns: auto 1fr;
+    gap: var(--space-8);
+}
+
+/* THE LABEL IS ALWAYS PRESENT AND USUALLY CLIPPED TO NOTHING. It is the grid
+   item of the second column, so its width is the track's width — 0 at rest.
+   `min-width: 0` is required or the grid item refuses to shrink below the
+   word's intrinsic width and the button is permanently wide; `overflow:
+   hidden` is what turns that zero-width track into a clip rather than an
+   overflow. The inner span carries the text at its natural width and does not
+   reflow as the track opens, so the word is revealed rather than rewrapped.
+
+   The 8px gap and the 8px inline padding are the same two numbers everything
+   else in this theme spaces by. */
+.qntns-code__copy-label {
+    min-width: 0;
+    overflow: hidden;
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1;
+}
+
+.qntns-code__copy-label > span {
+    display: block;
+    white-space: nowrap;
+}
+
+.qntns-code__copy:hover { opacity: 0.85; }
+
+.qntns-code__copy:focus-visible {
+    outline: var(--border-width-strong) solid var(--color-focus);
+    outline-offset: var(--space-4);
+}
+
+/* ---------------------------------------------------------------------------
+   Syntax.
+
+   RESERVED WORDS ARE ITALIC AT 400, AND THAT WEIGHT IS LOAD-BEARING.
+   The theme did not ship a regular italic cut until 2026-08-31 — only Medium
+   and Bold had one — so this rule originally used 500 to avoid a synthesised
+   slant. IBMPlexMono-Italic.ttf and its @font-face in type.css are what make
+   400 correct now. IF THAT FILE IS EVER REMOVED, PUT THIS BACK TO 500 rather
+   than leaving it at 400: on a fixed-advance face a sheared upright is the one
+   place a fake italic is unmistakable, and keywords are the most repeated
+   glyphs in the block.
+   --------------------------------------------------------------------------- */
+
+.qntns-code__token--keyword {
+    font-weight: 400;
+    font-style: italic;
+    color: var(--code-keyword);
+}
+
+.qntns-code__token--string { color: var(--code-string); }
+.qntns-code__token--number { color: var(--code-number); }
+.qntns-code__token--name { color: var(--code-name); }
+.qntns-code__token--punct { color: var(--code-punct); }
+
+.qntns-code__token--comment {
+    font-weight: 400;
+    font-style: italic;
+    color: var(--code-comment);
+}
+
+@media (max-width: 34rem) {
+    /* The gutter is the first thing to go on a narrow screen: line numbers are
+       an aid to talking about code, and a phone reader is not doing that. The
+       code keeps its full column instead.
+
+       Three rules where there used to be three, doing the same job through the
+       new structure: the band stops being painted, the numbers stop being
+       drawn, and each line reclaims the space both were using. */
+    .qntns-code::before { display: none; }
+    .qntns-code__line::before { content: none; }
+    .qntns-code__line { padding-inline: var(--space-16); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qntns-code__copy { transition: none; }
+}

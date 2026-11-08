@@ -100,6 +100,7 @@ export interface InternetExplorerInitialData {
 }
 
 export interface IpodInitialData {
+  ghostTrackId?: string; // QNTNs §53e: play this post's episode
   videoId?: string;
   listenSessionId?: string;
 }

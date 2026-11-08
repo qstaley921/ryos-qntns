@@ -71,7 +71,7 @@ export const IPOD_MODERN_MEDIA_ROW_HEIGHT_PX =
 export const IPOD_NOW_PLAYING_SONG_MENU_KEY = "__nowPlayingSongMenu__";
 
 // iPod themes
-export const IPOD_THEMES = ["classic", "black", "u2"] as const;
+export const IPOD_THEMES = ["mini", "classic", "black", "u2"] as const;
 export type IpodTheme = (typeof IPOD_THEMES)[number];
 
 // On-screen UI variants for the iPod LCD.

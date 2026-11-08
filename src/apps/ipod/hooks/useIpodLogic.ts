@@ -8,6 +8,7 @@ import { hasNativeHaptics, playHaptic } from "@/utils/nativeShellBridge";
 import { useOffline } from "@/hooks/useOffline";
 import { useTranslatedHelpItems } from "@/hooks/useTranslatedHelpItems";
 import { useLyrics } from "@/hooks/useLyrics";
+import { chapterSkip, trackChapters, trackPodcasts } from "@/stores/ipodGhostTracks";
 import { useFurigana } from "@/hooks/useFurigana";
 import { useActivityState } from "@/hooks/useActivityState";
 import { useLyricsErrorToast } from "@/hooks/useLyricsErrorToast";
@@ -59,13 +60,9 @@ import { useListenSessionStore } from "@/stores/useListenSessionStore";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { LyricsAlignment, LyricsFont, DisplayMode, getLyricsFontClassName } from "@/types/lyrics";
 import { IPOD_ANALYTICS } from "@/utils/analytics";
-import { saveSongMetadataFromTrack } from "@/utils/songMetadataCache";
 import { formatSecondsAsMinutesSeconds } from "@/utils/timeFormat";
 import { resolveMediaCoverUrl } from "@/utils/coverArt";
-import {
-  generateIpodSongShareUrl,
-  shouldCacheSongMetadataForShare,
-} from "@/utils/sharedUrl";
+import { generateIpodSongShareUrl } from "@/utils/sharedUrl";
 import { onAppUpdate } from "@/utils/appEventBus";
 import {
   IPOD_NOW_PLAYING_SONG_MENU_KEY as NOW_PLAYING_SONG_MENU_KEY,
@@ -802,10 +799,12 @@ export function useIpodLogic({
   }, [setBacklightTimeout, toggleBacklight, showStatus, registerActivity, menuLocale]);
 
   const memoizedChangeTheme = useCallback(
-    (newTheme: "classic" | "black" | "u2") => {
+    (newTheme: "mini" | "classic" | "black" | "u2") => {
       setTheme(newTheme);
       showStatus(
-        newTheme === "classic"
+        newTheme === "mini"
+          ? t("apps.ipod.status.themeMini", "Theme: Mini")
+          : newTheme === "classic"
           ? t("apps.ipod.status.themeClassic")
           : newTheme === "black"
           ? t("apps.ipod.status.themeBlack")
@@ -849,11 +848,13 @@ export function useIpodLogic({
   const memoizedHandleThemeChange = useCallback(() => {
     const currentTheme = useIpodStore.getState().theme;
     const nextTheme =
-      currentTheme === "classic"
+      currentTheme === "mini"
+        ? "classic"
+        : currentTheme === "classic"
         ? "black"
         : currentTheme === "black"
         ? "u2"
-        : "classic";
+        : "mini";
     memoizedChangeTheme(nextTheme);
   }, [memoizedChangeTheme]);
 
@@ -1607,6 +1608,43 @@ export function useIpodLogic({
       coverUrl: resolveTrackCoverUrl(track),
     }));
   }, [sortedBrowsableTracks, playTrackFromMenu]);
+
+  // Podcasts (CHECKLIST-36 §55): one per public tag, its episodes newest first.
+  const podcastEpisodesByName = useMemo(() => {
+    const byName: Record<string, Track[]> = {};
+    for (const track of tracks) {
+      for (const name of trackPodcasts.get(track.id) ?? []) (byName[name] ??= []).push(track);
+    }
+    for (const list of Object.values(byName)) list.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return byName;
+  }, [tracks]);
+  const podcastMenuItemsByName = useMemo(() => {
+    const out: Record<string, MenuItem[]> = {};
+    for (const [name, list] of Object.entries(podcastEpisodesByName)) {
+      const queueIds = list.map((track) => track.id);
+      out[name] = list.map((track, index) => ({
+        label: track.title,
+        action: () => playTrackFromMenu(track, index, queueIds),
+        showChevron: false,
+        coverUrl: resolveTrackCoverUrl(track),
+      }));
+    }
+    return out;
+  }, [podcastEpisodesByName, playTrackFromMenu]);
+  const podcastsMenuItems = useMemo((): MenuItem[] => {
+    const names = Object.keys(podcastMenuItemsByName).sort((a, b) => a.localeCompare(b));
+    if (!names.length) return [{ label: t("apps.ipod.menuItems.noPodcasts", "No Podcasts"), action: () => {}, showChevron: false }];
+    return names.map((name) => ({
+      label: name,
+      action: () => {
+        registerActivity();
+        pushMenuChild({ kind: "podcast", id: name, title: name, items: podcastMenuItemsByName[name], selectedIndex: 0, modernMediaList: true });
+      },
+      showChevron: true,
+    }));
+  }, [podcastMenuItemsByName, registerActivity, pushMenuChild, t]);
+  const podcastsMenuItemsRef = useRef(podcastsMenuItems);
+  podcastsMenuItemsRef.current = podcastsMenuItems;
 
   const appleMusicRecentlyAddedMenuItems = useMemo(() => {
     const loadingLabel = t("apps.ipod.menuItems.loading", "Loading…");
@@ -2375,9 +2413,6 @@ export function useIpodLogic({
   ]);
 
   const settingsMenuItems = useMemo(() => {
-    const sourceLabel = isAppleMusic
-      ? t("apps.ipod.menuItems.libraryAppleMusic", "Apple Music")
-      : t("apps.ipod.menuItems.libraryYoutube", "YouTube");
 
     return [
       {
@@ -2422,7 +2457,9 @@ export function useIpodLogic({
         action: memoizedHandleThemeChange,
         showChevron: false,
         value:
-          theme === "classic"
+          theme === "mini"
+            ? t("apps.ipod.menu.mini", "Mini")
+            : theme === "classic"
             ? t("apps.ipod.menu.classic")
             : theme === "black"
             ? t("apps.ipod.menu.black")
@@ -2436,33 +2473,6 @@ export function useIpodLogic({
           uiVariant === "modern"
             ? t("apps.ipod.menu.screenModern")
             : t("apps.ipod.menu.screenClassic"),
-      },
-      {
-        label: t("apps.ipod.menuItems.librarySource", "Library"),
-        action: () => {
-          if (isAppleMusic) {
-            handleSwitchToYoutube();
-          } else {
-            handleSwitchToAppleMusic();
-          }
-        },
-        showChevron: false,
-        value: sourceLabel,
-      },
-      {
-        label: appleMusicAuthorized
-          ? t("apps.ipod.menuItems.appleMusicSignOut", "Apple Music")
-          : t("apps.ipod.menuItems.appleMusicSignIn", "Apple Music"),
-        action: appleMusicAuthorized
-          ? () => void handleAppleMusicSignOut()
-          : () => void handleAppleMusicSignIn(),
-        showChevron: false,
-        value:
-          musicKitStatus === "missing-token"
-            ? t("apps.ipod.menuItems.unconfigured", "Unconfigured")
-            : appleMusicAuthorized
-            ? t("apps.ipod.menuItems.signedIn", "Signed In")
-            : t("apps.ipod.menuItems.signedOut", "Signed Out"),
       },
     ];
   }, [
@@ -2479,13 +2489,6 @@ export function useIpodLogic({
     memoizedCycleBacklightTimeout,
     memoizedHandleThemeChange,
     memoizedHandleUiThemeChange,
-    isAppleMusic,
-    appleMusicAuthorized,
-    musicKitStatus,
-    handleSwitchToYoutube,
-    handleSwitchToAppleMusic,
-    handleAppleMusicSignIn,
-    handleAppleMusicSignOut,
     menuLocale,
   ]);
 
@@ -2497,7 +2500,9 @@ export function useIpodLogic({
   const mainMenuItems = useMemo(() => {
     const musicLabel = t("apps.ipod.menuItems.music");
     const settingsLabel = t("apps.ipod.menuItems.settings");
-    return [
+    const extrasLabelHidden = t("apps.ipod.menuItems.extras");
+    const backlightLabelHidden = t("apps.ipod.menuItems.backlight");
+    const all = [
       {
         label: musicLabel,
         action: () => {
@@ -2508,6 +2513,21 @@ export function useIpodLogic({
             id: "music",
             title: musicLabel,
             items: musicMenuItemsRef.current,
+            selectedIndex: 0,
+          });
+        },
+        showChevron: true,
+      },
+      {
+        label: t("apps.ipod.menuItems.podcasts", "Podcasts"),
+        action: () => {
+          registerActivity();
+          if (useIpodStore.getState().showVideo) toggleVideo();
+          pushMenuChild({
+            kind: "podcasts",
+            id: "podcasts",
+            title: t("apps.ipod.menuItems.podcasts", "Podcasts"),
+            items: podcastsMenuItemsRef.current,
             selectedIndex: 0,
           });
         },
@@ -2615,7 +2635,9 @@ export function useIpodLogic({
             );
             currentId = refreshed.appleMusicCurrentSongId;
           } else {
-            pool = refreshed.tracks;
+            // QNTNs §55c: shuffle the podcast episodes (§55b set); all tracks if none are tagged.
+            const episodes = refreshed.tracks.filter((track) => trackPodcasts.get(track.id)?.length);
+            pool = episodes.length ? episodes : refreshed.tracks;
             currentId = refreshed.currentSongId;
           }
 
@@ -2664,6 +2686,9 @@ export function useIpodLogic({
         showChevron: true,
       },
     ];
+    // QNTNs §55c: only Podcasts, Shuffle, Now Playing show. The rest stays built so Music can come back.
+    const hidden = [musicLabel, extrasLabelHidden, settingsLabel, backlightLabelHidden];
+    return all.filter((item) => !hidden.includes(item.label));
   }, [registerActivity, toggleVideo, memoizedToggleBacklight, menuLocale, isOffline, showOfflineStatus, setIsPlaying, pushMenuChild, showStatus, clearReturnToNowPlayingSongMenu]);
 
   const findMenuItemIndexByLabel = useCallback(
@@ -3275,6 +3300,10 @@ export function useIpodLogic({
           return menu.items;
         case "nowPlayingSong":
           return nowPlayingSongMenuItems;
+        case "podcasts":
+          return podcastsMenuItems;
+        case "podcast":
+          return menu.id ? podcastMenuItemsByName[menu.id] ?? null : null;
         case "recentlyAdded":
           return isAppleMusic ? appleMusicRecentlyAddedMenuItems : null;
         case "favorites":
@@ -3406,6 +3435,8 @@ export function useIpodLogic({
     applePlaylistTrackMenuItemsByPlaylist,
     appleMusicPlaylists,
     nowPlayingSongMenuItems,
+    podcastsMenuItems,
+    podcastMenuItemsByName,
     menuLocale,
   ]);
 
@@ -3869,6 +3900,16 @@ export function useIpodLogic({
     },
     [setLibrarySource, setYoutubeCurrentSongId, setIsPlaying, handleAddTrack, isOffline, showOfflineStatus, t, isIOS, isSafari, startTrackSwitch]
   );
+
+  // QNTNs §53e: TextEdit's Play opens the iPod on a post's episode. The track list loads
+  // after open, so wait for it; the id is cleared once played.
+  useEffect(() => {
+    const id = initialData?.ghostTrackId;
+    if (!isWindowOpen || !id || !tracks.some((t) => t.id === id)) return;
+    useIpodStore.getState().setCurrentSongId(id);
+    setIsPlaying(true);
+    if (instanceId) clearIpodInitialData(instanceId);
+  }, [isWindowOpen, initialData, tracks, setIsPlaying, clearIpodInitialData, instanceId]);
 
   // Initial data handling
   useEffect(() => {
@@ -4468,6 +4509,18 @@ export function useIpodLogic({
     [isFullScreen]
   );
 
+  // QNTNs §23: a track with chapters skips chapter by chapter first (chapters.js).
+  const skipChapter = useCallback(
+    (dir: "next" | "previous") => {
+      const id = useIpodStore.getState().currentSongId;
+      const to = chapterSkip(trackChapters.get(id ?? "") ?? [], readPlaybackSeconds(), dir);
+      if (to === null) return false;
+      seekPlaybackSeconds(to);
+      return true;
+    },
+    [readPlaybackSeconds, seekPlaybackSeconds]
+  );
+
   const hideVolumeOverlay = useCallback(() => {
     if (volumeOverlayTimerRef.current) {
       clearTimeout(volumeOverlayTimerRef.current);
@@ -4588,6 +4641,8 @@ export function useIpodLogic({
             showOfflineStatus();
           } else if (getCurrentAppleMusicCollectionShellTrack()) {
             void skipAppleMusicCollectionShell("next");
+          } else if (skipChapter("next")) {
+            showStatus("⏭");
           } else {
             skipOperationRef.current = true;
             startTrackSwitch();
@@ -4629,6 +4684,8 @@ export function useIpodLogic({
             showOfflineStatus();
           } else if (getCurrentAppleMusicCollectionShellTrack()) {
             void skipAppleMusicCollectionShell("previous");
+          } else if (skipChapter("previous")) {
+            showStatus("⏮");
           } else {
             skipOperationRef.current = true;
             startTrackSwitch();
@@ -4681,7 +4738,7 @@ export function useIpodLogic({
           break;
       }
     },
-    [playClickSound, vibrate, registerActivity, getCurrentAppleMusicCollectionShellTrack, skipAppleMusicCollectionShell, nextTrack, showStatus, previousTrack, menuMode, menuHistory, selectedMenuItem, tracks, currentIndex, handleMenuButton, isOffline, showOfflineStatus, startTrackSwitch, isCoverFlowOpen, isMusicQuizOpen, isBrickGameOpen, enterScrubMode, exitScrubMode, toggleVideo]
+    [playClickSound, vibrate, registerActivity, getCurrentAppleMusicCollectionShellTrack, skipAppleMusicCollectionShell, skipChapter, nextTrack, showStatus, previousTrack, menuMode, menuHistory, selectedMenuItem, tracks, currentIndex, handleMenuButton, isOffline, showOfflineStatus, startTrackSwitch, isCoverFlowOpen, isMusicQuizOpen, isBrickGameOpen, enterScrubMode, exitScrubMode, toggleVideo]
   );
 
   // -------------------------------------------------------------------
@@ -4997,16 +5054,7 @@ export function useIpodLogic({
   // Share and lyrics handlers
   const handleShareSong = useCallback(() => {
     if (tracks.length > 0 && currentIndex >= 0) {
-      const track = tracks[currentIndex];
-      // YouTube ryOS shares are backed by cached song metadata. Apple Music
-      // shares should stay as public Apple Music links and not mark createdBy.
-      if (track && shouldCacheSongMetadataForShare(track)) {
-        const { username, isAuthenticated } = useChatsStore.getState();
-        const auth = username && isAuthenticated ? { username, isAuthenticated } : null;
-        saveSongMetadataFromTrack(track, auth, { isShare: true }).catch((error) => {
-          console.error("[iPod] Error saving song metadata to cache:", error);
-        });
-      }
+      // QNTNs §23: no ryOS song server to cache the shared track on.
       setIsShareDialogOpen(true);
     }
   }, [tracks, currentIndex]);
@@ -5179,7 +5227,7 @@ export function useIpodLogic({
   }, [currentTrack, appleMusicKitNowPlaying?.id]);
 
   const fullScreenLyricsControls = useLyrics({
-    songId: lyricsSongId,
+    songId: "", // QNTNs §23: no server lyrics; an empty id fetches nothing
     title: lyricsTitle,
     artist: lyricsArtist,
     // Static value: passing the live clock here would re-render this entire
@@ -5247,7 +5295,7 @@ export function useIpodLogic({
     furiganaProgress,
     soramimiProgress,
   } = useFurigana({
-    songId: lyricsSongId,
+    songId: "", // QNTNs §23: no server furigana
     lines: fullScreenLyricsControls.originalLines,
     isShowingOriginal: true,
     romanization,

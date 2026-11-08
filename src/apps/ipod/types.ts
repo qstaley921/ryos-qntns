@@ -64,7 +64,9 @@ export type IpodMenuKind =
   | "artistAllSongs"
   | "artistAlbum"
   | "appleMusicPlaylist"
-  | "nowPlayingSong";
+  | "nowPlayingSong"
+  | "podcasts"
+  | "podcast";
 
 export interface MenuHistoryEntry {
   /** Stable identity used for rebuild/restore. `title` remains for legacy breadcrumbs. */

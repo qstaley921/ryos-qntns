@@ -1,0 +1,8 @@
+/* The theme's reading faces (assets/css/type.css), shipped with the bundle. */
+@font-face { font-family: "OpenDyslexic"; src: url("./fonts/OpenDyslexic-Regular.otf") format("opentype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "OpenDyslexic"; src: url("./fonts/OpenDyslexic-Italic.otf") format("opentype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "OpenDyslexic"; src: url("./fonts/OpenDyslexic-Bold.otf") format("opentype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "OpenDyslexic"; src: url("./fonts/OpenDyslexic-BoldItalic.otf") format("opentype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Josefin Sans"; src: url("./fonts/JosefinSans-VariableFont_wght.ttf") format("truetype"); font-weight: 100 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("./fonts/IBMPlexMono-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("./fonts/IBMPlexMono-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }

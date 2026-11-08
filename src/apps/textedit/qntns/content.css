@@ -1,0 +1,1393 @@
+/* QNTNs content page — the single post/page view.
+   -------------------------------------------------------------------------
+   Title, meta row, body. The sticky footer bar and the footer below it are the
+   SAME ones the home page uses (see home.css); nothing here touches them.
+
+   VERTICAL BUDGET, from the top of .qntns-page's 32px padding:
+
+     title          .display pinned to 32px, line-height 1
+     +8             title -> meta
+     meta           14px mono bold, 24px box  (the card's large date, exactly)
+     +32            meta -> body
+     body           OpenDyslexic, inherited 1.75 leading
+     +24            between paragraphs
+
+   The title->meta gap is 8px here, not the card's 18px. On a card that 18px
+   separates the EXCERPT from the meta row; here the meta sits directly under
+   the title, which is a different pair. Change --content-meta-gap to 18px if
+   the frame says otherwise — it is the only place the number appears. */
+
+/* THE FOOTER NARROWS TO THE ARTICLE'S COLUMN ON A CONTENT PAGE.
+   -------------------------------------------------------------
+   --footer-inner-max is the ONE number the sticky bar's row and the subscribe
+   field both read (see .qntns-page in home.css). On the home page it is 720px,
+   which has nothing to line up with — the grid is a different width and the
+   footer is its own object. On a content page there IS something: the article
+   is 34rem, and the share button sits flush to the right edge of it. A footer
+   whose controls stopped 88px short of that would read as two grids on one
+   page.
+
+   Overriding the variable rather than the bar's max-width is what keeps the
+   bar's button and the subscribe form's send button on the same vertical line,
+   which is the whole reason the value is shared. Move this one number and all
+   three right edges move together.
+
+   THE ARITHMETIC. The bar's end slot and the send button are both inset by
+   --footer-control-inset from their container's right edge, so the container
+   has to be that much WIDER than the text column for the buttons to land on
+   the column's edge: 34rem + 8 + 8. The inset is named rather than doubled by
+   hand so there is still only one place to change it.
+
+   Two classes, because .qntns-page sets this variable on the SAME element and
+   a single class would only tie and win on file order.
+
+   It is exact while the cap binds. Below about 592px neither box reaches its
+   maximum and both fall back to the 16px page gutter — at which point the bar's
+   8px inset makes its button 8px shy of the column. That is the home page's
+   behaviour too, and fixing it would mean the bar's control no longer lining up
+   with the send button. */
+.qntns-page.qntns-content {
+    --footer-inner-max: calc(var(--content-measure) + var(--footer-control-inset) * 2);
+}
+
+/* AND THE START SLOT NEEDS THE SAME INSET THE END SLOT ALREADY HAS.
+   The bar's row is --content-measure PLUS both insets, so the right-hand
+   control lands on the column's right edge by being pushed 8px in from the
+   row's right edge — home.css does that with a padding-right on the end slot.
+   The start slot never had a matching padding, because on the home page there
+   was nothing on the left to line up with. Here there is: the back button
+   should start where the text starts, and without this it sits 8px outside the
+   column while the right-hand button sits exactly on it.
+
+   The home page keeps its asymmetry. It is arguably a defect there too — the
+   grid/feed toggle sits 8px further from the left edge than the sound toggle
+   does from the right — but nothing over there has a column edge to be wrong
+   about, so changing it is a look decision rather than a fix. */
+.qntns-page.qntns-content .qntns-footer__bar-slot {
+    padding-left: var(--footer-control-inset);
+}
+
+/* The end slot's own padding-right is unchanged; this only stops the rule
+   above from adding a second inset on that side. */
+.qntns-page.qntns-content .qntns-footer__bar-slot--end {
+    padding-left: 0;
+}
+
+.qntns-content {
+    --content-measure: var(--text-measure-narrow);
+    --content-meta-gap: var(--space-8);
+    --content-body-gap: var(--space-32);
+    --content-para-gap: var(--space-24);
+    /* The washed-out grey for metadata: the date/tag row at the top of the
+       page and every image caption. Given by the designer as #868079. */
+    --color-meta: #868079;
+}
+
+/* THE ARTICLE IS THE PAGE COLUMN, NOT THE READING COLUMN.
+   -----------------------------------------------------------------------
+   It used to be capped at the reading measure, and the wide and full images
+   broke back OUT of it with negative margins. That worked until an image was
+   limited by the viewport height rather than by the column: the figure stayed
+   as wide as the negative margins had made it, the image inside it shrank, and
+   the caption — 80% of the figure — hung out past both sides of the picture it
+   belonged to.
+
+   So the sizes are the other way round now. The article is the full page
+   column; the title, the meta row and every ordinary block are capped at the
+   reading measure and centred with `margin-inline: auto`; and a wide or full
+   figure simply has a larger cap. Nothing breaks out of anything, every box
+   shrink-wraps its own image, and a caption sized against its figure is
+   therefore sized against the image. See content-cards.css. */
+.qntns-content__article {
+    max-width: 100%;
+    margin-inline: auto;
+}
+
+/* The title and the meta row are capped and centred in their OWN rules below,
+   not here. A combined rule at this point loses: each of them sets `margin`
+   shorthand for its vertical spacing, which resets margin-inline to 0 and
+   pinned both of them to the left edge of the 1200px page column while the
+   body stayed centred. Two rules, each complete, cannot fall out of step. */
+
+/* .display is uppercase by default because it exists for the QNTNs wordmark
+   and the section headings. The post title is sentence case, so it opts out.
+
+   SIZE. A fixed 32px, NOT .display's 32 -> 60px clamp.
+
+   32px is the ceiling for every piece of text in the theme. The card-group
+   headings (card-group.css) and the footer wordmark (home.css) are already
+   pinned to it for exactly that reason, and a post title is the same rank as a
+   section title -- not a bigger one. Nothing may render larger than this, so
+   the clamp had to go: at a wide viewport it reached 60px and the post title
+   read as almost double a section heading.
+
+   line-height 1 matches .qntns-card-group__heading, so the three 32px things
+   in the theme all sit on the same box. */
+.qntns-content__title {
+    /* Centred on the same axis as the body. The `auto` is part of the
+       shorthand deliberately — see the note above the SIZE block. */
+    max-width: var(--content-measure);
+    margin: 0 auto;
+    font-size: 32px;
+    line-height: 1;
+    text-transform: none;
+    color: var(--color-ink);
+}
+
+/* THE HEAD: TITLE WRAPS, BUTTONS FLOAT TOP RIGHT. CHECKLIST-27 §1.
+
+   Supersedes the CHECKLIST-15 #49 grid and the #51/#53 one-line clamp (no
+   ellipsis, no sideways scroll now). The Postcard button and the (i) square sit
+   in .qntns-content__head-actions, which comes FIRST in the markup and floats
+   right, so the title's first line stops 8px short of it and every later line
+   runs the full measure underneath. A float has to precede the text it wraps,
+   which is why the order changed (post.hbs, content.js renderContent).
+
+   BUDGET (§1a: line-height 40, user, 2026-10-06 — "a little higher"). The
+   title is 32px type on a 40px line, one 8px grid step above the old 32, so
+   each line has 4px of leading above and below its 32px em box. The title is
+   pulled out by -4px top and bottom, so line 1's box runs -4..36 and its em
+   box 0..32 — exactly the 32px buttons, which sit at the head's top (0..32).
+   Line 2's box starts at 36, clear of the float's 32 bottom, and its em box
+   at 40: 8px from button bottom to line-2 type. A one-line title nets
+   40 - 4 - 4 = 32 tall, so a short title's head is the same 32 as before.
+   margin-left 8 = 2 x 4 is the title-to-button gap; gap 8 between the two
+   buttons, as before. No ink pad: nothing clips any more. */
+.qntns-content__head {
+    display: flow-root;
+    max-width: var(--content-measure);
+    margin: 0 auto;
+}
+
+.qntns-content__head-actions {
+    display: flex;
+    float: right;
+    gap: var(--space-8);
+    margin-left: var(--space-8);
+}
+
+.qntns-content__head-actions:empty {
+    display: none;
+}
+
+/* Inside the head the title gives up its own cap and centring — the head
+   carries both. Scoped here because author.hbs, tag.hbs, error.hbs and
+   page.hbs render a bare title with no head around it. overflow-wrap: one
+   word wider than the measure breaks rather than scrolling sideways. */
+.qntns-content__head > .qntns-content__title {
+    max-width: none;
+    margin: calc(-1 * var(--space-4)) 0;
+    line-height: 40px;
+    overflow-wrap: break-word;
+}
+
+.qntns-content__meta {
+    max-width: var(--content-measure);
+    margin: var(--content-meta-gap) auto 0;
+    /* A PLAIN BLOCK, NOT A FLEX ROW. CHECKLIST-15 #50.
+
+       This was a two-column flex row — values left, share button right,
+       nowrap, space-between, align-items: flex-end, min-height 32px — and every
+       one of those existed for the button (DECISIONS-LOG.md #68). The button
+       lives in .qntns-content__head beside the title now, so the row holds one
+       child, .qntns-content__meta-values, which is already its own wrapping
+       flex row. Nothing is left for an outer flex to lay out.
+
+       min-height: 32px WENT WITH IT, and that is a visible change: a one-line
+       row is its own 24px line box, not a 32px row, so the body starts 8px
+       higher. Restoring the old rhythm is `min-height: 32px` back on this rule,
+       one line — the user's call. */
+    /* Same face, size, weight and leading as .qntns-card--large .qntns-card__date.
+       --font-meta, NOT --card-font-mono: this row is .qntns-page
+       .qntns-content (post.hbs:62, page.hbs:34) and is never inside a
+       .qntns-card, so the card-local name did not resolve here and the whole
+       declaration was dropped. The row rendered in the inherited body face
+       until 2026-09-01.
+
+       TYPE-METRIC EXEMPTION, and the arithmetic behind it:
+       14px type on a 13px line is a -1px lead, and neither 14 nor 13 is a
+       multiple of 4. Both are metrics INSIDE the row's own box, which is
+       the 24px line box (6 x 4), so they move nothing
+       in the stack above or below. 0.04em x 14px = 0.56px of tracking, which
+       is a type metric and not a length the 4px rule reaches.
+
+       THE SIZE IS 16px, AND THE ONE PLACE IT IS WRITTEN IS RIGHT HERE.
+       The user asked for the closest whole base-4 size about 25% bigger than
+       14. 14 x 1.25 = 17.5 and the candidates were 16 (+14%) and 20 (+43%);
+       they ruled 16 on 2026-09-01 and reserved 20 as the fallback if it does
+       not read big enough. IF THAT SECOND STEP IS TAKEN it is two literals —
+       this line and the .qntns-content__share[data-share] rule below, which
+       states the same size so the button's word matches the meta line —
+       plus the leading, which would go 24px -> 28px by the
+       same arithmetic below. No token: --font-meta is a FACE, nothing else
+       reads a meta SIZE from anywhere, and the card date and the bookmark
+       publisher row both set their own. Two literals is not a hunt; a
+       variable for one row would be one nobody asked for.
+       16 is on the grid (4 x 4), so the size no longer needs an exemption
+       either. Nothing in this rule is off-grid any more.
+
+       THE LINE BOX CLEARS THE INK, and 13px did not.
+       IBM Plex Mono Bold measures 1025/-275 per 1000upem in hhea, so its
+       content box is 1.30em. At 16px that is 20.8px. The old 13px line box
+       was 7.8px SHORT of it, the overhang split 3.9px top and bottom, and
+       .qntns-content__meta-values carried overflow: hidden at the time to make
+       its ellipsis work — so the bottom of the mono was cropped, and going up
+       to 16px would have cropped it harder. (That overflow is GONE as of
+       DECISIONS-LOG #68: the group wraps now instead of truncating, so there is
+       nothing left to clip against. The 24px line still stands on its own
+       arithmetic below — it is what clears the ink — and the crop is recorded
+       here as the fault that found the number, not as a live one.) (Under OpenDyslexic, box 1250/-500 =
+       1.75em, 13px was shorter still, but that face's ink sits far enough
+       inside its metrics that nothing visible was lost. Mono's does not.)
+       Of the base-4 candidates 20px is still 0.8px short of 20.8 and would
+       clip; 24px is the first that clears it, with 1.6px of slack each side.
+       24 = 6 x 4.
+       THE LINE BOX IS THE ROW. It used to sit inside a 32px min-height with
+       8px of slack, set by the share button; the button left for the title
+       row (CHECKLIST-15 #50), and a one-line row is now exactly 24px. */
+    font-family: var(--font-meta);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
+    /* 0.04em x 14px = 0.56px. Tracking is a type metric, not a length, so the
+       4px rule does not reach it. */
+    letter-spacing: 0.04em;
+    color: var(--color-meta);
+    text-transform: capitalize;
+}
+
+/* The separator is a dot. It is decoration between two real values, so it is
+   hidden from screen readers rather than read out as "middle dot".
+
+   THE SPACE IS MARGIN, NOT WHITESPACE, because the two render paths disagree
+   about whitespace. content.js joins the values with `parts.join(dot)` and
+   emits no space at all, so the row read "Aug 2026·Note·0 Comments"; post.hbs
+   has a newline and an indent on each side of the same span, which HTML
+   collapses to one space. Putting the gap here gives both paths the same one.
+   8px is a full mono space rounded to the grid: IBM Plex Mono advances 600
+   per 1000upem, so a space at the row's 16px is 9.6px, and 8 is the nearer
+   multiple of 4 (1.6 away, against 4.4 to 12). 8 = 2 x 4.
+   NOTE FOR post.hbs's OWNER: that template's literal whitespace still adds its
+   own ~8px on the Ghost path, so the served row will sit wider than the story
+   until those two spans are closed up. Not this file's to fix. */
+.qntns-content__dot {
+    margin-inline: var(--space-8);
+    line-height: 1;
+}
+
+/* THE VALUES GIVE WAY, THE BUTTON DOES NOT — AND THEY NOW GIVE WAY BY WRAPPING.
+   min-width: 0 let this group shrink below its content as a flex item of the
+   old two-column row. That row is a plain block now (CHECKLIST-15 #50), so it
+   does nothing today; it is harmless and left for the day the row is a flex
+   container again.
+
+   WHAT LEFT: overflow: hidden, white-space: nowrap and text-overflow: ellipsis,
+   which were the three halves of one trick and only ever worked together. Under
+   DECISIONS-LOG.md #68 this group takes an author's full name, and a name is
+   not a value that may be truncated to "Quentin Sta…" — the whole point of
+   putting it here is that it can be read. So the group is a wrapping flex row
+   instead: it takes as many lines as it needs.
+
+   A FLEX ROW, NOT INLINE TEXT, and that is deliberate. The dot's spacing is
+   .qntns-content__dot's margin-inline and must be the ONLY source of it — see
+   the note there and the tilde discipline at post.hbs:117-137. Inline text has
+   no break opportunity between two adjacent spans with no whitespace between
+   them, so as inline flow this group would simply have overflowed at 320px
+   rather than wrapping. As a flex container every value is its own item, the
+   breaks land between items, and whitespace-only text nodes are dropped by flex
+   layout rather than collapsing to a space — so the two render paths (post.hbs
+   and content.js) stay identical for free.
+
+   row-gap: 4px is the theme's floor, and it is the whole gap: each wrapped line
+   already carries the row's own 24px line box. 24 + 4 + 24 = 52, a multiple
+   of 4. The author line used to be the exception at 32px, because it carried an
+   avatar; that came out on 2026-09-09 and every line in the group is 24 now. */
+.qntns-content__meta-values {
+    display: flex;
+    min-width: 0;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: var(--space-4);
+}
+
+/* THE AUTHOR, FIRST VALUE IN THE ROW — DECISIONS-LOG.md #68.
+
+   THE NAME ALONE, NO PICTURE, since 2026-09-09. This link used to hold a 32px
+   avatar as well, the theme's control square. Removing it did not change the
+   row's height at the time, because the share button was still 32px beside it;
+   that button has since moved to the title row (CHECKLIST-15 #50).
+
+   min-width: 0 on the link so a long name can shrink and wrap inside it rather
+   than pushing the group past the column. The name is ordinary text, so it
+   breaks at its own spaces — a two-word name takes two lines at 320px before
+   anything else has to move.
+
+   NO UNDERLINE AND NO LINK COLOUR. Every other value in this row is
+   --color-meta and this one is a link only because there is somewhere to go;
+   dressing it as a link would make the author the loudest thing under the
+   title, which it is not.
+
+   THERE IS NOW NO VISIBLE AFFORDANCE ON THIS LINK, and that is a known cost of
+   removing the avatar rather than an oversight. The avatar used to be the thing
+   that said "this is pressable"; the name is undressed text that happens to be
+   a link. Flagged for the user — if it needs one back, it is a treatment on the
+   name, not a picture returning. */
+.qntns-content__author {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    color: inherit;
+    text-decoration: none;
+}
+
+/* THE COMMENT COUNT IS A LINK, AND IT IS DRESSED EXACTLY LIKE THE AUTHOR.
+   User, 2026-09-17: "the comments should be a link on hover the same way the
+   author is a link on hover".
+
+   At rest it is --color-meta like every other value in the row — `inherit`
+   overrides type.css's `a { color: var(--color-accent) }` at equal
+   specificity, which is the whole trick the author link already uses. On hover
+   type.css's `a:hover` wins on specificity (0,1,1 beats 0,1,0) and lights it
+   accent on --color-accent-soft. So the row reads as one line of metadata
+   until you point at the one part of it that goes somewhere.
+
+   The affordance is therefore hover-only, the same known cost recorded above
+   for the author. If it needs a resting treatment, it is one decision covering
+   both links, not a rule invented here for this one. */
+.qntns-content__comments {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* THE SAME 32px CONTROL AS EVERY OTHER ONE.
+   Navy fill, 1px navy border, beige glyph, no hover fill change — the send
+   button, the sound toggle and a pagination step are all this object, and a
+   share button is no reason to invent a fourth. cursor: pointer is the whole
+   affordance; :focus-visible is the keyboard's separate concern. */
+.qntns-content__share {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-card);
+    cursor: pointer;
+}
+
+/* THE BUTTON ALWAYS CARRIES A WORD, SO IT IS ALWAYS WIDER THAN THE SQUARE.
+
+   CHECKLIST-15 #48: "it always says postcard next to the arrow". The word was
+   once the draft state's alone ("Draft"); now the plain state says "Postcard",
+   so this keys off [data-share] — every content share button — rather than
+   [data-draft]. [data-share] is on the content button only: the home heading's
+   copy of this control (card-group.css .qntns-card-group__postcard) uses
+   data-postcard-open, so neither it nor its mobile square is caught here.
+
+   The budget, all base 4, the same as .qntns-card-group__postcard's:
+   8 left padding + 18 icon + 8 gap + the label + 8 right padding. Height stays
+   the 32px control in both states, so a draft appearing changes only the
+   button's width.
+
+   The face and size are the meta row's own — var(--font-meta) at 16px,
+   the same as .qntns-content__meta-values — so the word reads as part of the
+   line rather than as a badge stuck onto it. */
+.qntns-content__share[data-share] {
+    width: auto;
+    gap: var(--space-8);
+    padding: 0 var(--space-8);
+    font-family: var(--font-meta);
+    /* THE MONO SIZE, SECOND OF TWO. Kept in step with
+       .qntns-content__meta's own 16px by hand — see the note there before
+       changing either. */
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* ON MOBILE THE WORD GOES AND THE SQUARE COMES BACK.
+
+   The title row is one line and the button sits on it, so on a narrow screen
+   the word is 8px of gap plus ~80px of mono spent saying what the paper
+   aeroplane already says — and every one of those pixels comes off the title,
+   which is the thing the reader came for. The glyph is the whole control at
+   320px; the word is an affordance there is room for and not one the button
+   needs.
+
+   599px is the theme's mobile edge, not a new breakpoint: search.js HEADER_MAX
+   and search.css / home.css state the same 599/600. The title beside it no
+   longer has a query of its own — it is one scrolling line at every width — so
+   this is the only viewport boundary left in the header.
+
+   Back to the plain 32px control exactly: width 32, no gap, no padding. Same
+   three declarations .qntns-card-group[data-mobile] .qntns-card-group__postcard
+   makes, because it is the same object in the same state.
+
+   The label is display: none rather than removed by JS. paintShare() rewrites
+   this button's innards on load and would have to know the viewport to leave
+   the span out; CSS already knows. */
+@media (max-width: 599px) {
+    .qntns-content__share[data-share] {
+        width: 32px;
+        gap: 0;
+        padding: 0;
+    }
+
+    .qntns-content__share-label {
+        display: none;
+    }
+
+    /* UNLESS THE TITLE FITS BESIDE IT. CHECKLIST-16 #150. content.js
+       attachTitleReveal sets data-label only when the title still fits on
+       one line with the word showing; this is the desktop shape again. */
+    .qntns-content__share[data-share][data-label] {
+        width: auto;
+        gap: var(--space-8);
+        padding: 0 var(--space-8);
+    }
+
+    .qntns-content__share[data-label] .qntns-content__share-label {
+        display: inline;
+    }
+}
+
+.qntns-content__share:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+.qntns-content__body {
+    margin-top: var(--content-body-gap);
+    font-family: var(--font-reader);
+    color: var(--color-ink);
+}
+
+/* ---- The divider -----------------------------------------------------------
+   `---` in the editor is an <hr>, and nothing had ever styled it, so it was
+   drawing the browser's default: a 2px INSET border, which is a dark line with
+   a light line under it. That pale second line is the "white shadow offset" —
+   it is not a shadow and not ours, it is the 1990s bevel every UA still ships.
+   border: 0 first is what removes it; a single border-top is then the whole
+   rule.
+
+   2px, NOT the 1px hairline, and this is a named exemption under CLAUDE.md's
+   base-4 rule: a border is a rule rather than a measurement. It went to 2px
+   because 1px was landing on a fractional y-coordinate and being antialiased
+   across two device rows at half strength each — a true hairline that reads as
+   a washed half-pixel. 2px cannot straddle. It also matches the 2px on the
+   prose link dots below, so the divider and the underlines carry one weight.
+
+   80% OF THE READING MEASURE, NOT 80% OF THE PARENT. .qntns-content__body > *
+   caps every block at --content-measure and centres it, but `width: 80%`
+   would resolve against the body's full page column, which is wider than the
+   measure — the divider would come out longer than the paragraphs it
+   separates rather than shorter. Capping at 0.8 * the measure and letting the
+   width fill that cap is what makes the 80% mean what it says. The inherited
+   margin-inline: auto still does the centring.
+
+   80% is a proportion of a container, not a spacing value, so base 4 does not
+   apply to it. */
+.qntns-content__body hr {
+    width: 100%;
+    max-width: calc(var(--content-measure) * 0.8);
+    height: 0;
+    /* DOUBLE THE ORDINARY PARAGRAPH GAP, ON BOTH SIDES. A divider inherited
+       --content-para-gap above it from `.qntns-content__body > * + *` and gave
+       the same gap to the block below, so it sat in exactly the space between
+       two paragraphs — which made it read as a heavier paragraph break rather
+       than as the end of a passage. Twice the gap is what says the thing above
+       it is finished. Stated on both sides rather than left to the inherited
+       rule, because the top margin is the one being overridden and a divider
+       with two different gaps around it is worse than one with none. */
+    margin-block: calc(var(--content-para-gap) * 2);
+    border: 0;
+    border-top: 2px solid var(--color-ink);
+}
+
+/* ---- Links in prose --------------------------------------------------------
+   A DOTTED RULE, HELD 4px OFF THE BASELINE. DECISIONS-LOG.md #4 said links are
+   never underlined and hover carries the whole affordance; that is right for
+   the chrome — cards, the footer list, the bar — and wrong inside a paragraph,
+   where a link has to be findable while the reader is reading rather than
+   while the reader is pointing. This rule reverses #4 for prose only. Nothing
+   outside .qntns-content__body changes.
+
+   DOTTED, NOT SOLID, so the rule reads as an annotation on the sentence rather
+   than as a second baseline competing with the text's own.
+
+   4px of offset is the grid's floor, and it is the smallest number that clears
+   the reader face's descenders cleanly at every type step.
+
+   skip-ink: none BECAUSE THE RULE IS DOTS. Skip-ink cuts a gap around every
+   descender, and a gap in a dotted line is indistinguishable from the gaps
+   between the dots — the rule stops reading as one line and starts reading as
+   damage. The 4px offset is what makes turning it off safe: the dots already
+   clear the descenders, so nothing needs to be cut around.
+
+   2px THICKNESS because the dot's diameter IS the thickness. At the browser's
+   default (~1px here) the dots are too fine to register as deliberate. */
+.qntns-content__body a {
+    text-decoration: underline dotted;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+    text-decoration-skip-ink: none;
+}
+
+/* BODY HEADINGS ARE SMALLER THAN THE TITLE, AND THAT IS THE WHOLE RULE.
+
+   The post title is 32px — see .qntns-content__title. type.css sizes a bare h1
+   at --type-step-4, which clamps between 44 and 88px, and an h2 at step-3,
+   which clamps between 32 and 60. So a `#` typed in the editor came out up to
+   two and a half times the size of the title it sits under, and even `##`
+   matched or beat it. A heading inside a piece cannot be larger than the name
+   of the piece; that is the bug in the screenshot and these four rules are the
+   whole of the fix.
+
+   FIXED PIXELS, NOT A CLAMP. The steps above are fluid because they were built
+   for display type that has a viewport's worth of room to breathe in. These sit
+   in a 34rem measure that does not change with the viewport, so a fluid size
+   only means the heading and the paragraph under it drift apart at large
+   widths. 32 is fixed for exactly this reason and these follow it down.
+
+   24 / 20 / 16, which is the theme's grid and also a legible ladder: each step
+   is far enough from the last to be told apart at a glance, and the largest is
+   a clear 8px under the title. Josefin Sans at 700 comes from type.css's
+   h1..h6 rule and is deliberately not repeated here — the family and the weight
+   were right, only the size was wrong.
+
+   h1 AND h2 ARE THE SAME SIZE ON PURPOSE. content.js demotes every body h1 to
+   an h2 for the document outline, but that is JavaScript, and with it off the
+   h1 stays an h1. Styling the two identically is what makes the page look the
+   same either way, which CLAUDE.md requires. */
+.qntns-content__body :is(h1, h2) { font-size: 24px; }
+.qntns-content__body h3 { font-size: 20px; }
+.qntns-content__body :is(h4, h5, h6) { font-size: 16px; }
+
+
+/* INLINE CODE — `like this` — set apart by ground, not by a border.
+
+   A border on a run of inline text has to be drawn at every fragment when the
+   run wraps across a line, and it puts a hard edge inside a paragraph that the
+   eye reads as a control. A tinted ground says the same thing quietly, and it
+   is the same beige the footer sits on: --color-beige-dark, the theme's one
+   step down from the card.
+
+   4px of inline padding and none in the block direction. 4 is the theme's floor
+   and the right amount here — the ground has to clear the glyphs without the
+   phrase looking gapped. Block padding is deliberately ZERO: a code run is
+   inside a line of prose, and padding on the block axis would either be clipped
+   by the line box or push the line apart, which is a paragraph with a limp in
+   it. The ground being exactly the text's own height is correct.
+
+   NOT THE CODE BLOCK. `:not(pre) > code` is what keeps this off the <code>
+   inside a code card, which has its own ground, its own gutter and its own
+   monospace stack in qntns/code.css. code.js also replaces that <pre>, so the
+   selector has to survive the swap — it does, because the replacement is still
+   a <pre> element.
+
+   The monospace stack is repeated here rather than inherited from type.css,
+   which sets it on every `code`. This one leads with IBM Plex Mono, the face
+   the theme actually ships and the one the code card uses, so an inline run and
+   a block quoting the same string look like the same thing. */
+.qntns-content__body :not(pre) > code {
+    padding-inline: var(--space-4);
+    background: var(--color-beige-dark);
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Monospace faces run large against a serif at the same nominal size. 0.9
+       pulls it back to about the same x-height as the prose around it, so the
+       run sits in the line rather than bulging out of it. A ratio rather than a
+       step off the type scale, because this is a correction to one typeface's
+       proportions and not a size in its own right. */
+    font-size: 0.9em;
+}
+
+/* ---- LISTS -----------------------------------------------------------------
+   THE THEME STYLED NO LIST AT ALL UNTIL NOW. `grep` for `body ol`, `body ul`
+   or `body li` across assets/css/ returned one rule — type.css:223's
+   `li + li { margin-top: var(--space-2) }` — so an <ol> or a <ul> in a post was
+   drawing the browser's default marker at the browser's default indent. These
+   rules are the design that replaces that, and the numerals and the bullet are
+   both OURS: neither is a UA default made explicit.
+
+   ONE GEOMETRY FOR BOTH LISTS. The marker sits in a column of its own and the
+   text has one left edge, whichever list it is:
+
+       0                        28  32
+       |------ marker column ----|-4-|-- text -----------------------
+                             "10." | Lorem ipsum dolor sit amet,
+                                   | consectetur adipiscing elit.
+        ---- 12 ----> [] <--12---- | and the square bullet is centred
+                                   | in the same column.
+
+   THE ARITHMETIC OF THE 28px COLUMN, WHICH IS THE ONE NUMBER THAT HAD TO BE
+   MEASURED RATHER THAN CHOSEN. OpenDyslexic's digits are PROPORTIONAL, not
+   tabular — the advances per 1000upem are 0:650 1:581 2:609 3:626 4:678 5:618
+   6:650 7:610 8:666 9:649 and the period is 292 (read out of the shipped
+   OpenDyslexic-Regular.otf's hmtx). At the body's 16px the widest two-digit
+   marker is therefore "44." = (678 + 678 + 292) / 1000 x 16 = 26.37px, and
+   "10." — the jump this design has to survive — is (581 + 650 + 292) / 1000 x
+   16 = 24.37px. A 24px column would be 0.37px too narrow for the tenth item
+   ALONE, which is exactly the failure this list was told to avoid. 28 is the
+   next step on the grid and it clears the worst two-digit case by 1.63px.
+   28 = 7 x 4, 4 = the floor, 32 = 8 x 4. Nothing here is off-grid.
+
+   PAST 99 IT OVERFLOWS AND THAT IS DELIBERATE. "444." is 37.25px and would hang
+   5px into the left gutter. A hundred-item list in a post is not a case worth
+   widening every list's indent for; if one is ever written, the fix is to raise
+   the column to 40 for that list, not to re-derive this.
+
+   RIGHT-ALIGNED, WHICH IS THE WHOLE REASON THE COLUMN IS FIXED. The numeral
+   grows LEFTWARD into its own column and the text edge never moves, so the
+   9-to-10 jump changes nothing about where the sentence starts. A left-aligned
+   numeral would shove every line of the tenth item sideways.
+
+   THE SEPARATOR IS A PERIOD. It is stated in `content` rather than inherited
+   from `list-style-type: decimal`, because a marker nobody wrote is the thing
+   this section exists to replace — and because with `list-style: none` there is
+   no marker to inherit from.
+
+   counter(list-item) IS THE BUILT-IN COUNTER, NOT ONE OF OURS. It is still
+   incremented with `list-style: none` set, and it is the only counter that
+   honours Ghost's `start=""` and `reversed` attributes — a hand-rolled
+   `counter-reset`/`counter-increment` pair would silently renumber a list the
+   writer had deliberately started at 5. */
+.qntns-content__body :is(ol, ul) {
+    /* The text edge. Both lists, one number. */
+    padding-inline-start: var(--space-32);
+    list-style: none;
+}
+
+/* 8px BETWEEN ITEMS, STATED HERE RATHER THAN INHERITED. type.css:223's global
+   `li + li` already gives 8 (--space-2 is 0.5rem = 8px there, named for its
+   position in that file's scale and not for a pixel count). Restating it in the
+   body's own terms means this list's rhythm does not move if that global is
+   ever re-tuned for the chrome, and it puts the number next to the design it
+   belongs to. It is a THIRD of the 24px paragraph gap: items in one list are
+   more closely related to each other than two paragraphs are. */
+.qntns-content__body :is(ol, ul) > li + li {
+    margin-top: var(--space-8);
+}
+
+/* The marker is placed against the ITEM, so it needs a positioning context. */
+.qntns-content__body :is(ol, ul) > li {
+    position: relative;
+}
+
+/* THE NUMERAL. Absolute rather than a ::marker, because ::marker in an outside
+   position puts the numeral's right edge FLUSH against the text with no gap of
+   ours in it, and takes no width, alignment or offset from us. This is the same
+   marker box the square below uses, which is why the two lists line up. */
+/* NOT THE TABLE OF CONTENTS, AND THE EXCLUSION HAS TO BE HERE RATHER THAN AN
+   OVERRIDE IN toc.css. This selector is (0,1,3); the ToC's own numbering rule,
+   `.qntns-toc__item--0::before`, is (0,1,1), so it loses the cascade outright
+   no matter which file is imported last. And what this rule printed in its
+   place was always the string "0.": `counter(list-item)` is advanced by
+   `display: list-item`, which `.qntns-toc__item` replaces with `display: flex`
+   (toc.css), so the built-in counter never incremented and every entry in the
+   list read the same number. The ToC keeps its own named counter instead. */
+.qntns-content__body ol:not(.qntns-toc__list) > li::before {
+    content: counter(list-item) ".";
+    position: absolute;
+    /* -32 puts its left edge on the list's own left edge; 28 wide with the
+       text 4 further on. See the diagram above. */
+    inset-inline-start: calc(var(--space-32) * -1);
+    width: var(--space-28);
+    text-align: end;
+    /* Inherited face, size and 1.75 leading, so the numeral's line box is the
+       same 28px as the first line of the item and the two baselines land
+       together with no vertical arithmetic at all. Do not give this rule a
+       line-height of its own; that is what would make the numerals drift. */
+    color: var(--color-ink);
+}
+
+/* THE BULLET IS A 4x4 SQUARE AND THE SQUARE IS THE POINT — RULED BY THE USER,
+   2026-09-01: "It should be a perfect square, maybe 4x4px."
+
+   DO NOT "FIX" THIS TO A DISC. A disc is the browser's default and is exactly
+   what the ruling rejects. Every object in this theme has square corners —
+   --radius-control: 0 (tokens.css:40, qntns/tokens.css:138), and the bookmark
+   card's border-radius: 0 is deliberate for the same reason, recorded in §1 of
+   the checklist: Ghost's 5px "reads as a different family of object". A round
+   bullet would be the only round thing on the page.
+
+   4 NEEDS NO EXEMPTION. It is the grid's floor, not under it. The 2x2 the user
+   floated as a fallback — "Or 2x2 if 4 is too big" — WOULD be under the floor
+   and would be a named base-4 exemption carrying those words. It has not been
+   asked for and must not be substituted quietly. */
+.qntns-content__body ul > li::before {
+    content: "";
+    position: absolute;
+    width: var(--space-4);
+    height: var(--space-4);
+    background: var(--color-ink);
+    /* CENTRED IN THE SAME 28px COLUMN THE NUMERALS USE, which is the rule that
+       makes an <ol> and a <ul> read as one family: 28 - 4 = 24 of slack, halved
+       is 12 each side, so the square spans 12 to 16 measured from the list's
+       own left edge and leaves 32 - 16 = 16 of air before the text. Every
+       number on the grid. IF 16 READS TOO LOOSE, the next stop on the grid is
+       to slide the square to 20-24 for an 8px gap — that is a look decision and
+       it is the user's, not this file's. */
+    inset-inline-start: calc(var(--space-32) * -1 + var(--space-12));
+    /* VERTICAL: CENTRED ON THE CAP OF THE FIRST LINE, NOT IN THE LINE BOX.
+       This is the part a reader notices and cannot name, and it is the reason
+       the square is placed by arithmetic instead of by `top: 50%`.
+
+       THE MEASUREMENT. The body is 16px OpenDyslexic on 1.75 = a 28px line box.
+       The face's hhea ascent/descent are 1250/-500 per 1000upem, so its content
+       box is exactly 1.75em = 28px and the HALF-LEADING IS ZERO: the first
+       line's baseline sits at 1250/1000 x 16 = 20px below the top of the item.
+       Cap height measured off the shipped OpenDyslexic-Regular.otf as rendered
+       (canvas actualBoundingBoxAscent of "H" at 16px) is 11.664px, so the cap
+       spans 8.34px to 20px and its middle is at 14.17px. A 4px square centred
+       there wants its top at 14.17 - 2 = 12.17.
+
+       12 IS THE GRID VALUE 0.17px AWAY, so the square is centred on the cap to
+       within a sixth of a pixel and needs no exemption. It is NOT a coincidence
+       worth relying on if the type changes: if the body size or the 1.75
+       leading ever moves, this number is re-derived from the same three inputs
+       — half-leading, ascent, cap height — and not nudged by eye.
+
+       `top: 50%` would centre it in the ITEM, so a wrapping item would drop its
+       bullet toward the second line; `align-items` cannot reach an absolutely
+       positioned box; and centring on the LINE BOX (top: 12px happens to be
+       close, but for the wrong reason) drifts the moment the leading changes.
+       The cap is what the eye reads the bullet against. */
+    top: var(--space-12);
+}
+
+/* Every block is the reading column unless a rule in content-cards.css gives
+   it a wider cap. Centred rather than left-aligned, because the article around
+   it is now the full page column. */
+.qntns-content__body > * {
+    max-width: var(--content-measure);
+    margin-inline: auto;
+}
+
+.qntns-content__body > * + * {
+    margin-top: var(--content-para-gap);
+}
+
+/* A HEADING BELONGS TO WHAT COMES AFTER IT, and the spacing has to say so.
+
+   Every block in the body gets --content-para-gap (24px) above it from
+   `.qntns-content__body > * + *` above. Applied to a heading that reads as a
+   block floating equidistant between the paragraph it ends and the section it
+   opens — which is the "margin underneath is too much" in the screenshot. The
+   heading was not too far from the text above it; it was too far from the text
+   BELOW it, which is the text it names.
+
+   32 above and 12 below. The pair is what does the work, not either number:
+   the space above is larger than a paragraph gap so the heading reads as a
+   break, and the space below is half of one so the first line under it reads
+   as attached. Both are on the 4px grid.
+
+   THESE MUST STAY BELOW THE SIBLING RULE. Both selectors are `> *` at the same
+   specificity, so the one written later wins — put these above it and the 24px
+   gap silently comes back and nothing about the stylesheet looks wrong. */
+.qntns-content__body > :is(h1, h2, h3, h4, h5, h6) {
+    margin-top: var(--space-32);
+}
+
+.qntns-content__body > :is(h1, h2, h3, h4, h5, h6) + * {
+    margin-top: var(--space-12);
+}
+
+/* AND THE TOP LEVEL GETS DOUBLE THAT ABOVE IT — RULED BY THE USER, 2026-09-19:
+   "the default padding/margin top of H1 items should be double what it is
+   now". 32 -> 64, still on the 4px grid.
+
+   The 12px below it is deliberately NOT doubled: the pair above says the
+   heading belongs to what follows it, and widening both would undo that and
+   leave the heading floating again. Only the break above grows.
+
+   WHY `:is(h1, h2)` AND NOT `h1`. What the user calls an H1 is a `#` typed in
+   the editor, and headings.js demotes every body h1 to an h2 at runtime for
+   the document outline — so with JavaScript on the element in the DOM is an
+   h2, and with it off it is an h1. Naming only h1 here would double the gap
+   on the no-JS page and nowhere else. The size rule above pairs them for the
+   same reason. h3 and below keep 32. */
+.qntns-content__body > :is(h1, h2) {
+    margin-top: var(--space-64);
+}
+
+/* ---- Drop cap --------------------------------------------------------------
+   Gill Sans Ultra, sunk to sit on the baseline of the Nth line. `initial-letter`
+   does the sinking where it is supported; the float+line-height pair is the
+   fallback everywhere else.
+
+   TWO SELECTORS, AND THEY ARE TWO DIFFERENT STATES OF THE SAME FEATURE.
+
+   `.qntns-content__body--dropcap` is the `#dropcap` tag, straight from Ghost,
+   and it is what a reader with no JavaScript gets: the first paragraph, three
+   lines, no measuring. The theme has to degrade to plain HTML and CSS
+   (CLAUDE.md) and this is that path.
+
+   `p[data-dropcap]` is what assets/js/qntns/dropcap.js writes once it has
+   counted the paragraph's lines. It marks the paragraph and sets
+   --dropcap-lines with it, and it REMOVES the class above so only one of the
+   two is ever live. That is also why the number is a custom property rather
+   than a literal 3: N is a measurement, and a two-line paragraph gets a
+   two-line cap and a one-line paragraph gets no cap at all. See the long note
+   over fitDropCaps.
+
+   THE 3 IN THE var() FALLBACK IS THE NO-JS ANSWER, not a default to tune. */
+.qntns-content__body--dropcap > p:first-of-type::first-letter,
+.qntns-content__body p[data-dropcap]::first-letter {
+    float: left;
+    margin-right: 8px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 3.2em;
+    line-height: 0.82;
+    -webkit-initial-letter: var(--dropcap-lines, 3);
+    initial-letter: var(--dropcap-lines, 3);
+    color: var(--color-ink);
+}
+
+@supports (initial-letter: 3) or (-webkit-initial-letter: 3) {
+    .qntns-content__body--dropcap > p:first-of-type::first-letter,
+    .qntns-content__body p[data-dropcap]::first-letter {
+        float: none;
+        font-size: 1em;
+        line-height: inherit;
+    }
+}
+
+/* ---- The inline drop cap ---------------------------------------------------
+   `|T|` anywhere in the body sets that letter as a drop cap; assets/js/qntns/
+   dropcap.js does the replacing. The `#dropcap` TAG above is the other way in,
+   and it is a different decision — "this post opens with one" rather than
+   "this letter is one" — so both exist and neither replaces the other.
+
+   THE TWO HAVE TO LOOK IDENTICAL, which is why every value here is copied from
+   the rule above rather than derived again. If one moves, both move.
+
+   THE FLOAT IS THE PRIMARY HERE, NOT THE FALLBACK, and that is the one real
+   difference between the two. `initial-letter` only applies to a ::first-letter
+   or to an inline box that starts a block, so a `|T|` in the middle of a
+   paragraph cannot use it at all — but a float can be pulled out of the flow
+   anywhere, and the text wraps around it either way. So the float runs by
+   default and initial-letter is switched on only for the case where it is
+   actually allowed: the span is the first thing in its paragraph. */
+.qntns-dropcap {
+    float: left;
+    margin-right: 8px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 3.2em;
+    line-height: 0.82;
+    color: var(--color-ink);
+}
+
+/* THERE IS NO initial-letter BRANCH FOR A SPAN, AND THERE USED TO BE ONE.
+   It read `.qntns-content__body p > .qntns-dropcap:first-child { float: none;
+   font-size: 1em; initial-letter: 3 }` on the reasoning that the property also
+   applies to an inline box opening a block, which is what the spec says. Chrome
+   implements it for ::first-letter only. So the @supports test passed, the
+   float was turned off, initial-letter did nothing, and the cap rendered as an
+   ordinary letter in the display face — measured on 2026-08-31 at exactly body
+   size, on one line.
+
+   dropcap.js now UNWRAPS a span that opens its paragraph, so that case is a
+   ::first-letter above and this selector would only ever match the case it
+   cannot serve. What is left here is the mid-paragraph `|T|`, which floats,
+   because nothing else can reach it. */
+
+/* ---- Poem ------------------------------------------------------------------
+   A poem keeps every line break the writer typed, and a line too long for the
+   column wraps to an INDENT rather than back to the margin — standard poetry
+   setting, so a wrapped line reads as a continuation and not as a new line.
+
+   Each line is its own block because a hanging indent is a property of a block:
+   `text-indent` only ever touches a block's FIRST line, so a paragraph full of
+   <br> cannot hang. content.js turns those <br>s into these spans. */
+.qntns-content__body--poem > * + * {
+    /* A stanza break is one blank line, not a full paragraph gap. */
+    margin-top: var(--content-para-gap);
+}
+
+/* THE HANGING INDENT LIVES ON THE PARAGRAPH, NOT ON THE LINE SPAN, because a
+   poem's lines arrive two ways and only this placement serves both. Ghost gives
+   every Enter its own <p>, so a poem written one line per paragraph never has a
+   <br> for splitPoemLines to find and gets no span at all — it was reaching
+   this rule's old selector never, and wrapping flush to the margin. Shift+Enter
+   inside one paragraph is the other way in, and that one does get spans.
+
+   text-indent INHERITS and padding does not, which is what makes one rule do
+   both jobs: the span sits at the paragraph's 2em content edge, inherits the
+   -2em, and so opens at 0 and wraps at 2em — the same place a bare paragraph
+   lands. Giving the span its own padding as well would stack the two and push
+   the wrap to 4em.
+
+   Only a DIRECT child paragraph, so a blockquote's paragraphs stay prose — the
+   same exemption splitPoemLines makes, and for the reason written there. */
+.qntns-content__body--poem > p,
+.qntns-content__body p.qntns-content__fixed {
+    padding-left: 2em;
+    text-indent: -2em;
+}
+
+/* §56: a `<prose>` region on a #fixed-lines page reflows as ordinary prose. */
+.qntns-content__body--poem > p.qntns-content__prose {
+    padding-left: 0;
+    text-indent: 0;
+}
+
+.qntns-content__line {
+    display: block;
+}
+
+/* An empty line inside a stanza still takes its height. */
+.qntns-content__line:empty::before {
+    content: "\00a0";
+}
+
+/* ---- The meta square (CHECKLIST-26 §1) -------------------------------------
+   The Views (eye) button, copied: a 32px square, outlined at rest, an ink fill
+   rising from the bottom while its menu is open (clip-path, 320ms — THE DRAIN
+   in sound.css). Copied rather than shared because views-menu.css is the
+   footer's and is being edited under CHECKLIST-26 §3.
+
+   THE MENU DROPS DOWN, under the head, where the eye's opens up: this square
+   sits at the top of the page with the whole article below it. Right-aligned
+   to the square, because the square is the head's right edge and a menu
+   opened leftward is the one that stays on screen at 320px.
+
+   ROW BUDGET, the eye's 32px row: 8 top + 16 line + 8 bottom = 32; across,
+   12 + 16 icon + 8 + label + 12. The 1px borders are the hairline exemption. */
+.qntns-content__more {
+    --duration-more: 320ms;
+    position: relative;
+}
+
+.qntns-content__more-button {
+    --more-level: 100%;
+    display: flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    overflow: hidden;
+    /* §51a: no outline at rest. border 0 on a border-box 32 square, so the
+       absolute fill (inset 0, padding box) now covers the whole 32. */
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Open is the full fill. Click only opens it (§25). */
+.qntns-content__more-button[aria-expanded="true"] {
+    --more-level: 0%;
+}
+
+/* THE HOVER FILL (§25a, rescoped): a mouse resting on the closed square
+   raises the same fill layer ALL the way (full navy, beige glyph) over the
+   same 320ms ease drain, and leaving drains it back. It does not open the
+   menu; a click does, and the square is already full. Every outlined bar
+   square answers hover the same way (§29). (hover: hover) and (pointer: fine)
+   keep a tap from leaving a sticky fill on touch. */
+@media (hover: hover) and (pointer: fine) {
+    .qntns-content__more-button:hover {
+        --more-level: 0%;
+    }
+}
+
+.qntns-content__more-button:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+}
+
+.qntns-content__more-layer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qntns-content__more-layer--fill {
+    position: absolute;
+    inset: 0;
+    background: var(--color-ink);
+    color: var(--color-beige-dark);
+    clip-path: inset(var(--more-level) 0 0 0);
+    transition: clip-path var(--duration-more) ease;
+}
+
+.qntns-content__more-layer svg {
+    display: block;
+}
+
+/* The panel also carries .qntns-content__meta (reads.js finds the date by
+   it), so that row's box and face are undone here: two classes beat one. */
+.qntns-content__meta.qntns-content__more-menu {
+    position: absolute;
+    top: calc(100% + var(--space-8));
+    right: 0;
+    z-index: 10;
+    box-sizing: border-box;
+    width: max-content;
+    max-width: calc(100vw - var(--space-32));
+    margin: 0;
+    padding: var(--space-4) 0;
+    /* overflow: hidden keeps the falling rows (§1g) inside the panel while
+       they travel down; the hard shadow sits outside the border box and is not
+       clipped by it. */
+    overflow: hidden;
+    border: var(--border-card);
+    border-radius: var(--radius-control);
+    /* The footer's beige (§1f), one step darker than the page. */
+    background: var(--color-beige-dark);
+    box-shadow: var(--shadow-hard);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 16px;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-ink);
+}
+
+/* §90: opened upward; the same gap mirrored. */
+.qntns-content__meta.qntns-content__more-menu[data-up] {
+    top: auto;
+    bottom: calc(100% + var(--space-8));
+}
+
+.qntns-content__more-menu[hidden] {
+    display: none;
+}
+
+/* Two classes, so .qntns-content__author's inline-flex and
+   .qntns-content__comments' inherit cannot win by source order. The same two
+   classes (0,2,0) outrank type.css:254's a:hover (0,1,1), so the author, tag,
+   comments and signed-out like links show no light-blue hover (§22c); the
+   tap highlight, the touch flash, is cleared here and on the (i) button. */
+.qntns-content__more-menu .qntns-content__more-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--space-8) var(--space-12);
+    border: 0;
+    background: transparent;
+    color: var(--color-ink);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.qntns-content__more-menu button.qntns-content__more-row,
+.qntns-content__more-menu a.qntns-content__more-row {
+    cursor: pointer;
+}
+
+.qntns-content__more-row > [data-icon],
+.qntns-content__more-row > [data-icon] svg {
+    display: block;
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.qntns-content__more-menu .qntns-content__more-row:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: -2px;
+}
+
+/* THE BUTTON ROWS (§1h, §22). Send postcard and Share are the only rows
+   that DO something (the like is a toggle, the rest are facts and links), so
+   since §22 the WHOLE row is a navy button, label and all, page-colour text;
+   every fact keeps its bare outline icon.
+
+   THE SQUARE IS 24px (6 x 4): the 16px icon plus 4 each side. Down:
+   4 + 24 + 4 = 32, the other rows' 8 + 16 + 8, plus a 4px margin above so
+   two buttons, or a button and the row before it, never touch. Across, the
+   row is inset 4 from each panel edge (width 100% - 8) with 4 padding on the
+   left: 4 + 4 = 8 to the square, 8 + 12 = 20 the icon's centre, where
+   12 + 8 puts the bare icons', and a 4px gap lands the label at 36, the
+   same x as every other label. 4 margin + 8 padding = 12 on the right, the
+   other rows' 12. */
+.qntns-content__more-menu .qntns-content__more-row[data-more-postcard],
+.qntns-content__more-menu .qntns-content__more-row[data-more-open], /* §74: the section feed's Open row only */
+.qntns-content__more-menu .qntns-content__more-row[data-more-share] {
+    gap: var(--space-4);
+    width: calc(100% - var(--space-8));
+    margin: var(--space-4) var(--space-4) 0;
+    padding: var(--space-4) var(--space-8) var(--space-4) var(--space-4);
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-page);
+}
+
+/* An ink ring inside ink would vanish: the ring sits outside the button, in
+   the 4px of panel around it (2px offset + 2px width = 4). */
+.qntns-content__more-menu .qntns-content__more-row[data-more-postcard]:focus-visible,
+.qntns-content__more-menu .qntns-content__more-row[data-more-open]:focus-visible, /* §74: the section feed's Open row only */
+.qntns-content__more-menu .qntns-content__more-row[data-more-share]:focus-visible {
+    outline-offset: 2px;
+}
+
+.qntns-content__more-row[data-more-postcard] > [data-icon],
+.qntns-content__more-row[data-more-open] > [data-icon], /* §74: the section feed's Open row only */
+.qntns-content__more-row[data-more-share] > [data-icon] {
+    display: flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    background: var(--color-ink);
+    color: var(--color-page);
+}
+
+/* LABEL CENTRED ON THE SQUARE (§1e). The row flex-centres BOXES, and
+   Josefin's box is not its ink (metrics as goal-projects.css OPTICAL CENTRE:
+   upm 1000, ascent 750, descent 250, cap 702). 16px on a 16px line: no
+   half-leading, baseline 12 below the line top, cap top 12 - 11.23 = 0.77.
+   The capitals' centre is (0.77 + 12) / 2 = 6.38 against the box's 8, so
+   "Share" sat 1.62 above the square's centre. Trimming the label's box to
+   cap-top/baseline makes it 11.23 tall with its centre on the capitals, and
+   align-items: center lands that on the square's centre, 16 down the 32 row,
+   with no nudge. The row height is still the square's 4 + 24 + 4 = 32.
+   §26 widens it from the two button rows to every row's label (author, date,
+   tag, reading time, views, likes, comments): the bare rows are 8 + 16 + 8,
+   the 16 icon centred at 16, and the untrimmed label's capitals sat at 6.38
+   in its 8..24 box, 14.38, 1.62 high, the "2px" the user saw. Trimmed, the
+   capitals' centre is 16. Row heights unchanged: the 16px icon, not the
+   11.23 label, sets them. The time and the like's inline-grid count keep
+   their baseline, so nothing inside moves relative to the text.
+   text-box is Safari 18.2+ / Chrome 133+; Firefox ignores it and the label
+   stays 1.62 high, as before. */
+.qntns-content__more-row > :not([data-icon]) {
+    text-box: trim-both cap alphabetic;
+}
+
+/* THE DROP (§1g). The panel unrolls from its top edge, and its rows rise in
+   one after another on the home grid's own clock. They come DOWN, not up
+   (§1g rescope): qntns-more-fall is qntns-rise-position mirrored (from
+   -distance, not +distance), and qntns-rise-opacity is card-group.css's
+   keyframe, used as it is. --rise-i counts DOM order, so the top row goes
+   first.
+   The distance and curve below are .qntns-card-group's, copied because this
+   panel is inside no card group. The three times started as that group's
+   HALVED (§1i: 700/900/150 there, 350/450/75) and are now 20% faster again
+   (CHECKLIST-26 §22b: x0.8 = 280/360/60), so a change there scales by 0.4
+   into here. The panel's unroll takes the travel's 280ms on the same curve.
+
+   backwards, as on the home grid, is load-bearing: a row waiting for its
+   turn shows the from-frame, not its resting state. --rise-i is set per row
+   by attachMoreMenu when the menu opens. Closing is instant; the home grid
+   has no reverse to borrow. */
+.qntns-content__more-menu {
+    --rise-position: 280ms;
+    --rise-opacity: 360ms;
+    --rise-step: 60ms;
+    --rise-distance: 32px;
+    --rise-ease: cubic-bezier(0.45, 0, 0.55, 1);
+    /* §52a: the panel grows on the fill's own 320ms ease. The clip bleeds 4px
+       right and bottom for the --shadow-hard offset (4px 4px): the old
+       inset(0) clipped the shadow for the whole drop, then dropped the clip
+       and the shadow popped in whole. Closing is instant. */
+    animation: qntns-more-drop var(--duration-more, 320ms) ease backwards;
+}
+
+.qntns-content__more-menu > .qntns-content__more-row {
+    animation:
+        qntns-more-fall var(--rise-position) var(--rise-ease) backwards,
+        qntns-rise-opacity var(--rise-opacity) var(--rise-ease) backwards;
+    animation-delay: calc(var(--rise-i, 0) * var(--rise-step));
+}
+
+@keyframes qntns-more-fall {
+    from {
+        transform: translateY(calc(-1 * var(--rise-distance, 32px)));
+    }
+    to {
+        transform: none;
+    }
+}
+
+.qntns-content__more-menu[data-up] > .qntns-content__more-row {
+    animation-name: qntns-more-rise, qntns-rise-opacity;
+}
+
+@keyframes qntns-more-rise {
+    from {
+        transform: translateY(var(--rise-distance, 32px));
+    }
+    to {
+        transform: none;
+    }
+}
+
+.qntns-content__more-menu[data-up] {
+    animation-name: qntns-more-drop-up;
+}
+
+@keyframes qntns-more-drop-up {
+    from {
+        clip-path: inset(100% -4px 0 -4px);
+    }
+    to {
+        clip-path: inset(-4px -4px 0 -4px);
+    }
+}
+
+@keyframes qntns-more-drop {
+    from {
+        clip-path: inset(0 -4px 100% -4px);
+    }
+    to {
+        clip-path: inset(0 -4px -4px -4px);
+    }
+}
+
+/* ---- The like (§1c, §2b) -------------------------------------------------
+   The heart is two copies (attachLikes adds the second): the outline, and a
+   filled one on top clipped away from its top edge — so it FILLS UP from
+   below, as the info square's fill layer does. Liked: the fill shows.
+
+   THE PREVIEW (§2b), pointer devices only: hovering a like not yet pressed
+   fills the heart and rolls the count up to count+1 — what a click will do.
+   Leaving reverses both (the transitions run back). A liked one does nothing
+   new on hover, and neither does one just clicked (data-like-settle) until
+   the pointer leaves. A "-" count has no roller, so only the heart fills.
+
+   The roller is a one-cell inline grid: the count and count+1 share the cell,
+   count+1 parked one line below. Its baseline is the first item's, so it
+   sits on the label's line. Clipped by clip-path, not overflow, because
+   overflow would move an inline box's baseline; the 4px of bleed above and
+   below the line box keeps the digits' tops whole, and the fade covers the
+   4px of the parked number that bleed lets through. */
+[data-like] > [data-icon] {
+    position: relative;
+}
+
+[data-like] > [data-icon] > [data-like-fill] {
+    position: absolute;
+    inset: 0;
+    fill: currentColor;
+    clip-path: inset(100% 0 0 0);
+    transition: clip-path var(--duration-more) ease;
+}
+
+[data-like][aria-pressed="true"] > [data-icon] > [data-like-fill] {
+    clip-path: inset(0);
+}
+
+.qntns-like-roll {
+    display: inline-grid;
+    clip-path: inset(-4px 0);
+    font-variant-numeric: tabular-nums;
+}
+
+.qntns-like-roll > span {
+    grid-area: 1 / 1;
+    transition: transform var(--duration-more) ease, opacity var(--duration-more) ease;
+}
+
+.qntns-like-roll > span + span {
+    transform: translateY(100%);
+    opacity: 0;
+}
+
+@media (hover: hover) {
+    [data-like]:not([aria-pressed="true"]):not([data-like-settle]):hover > [data-icon] > [data-like-fill] {
+        clip-path: inset(0);
+    }
+
+    [data-like]:not([aria-pressed="true"]):not([data-like-settle]):hover .qntns-like-roll > span {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    [data-like]:not([aria-pressed="true"]):not([data-like-settle]):hover .qntns-like-roll > span + span {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+/* ---- The foot (CHECKLIST-26 §2, §2a) --------------------------------------
+   Comments and Likes end the post as plain text: icon and words, left at the
+   start of the text column, no border, no fill, no inset. Still a link and a
+   button underneath — the drawer link and the like toggle — so the button
+   loses only its chrome.
+
+   BUDGET, all base 4: 24 above (CHECKLIST-27 §2 — the paragraph gap, so the
+   row reads as the post's last line, not a new section); 16 icon + 8 + label;
+   24 between items, three times the icon's gap, so
+   the pair reads as two items rather than one phrase. The line box is the
+   text's own 16px — the hit area is that line, nothing padded around it. */
+.qntns-content__foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-24);
+    max-width: var(--content-measure);
+    margin: var(--space-24) auto 0;
+}
+
+.qntns-content__foot-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 16px;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+/* Views is a fact, not a control (§2, CHECKLIST-27): no pointer. */
+span.qntns-content__foot-button { cursor: default; }
+
+.qntns-content__foot-button > [data-icon],
+.qntns-content__foot-button > [data-icon] svg {
+    display: block;
+    flex: none;
+    width: 16px;
+    height: 16px;
+}
+
+.qntns-content__foot-button:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* No animation: the hover fill and the open fill appear instantly
+       (§25a keeps the hover state, drops the motion). */
+    .qntns-content__more-layer--fill {
+        transition: none;
+    }
+
+    /* The like keeps its states, loses the motion (§2b). */
+    [data-like] > [data-icon] > [data-like-fill],
+    .qntns-like-roll > span {
+        transition: none;
+    }
+
+    /* No drop, no rise: the menu just appears (§1g). */
+    .qntns-content__more-menu,
+    .qntns-content__more-menu > .qntns-content__more-row {
+        animation: none;
+    }
+}

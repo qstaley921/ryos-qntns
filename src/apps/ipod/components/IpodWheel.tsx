@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type React from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { ROTATION_STEP_DEG } from "../constants";
@@ -29,6 +30,33 @@ interface IpodWheelProps {
   onCenterLongPress?: () => void;
 }
 
+// Green 1st-gen iPod mini wheel (CHECKLIST-36 §56): a pale, faintly green
+// matte wheel, grey printed labels, a slightly dished centre button.
+const MINI_WHEEL: React.CSSProperties = {
+  background: "radial-gradient(circle at 50% 40%, #f1f5e6, #e1e9cf 70%, #d3ddbe)",
+  boxShadow: "inset 0 1px 2px rgba(255,255,255,0.7), inset 0 -1px 2px rgba(70,86,44,0.25), 0 0 0 1px rgba(80,98,52,0.35)",
+};
+const MINI_CENTER: React.CSSProperties = {
+  background: "radial-gradient(circle at 50% 65%, #f3f6ea, #dfe7cd)",
+  boxShadow: "inset 0 2px 3px rgba(70,86,44,0.25), 0 0 0 1px rgba(80,98,52,0.25)",
+};
+const MINI_INK = "#8b8f86";
+const MINI_LABEL: React.CSSProperties = {
+  fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  lineHeight: "12px",
+  color: MINI_INK,
+};
+function MiniGlyph({ className, d }: { className: string; d: string }) {
+  return (
+    <svg aria-hidden width="14" height="10" viewBox="0 0 14 10" className={cn("absolute cursor-default select-none no-select-gesture", className)}>
+      <path d={d} fill={MINI_INK} />
+    </svg>
+  );
+}
+
 // How many degrees of wheel rotation should equal one scroll step
 const rotationStepDeg = ROTATION_STEP_DEG;
 
@@ -47,6 +75,7 @@ export function IpodWheel({
   onCenterLongPress,
 }: IpodWheelProps) {
   const { t } = useTranslation();
+  const mini = theme === "mini";
   const wheelRef = useRef<HTMLDivElement>(null);
   // Accumulated desktop wheel delta. Keep this out of React state so partial
   // scroll gestures do not re-render the whole click wheel.
@@ -500,9 +529,13 @@ export function IpodWheel({
 
   return (
     <div
+      style={mini ? MINI_WHEEL : undefined}
       className={cn(
-        "mt-6 relative w-[180px] h-[180px] rounded-full flex items-center justify-center select-none no-select-gesture",
-        theme === "classic"
+        "relative rounded-full flex items-center justify-center select-none no-select-gesture",
+        mini ? "mt-7 w-[160px] h-[160px]" : "mt-6 w-[180px] h-[180px]",
+        mini
+          ? ""
+          : theme === "classic"
           ? "bg-neutral-300/60"
           : theme === "u2"
           ? "bg-red-700/60"
@@ -543,6 +576,7 @@ export function IpodWheel({
           e.preventDefault();
           endCenterPress();
         }}
+        style={mini ? MINI_CENTER : undefined}
         onBlur={() => {
           // Pointer capture can blur the button without ending the press.
           // Only a keyboard focus loss should abandon the gesture.
@@ -551,7 +585,9 @@ export function IpodWheel({
         }}
         className={cn(
           "ipod-wheel-center absolute w-16 h-16 rounded-full z-10 flex items-center justify-center outline-none focus:outline-none focus-visible:outline-none select-none no-select-gesture touch-none",
-          theme === "classic"
+          mini
+            ? ""
+            : theme === "classic"
             ? "bg-white/30"
             : theme === "u2"
             ? "bg-black/70"
@@ -570,6 +606,26 @@ export function IpodWheel({
         onWheel={handleMouseWheel}
       >
         {/* Wheel labels - no click handlers */}
+        {mini ? (
+          // The 1st-gen mini prints its labels in grey on the wheel itself, in a plain sans.
+          <>
+            <div
+              className="absolute top-3 left-1/2 -translate-x-1/2 menu-button cursor-default select-none no-select-gesture"
+              style={MINI_LABEL}
+              onClick={(e) => {
+            if (recentTouchRef.current || isInTouchDragRef.current || isInMouseDragRef.current) return;
+            e.stopPropagation(); // Prevent triggering wheel mousedown
+            onMenuButton();
+          }}
+            >
+              MENU
+            </div>
+            <MiniGlyph className="right-3 top-1/2 -translate-y-1/2" d="M1 1 L6 5 L1 9 Z M6 1 L11 5 L6 9 Z M12 1 H13.5 V9 H12 Z" />
+            <MiniGlyph className="bottom-3 left-1/2 -translate-x-1/2" d="M1 1 L6.5 5 L1 9 Z M9 1 H10.5 V9 H9 Z M12 1 H13.5 V9 H12 Z" />
+            <MiniGlyph className="left-3 top-1/2 -translate-y-1/2" d="M0.5 1 H2 V9 H0.5 Z M8 1 L3 5 L8 9 Z M13 1 L8 5 L13 9 Z" />
+          </>
+        ) : (
+          <>
         <div
           className="absolute top-1.5 text-center left-1/2 transform -translate-x-1/2 font-chicago text-xs text-white menu-button cursor-default select-none no-select-gesture"
           onClick={(e) => {
@@ -589,6 +645,8 @@ export function IpodWheel({
         <div className="absolute left-2 text-left top-1/2 transform -translate-y-1/2 font-chicago text-[12px] text-white cursor-default select-none no-select-gesture">
           ⏮
         </div>
+          </>
+        )}
       </div>
     </div>
   );
