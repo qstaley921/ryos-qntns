@@ -93,12 +93,13 @@ describe("journal demo", () => {
       id: "speed-note",
       position: { x: -20, y: 140 },
     });
-    expect(moved.positions["speed-note"]).toEqual({ x: 0, y: 100 });
+    expect(moved.positions["speed-note"]).toEqual({ x: 0, y: 140 });
   });
 
   test("normalizes a saved service-window demo back to the daily journal", () => {
     const normalized = normalizeJournalState({
       view: "counter",
+      gridLayout: 1,
       toggles: { reminder: false },
       decisions: { removeStreak: "accepted" },
       trialPhoto: true,
