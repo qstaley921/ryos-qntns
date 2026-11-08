@@ -155,10 +155,6 @@ export function AppleMenu() {
     launchApp("control-panels" as AppId);
   };
 
-  const handleAppletStore = () => {
-    launchApp("applet-viewer" as AppId, { initialData: { path: "", content: "" } });
-  };
-
   const handleMoreApps = () => {
     launchApp("finder" as AppId, { initialPath: "/Applications" });
   };
@@ -241,14 +237,6 @@ export function AppleMenu() {
             className="text-md h-6 px-3"
           >
             {isMacOSTheme ? t("common.appleMenu.systemPreferences") : t("common.appleMenu.controlPanels")}
-          </MenubarItem>
-
-          {/* Applet Store */}
-          <MenubarItem
-            onClick={handleAppletStore}
-            className="text-md h-6 px-3"
-          >
-            {t("common.appleMenu.appletStore")}
           </MenubarItem>
 
           <MenubarSeparator className="h-[2px] bg-black my-1" />
