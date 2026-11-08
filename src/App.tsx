@@ -35,6 +35,7 @@ import { MediaCoreRunner } from "@/hooks/MediaCoreRunner";
 import { DesktopCornerMask } from "@/components/layout/desktop/DesktopCornerMask";
 import { installNativeToastNotifications } from "@/utils/nativeToastNotifications";
 import { createClientLogger } from "@/utils/logger";
+import { DeepLinkHost } from "@/components/layout/DeepLinkHost";
 import { SignInRequestHost } from "@/components/auth/SignInRequestHost";
 
 // Code-split: the debug overlay (console/network panels + live dashboard) is
@@ -308,6 +309,7 @@ export function App() {
         <AppManager apps={apps} />
       </DesktopErrorBoundary>
       <Toaster position={toastConfig.position} offset={toastConfig.offset} />
+      <DeepLinkHost />
       <SignInRequestHost />
       <DeferredAirDropListener />
       <DeferredAutoCloudSync />
