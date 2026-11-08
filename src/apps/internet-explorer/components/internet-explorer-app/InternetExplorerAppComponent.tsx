@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useSound, Sounds } from "@/hooks/useSound";
 import { appMetadata, helpItems } from "../../metadata";
 import { proxied, proxyOk, loadBookmarks, type Bookmark, type Bookmarks } from "../../bookmarks";
+import { PostcardWindow, type PostcardDoc } from "./PostcardWindow";
 
 const NAME = "Safari";
 const FOLDERS = [
@@ -42,7 +43,10 @@ const host = (url: string) => {
 
 // §79: initialData { mini, path } is a Mini window (in the spirit of macOS's Captive Network
 // Assistant) on one of our own pages. A mode of Safari, not a new app: no registry lines.
+// §79d: initialData { postcard: { id, type } } is a Postcard window (PostcardWindow.tsx), the other mode.
 export function InternetExplorerAppComponent(props: AppProps<InternetExplorerInitialData>) {
+  const post = (props.initialData as { postcard?: PostcardDoc } | undefined)?.postcard;
+  if (post) return <PostcardWindow {...(props as AppProps)} post={post} />;
   return props.initialData?.mini && props.initialData.path ? <Mini {...props} path={props.initialData.path} /> : <Safari {...props} />;
 }
 

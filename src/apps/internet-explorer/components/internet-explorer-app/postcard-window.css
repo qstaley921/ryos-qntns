@@ -1,0 +1,18 @@
+/* CHECKLIST-37 §79d: the site's postcard popover, held inside a window instead of
+   over the screen. It sizes itself from the viewport (vw/vh); here the window's
+   content box is the container, so cqw/cqh stand in for them. Same arithmetic as
+   postcard.css's --postcard-w: 32px side room + 24px, 160px of toolbar and actions.
+   No scrim: there is no page behind it to dim, and a press on it would close it. */
+.ryos-postcard-window {
+  position: relative;
+  container-type: size;
+}
+
+.ryos-postcard-window .qntns-postcard {
+  position: absolute;
+  --postcard-w: min(calc(100cqw - 56px), calc((100cqh - 160px) * 2 / 3));
+}
+
+.ryos-postcard-window .qntns-postcard__scrim {
+  display: none;
+}

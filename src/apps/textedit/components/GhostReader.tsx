@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChatCircle, Heart, Info, Play } from "@phosphor-icons/react";
+import { ChatCircle, Heart, Info, Play, Printer } from "@phosphor-icons/react";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { api, listDocs, openDoc, type GhostDoc } from "@/lib/ghost";
@@ -31,7 +31,6 @@ import "../qntns/footnotes.css";
 import "../qntns/code.css";
 import "../qntns/reader.css";
 import "@/apps/paint/wall/css/tokens.css";
-import "@/apps/paint/wall/css/postcard.css";
 
 // A Ghost post or page, read-only (CHECKLIST-36 §12). Finder launches TextEdit
 // with initialData { ghost: { id, type } } and the body is fetched here; a story may pass a full doc plus `html` to skip the fetch.
@@ -220,33 +219,12 @@ export function GhostReader({
     el.append(commentsScript(doc.id));
   }, [commentsOpen, doc.id]);
 
-  // File › Print: the site's postcard editor over this poem, as the theme opens it
-  // (tag-feed.js openPostcard). Loaded on first press; torn down on close/unmount.
-  const printRef = useRef<{ host: HTMLElement; card: { open(): void; destroy(): void } } | null>(null);
-  const dropPrint = () => {
-    printRef.current?.card.destroy();
-    printRef.current?.host.remove();
-    printRef.current = null;
-  };
-  useEffect(() => dropPrint, []);
-  const canPrint = has(tagged, "hash-fixed-lines");
-  const print = async () => {
-    const body = bodyRef.current?.firstElementChild;
-    if (!body) return;
-    const pc = await import("@/apps/paint/wall/qntns/postcard.js");
-    dropPrint();
-    const root = document.createElement("div");
-    root.innerHTML = '<h1 class="qntns-content__title"></h1><p class="qntns-content__tag"></p>';
-    (root.firstElementChild as HTMLElement).textContent = tagged.title ?? "";
-    root.append(body.cloneNode(true));
-    const u = new URL(tagged.url ?? doc.url ?? "https://www.qntns.com/", location.href);
-    const data = pc.readArticle(root, { url: `${u.host}${u.pathname}` });
-    const host = document.createElement("div");
-    host.innerHTML = pc.renderPostcard(data);
-    document.body.append(host);
-    printRef.current = { host, card: pc.attachPostcard(host, data) };
-    printRef.current.card.open();
-  };
+  // §79e: File › Print and the toolbar's printer open this post's Postcard window (§79d), for any post or page.
+  const print = () =>
+    launchApp("internet-explorer", {
+      initialData: { postcard: { ...tagged, id: doc.id, type: doc.type, ...(html != null && { html }) } },
+      multiWindow: true,
+    });
 
   const step = (d: number) =>
     update({ size: Math.min(READER_SIZES.length - 1, Math.max(0, size + d)) });
@@ -258,7 +236,7 @@ export function GhostReader({
   const menuBar = (
     <GhostReaderMenuBar
       onClose={close}
-      onPrint={canPrint ? print : undefined}
+      onPrint={print}
       viewAlt={viewAlt}
       onBigger={() => step(1)}
       onSmaller={() => step(-1)}
@@ -346,6 +324,9 @@ export function GhostReader({
           )}
           <Button variant="ghost" size="icon" className="size-7" onClick={() => launchApp("ipod", { initialData: { ghostTrackId: doc.id } })} disabled={!hasAudio} aria-label="Play">
             <Play className={icon(false)} weight="fill" />
+          </Button>
+          <Button variant="ghost" size="icon" className="size-7" onClick={print} disabled={html == null} aria-label="Postcard" title="Postcard">
+            <Printer className={icon(false)} weight="bold" />
           </Button>
           <Button variant="ghost" size="icon" className="size-7" onClick={() => setInfoOpen((o) => !o)} aria-label="Info" aria-pressed={infoOpen}>
             <Info className={icon(infoOpen)} weight={infoOpen ? "fill" : "bold"} />

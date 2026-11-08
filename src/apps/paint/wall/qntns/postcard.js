@@ -4379,7 +4379,8 @@ const attachAutocomplete = (el) => {
  * `at` is lazy because a section may hold a hundred posts and readArticle
  * parses a whole body; only the ones actually stepped onto are ever built.
  */
-export const attachPostcard = (root, data, { onMail, onPaint, deck } = {}) => {
+// `onClose` (CHECKLIST-37 §79d): the RyOS Postcard window closes itself when the editor does.
+export const attachPostcard = (root, data, { onMail, onPaint, deck, onClose } = {}) => {
     const el = root.querySelector("[data-postcard]");
     if (!el) return () => {};
 
@@ -5950,6 +5951,7 @@ export const attachPostcard = (root, data, { onMail, onPaint, deck } = {}) => {
         el.hidden = true;
         document.body.style.overflow = "";
         opener?.focus?.();
+        onClose?.();
     }
 
     /* Only the key that started the repeat may end it, so releasing some other

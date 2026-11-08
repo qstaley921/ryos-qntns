@@ -49,7 +49,7 @@ export function GhostReaderMenuBar({
 }: {
   links: PostLinks;
   onClose: () => void;
-  onPrint?: () => void; // poems only; for other posts File › Print is hidden
+  onPrint?: () => void; // §79e: opens the post's Postcard window (any post or page)
   viewAlt: ViewAlt;
   onBigger: () => void;
   onSmaller: () => void;
