@@ -1,191 +1,133 @@
-import { AppProps, InternetExplorerInitialData } from "@/apps/base/types";
+// Safari (CHECKLIST-37 §28). Keeps the `internet-explorer` app id (the registry
+// is CHECKLIST-35's); everything a visitor sees is Safari. Bookmarks bar = two
+// folders, Friends and Portfolio, from Ghost pages. A site opens in a frame if
+// the Worker's /frame-ok says it allows framing, else a card that links out.
+import { useEffect, useState } from "react";
+import { CaretLeft, CaretRight, ArrowSquareOut } from "@phosphor-icons/react";
+import type { AppProps, InternetExplorerInitialData } from "@/apps/base/types";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
-import { InternetExplorerMenuBar } from "../InternetExplorerMenuBar";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { ShareItemDialog } from "@/components/dialogs/ShareItemDialog";
-import { useInternetExplorerLogic } from "../../hooks/useInternetExplorerLogic";
-import { InternetExplorerToolbar } from "./InternetExplorerToolbar";
-import { InternetExplorerContentPane } from "./InternetExplorerContentPane";
-import { InternetExplorerAppDialogs } from "./InternetExplorerAppDialogs";
+import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
+import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
+import { AppMenuBarMenus } from "@/components/shared/menubar/AppMenuBarMenus";
+import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ThemedIcon } from "@/components/shared/ThemedIcon";
+import { appMetadata, helpItems } from "../../metadata";
+import { canFrame, loadBookmarks, type Bookmark, type Bookmarks } from "../../bookmarks";
+
+const NAME = "Safari";
+const FOLDERS = [
+  ["friends", "Friends"],
+  ["portfolio", "Portfolio"],
+] as const;
+
+const host = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
 
 export function InternetExplorerAppComponent({
   isWindowOpen,
   onClose,
   isForeground,
   skipInitialSound,
-  helpItems,
-  initialData,
   instanceId,
   onNavigateNext,
   onNavigatePrevious,
 }: AppProps<InternetExplorerInitialData>) {
-  const logic = useInternetExplorerLogic({
-    isWindowOpen,
-    isForeground,
-    initialData,
-    instanceId,
-    helpItems,
-  });
+  const chrome = useAppMenuBarChrome("internet-explorer", NAME);
+  const [marks, setMarks] = useState<Bookmarks>({ friends: [], portfolio: [] });
+  // history of opened bookmarks; null = the start page
+  const [trail, setTrail] = useState<(Bookmark | null)[]>([null]);
+  const [at, setAt] = useState(0);
+  const [framed, setFramed] = useState<boolean | null>(null); // null = asking the Worker
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const site = trail[at];
 
-  const {
-    url,
-    year,
-    mode,
-    favorites,
-    history,
-    historyIndex,
-    isTitleDialogOpen,
-    newFavoriteTitle,
-    isHelpDialogOpen,
-    isAboutDialogOpen,
-    isClearFavoritesDialogOpen,
-    isClearHistoryDialogOpen,
-    currentPageTitle,
-    status,
-    finalUrl,
-    aiGeneratedHtml,
-    errorDetails,
-    isResetFavoritesDialogOpen,
-    isFutureSettingsDialogOpen,
-    isTimeMachineViewOpen,
-    cachedYears,
-    isFetchingCachedYears,
-    hasMoreToScroll,
-    isUrlDropdownOpen,
-    setIsUrlDropdownOpen,
-    filteredSuggestions,
-    localUrl,
-    setLocalUrl,
-    isSelectingText,
-    setIsSelectingText,
-    selectedSuggestionIndex,
-    setSelectedSuggestionIndex,
-    dropdownStyle,
-    displayTitle,
-    isShareDialogOpen,
-    setIsShareDialogOpen,
-    urlInputRef,
-    iframeRef,
-    favoritesContainerRef,
-    generatedHtml,
-    isAiLoading,
-    isFetchingWebsiteContent,
-    playElevatorMusic,
-    stopElevatorMusic,
-    playDingSound,
-    currentTheme,
-    isWindowsTheme,
-    isOffline,
-    pastYears,
-    futureYears,
-    isFutureYear,
-    chronologicallySortedYears,
-    isLoading,
-    loadingBarVariants,
-    handleNavigate,
-    handleNavigateWithHistory,
-    handleFilterSuggestions,
-    handleGoBack,
-    handleGoForward,
-    handleAddFavorite,
-    handleTitleSubmit,
-    handleResetFavorites,
-    handleClearFavorites,
-    handleRefresh,
-    handleStop,
-    handleGoToUrl,
-    handleHome,
-    handleSharePage,
-    handleIframeLoad,
-    handleIframeError,
-    stripProtocol,
-    isValidUrl,
-    normalizeUrlInline,
-    normalizeUrlForHistory,
-    ieGenerateShareUrl,
-    setTitleDialogOpen,
-    setNewFavoriteTitle,
-    setHelpDialogOpen,
-    setAboutDialogOpen,
-    setClearFavoritesDialogOpen,
-    setClearHistoryDialogOpen,
-    clearHistory,
-    setResetFavoritesDialogOpen,
-    setFutureSettingsDialogOpen,
-    setTimeMachineViewOpen,
-    translatedHelpItems,
-    setUrl,
-    setLanguage,
-    setLocation,
-    bringInstanceToForeground,
-    t,
-    getDebugStatusMessage,
-    showDebugMenu,
-    debugProxySessions,
-    debugForceHeadless,
-    debugVerboseLogging,
-    setDebugProxySessions,
-    setDebugForceHeadless,
-    setDebugVerboseLogging,
-  } = logic;
+  useEffect(() => {
+    loadBookmarks().then(setMarks);
+  }, []);
+
+  useEffect(() => {
+    if (!site) return;
+    let live = true;
+    setFramed(null);
+    // a same-origin page with allow-scripts + allow-same-origin escapes the sandbox: always link out
+    if (new URL(site.url).origin === location.origin) { setFramed(false); return; }
+    canFrame(site.url).then((ok) => live && setFramed(ok));
+    return () => {
+      live = false;
+    };
+  }, [site]);
+
+  const open = (b: Bookmark) => {
+    setTrail([...trail.slice(0, at + 1), b]);
+    setAt(at + 1);
+  };
+  const linkOut = () => site && window.open(site.url, "_blank", "noopener,noreferrer");
 
   const menuBar = (
-    <InternetExplorerMenuBar
-      isWindowOpen={isWindowOpen}
-      isForeground={isForeground}
-      onRefresh={handleRefresh}
-      onStop={handleStop}
-      onFocusUrlInput={handleGoToUrl}
-      onHome={handleHome}
-      onShowHelp={() => setHelpDialogOpen(true)}
-      onShowAbout={() => setAboutDialogOpen(true)}
-      isLoading={isLoading}
-      favorites={favorites}
-      history={history}
-      onAddFavorite={handleAddFavorite}
-      onClearFavorites={() => setClearFavoritesDialogOpen(true)}
-      onResetFavorites={() => setResetFavoritesDialogOpen(true)}
-      onNavigateToFavorite={(favUrl, favYear) =>
-        handleNavigateWithHistory(favUrl, favYear)
-      }
-      onNavigateToHistory={handleNavigateWithHistory}
-      onGoBack={handleGoBack}
-      onGoForward={handleGoForward}
-      canGoBack={historyIndex < history.length - 1}
-      canGoForward={historyIndex > 0}
-      onClearHistory={() => setClearHistoryDialogOpen(true)}
-      onOpenTimeMachine={() => setTimeMachineViewOpen(true)}
-      onClose={onClose}
-      onEditFuture={() => setFutureSettingsDialogOpen(true)}
-      language={logic.language}
-      location={logic.location}
-      year={year}
-      onLanguageChange={setLanguage}
-      onLocationChange={setLocation}
-      onYearChange={(newYear) => handleNavigate(url, newYear)}
-      onSharePage={handleSharePage}
-      showDebugMenu={showDebugMenu}
-      debugProxySessions={debugProxySessions}
-      debugForceHeadless={debugForceHeadless}
-      debugVerboseLogging={debugVerboseLogging}
-      onToggleProxySessions={setDebugProxySessions}
-      onToggleForceHeadless={setDebugForceHeadless}
-      onToggleVerboseLogging={setDebugVerboseLogging}
-      skipInitialSound={skipInitialSound}
-      instanceId={instanceId}
-      onNavigateNext={onNavigateNext}
-      onNavigatePrevious={onNavigatePrevious}
-    />
+    <AppMenuBarShell
+      isWindowsTheme={chrome.isWindowsTheme}
+      isMacOSTheme={chrome.isMacOSTheme}
+      appId={chrome.appId}
+      appName={chrome.appName}
+      isShareDialogOpen={chrome.isShareDialogOpen}
+      setIsShareDialogOpen={chrome.setIsShareDialogOpen}
+      helpItemLabel={`${NAME} Help`}
+      aboutItemLabel={`About ${NAME}`}
+      onShowHelp={() => setHelpOpen(true)}
+      onShowAbout={() => setAboutOpen(true)}
+    >
+      <AppMenuBarMenus
+        menus={[
+          {
+            label: "File",
+            items: [
+              { type: "action", label: "Open in New Window", onClick: linkOut, disabled: !site },
+              { type: "separator" },
+              { type: "action", label: "Close", onClick: onClose, shortcutId: "close" },
+            ],
+          },
+          {
+            label: "History",
+            items: [
+              { type: "action", label: "Back", onClick: () => setAt(at - 1), disabled: at === 0 },
+              { type: "action", label: "Forward", onClick: () => setAt(at + 1), disabled: at === trail.length - 1 },
+            ],
+          },
+          {
+            label: "Bookmarks",
+            items: FOLDERS.map(([k, label]) => ({
+              type: "submenu" as const,
+              label,
+              disabled: marks[k].length === 0,
+              items: marks[k].map((b) => ({ type: "action" as const, label: b.title, onClick: () => open(b) })),
+            })),
+          },
+        ]}
+      />
+    </AppMenuBarShell>
   );
 
   return (
     <AppWindowShell
       isWindowOpen={isWindowOpen}
-      isWindowsTheme={isWindowsTheme}
+      isWindowsTheme={chrome.isWindowsTheme}
       isForeground={isForeground}
       menuBar={menuBar}
       windowFrameProps={{
-        title: displayTitle,
+        title: site?.title ?? NAME,
         onClose,
         isForeground,
         appId: "internet-explorer",
@@ -194,122 +136,118 @@ export function InternetExplorerAppComponent({
         onNavigateNext,
         onNavigatePrevious,
       }}
-      trailing={
-        <ShareItemDialog
-          isOpen={isShareDialogOpen}
-          onClose={() => setIsShareDialogOpen(false)}
-          itemType={t("apps.internet-explorer.page")}
-          itemTypeKey="page"
-          itemIdentifier={url}
-          secondaryIdentifier={year}
-          title={currentPageTitle || url}
-          generateShareUrl={ieGenerateShareUrl}
-        />
-      }
     >
-      <TooltipProvider>
-        <div className="flex flex-col size-full relative">
-            <InternetExplorerToolbar
-              isWindowsTheme={isWindowsTheme}
-              currentTheme={currentTheme}
-              isOffline={isOffline}
-              historyIndex={historyIndex}
-              historyLength={history.length}
-              url={url}
-              year={year}
-              pastYears={pastYears}
-              futureYears={futureYears}
-              favorites={favorites}
-              hasMoreToScroll={hasMoreToScroll}
-              urlInputRef={urlInputRef}
-              favoritesContainerRef={favoritesContainerRef}
-              localUrl={localUrl}
-              isUrlDropdownOpen={isUrlDropdownOpen}
-              filteredSuggestions={filteredSuggestions}
-              selectedSuggestionIndex={selectedSuggestionIndex}
-              dropdownStyle={dropdownStyle}
-              cachedYears={cachedYears}
-              isFetchingCachedYears={isFetchingCachedYears}
-              isSelectingText={isSelectingText}
-              t={t}
-              setLocalUrl={setLocalUrl}
-              setUrl={setUrl}
-              setIsUrlDropdownOpen={setIsUrlDropdownOpen}
-              setIsSelectingText={setIsSelectingText}
-              setSelectedSuggestionIndex={setSelectedSuggestionIndex}
-              setTimeMachineViewOpen={setTimeMachineViewOpen}
-              stripProtocol={stripProtocol}
-              isValidUrl={isValidUrl}
-              normalizeUrlInline={normalizeUrlInline}
-              normalizeUrlForHistory={normalizeUrlForHistory}
-              handleFilterSuggestions={handleFilterSuggestions}
-              handleNavigate={handleNavigate}
-              handleNavigateWithHistory={handleNavigateWithHistory}
-              handleGoBack={handleGoBack}
-              handleGoForward={handleGoForward}
-              handleSharePage={handleSharePage}
-            />
-
-            <InternetExplorerContentPane
-              errorDetails={errorDetails}
-              url={url}
-              year={year}
-              mode={mode}
-              finalUrl={finalUrl}
-              isFutureYear={isFutureYear}
-              isAiLoading={isAiLoading}
-              aiGeneratedHtml={aiGeneratedHtml}
-              generatedHtml={generatedHtml}
-              status={status}
-              isFetchingWebsiteContent={isFetchingWebsiteContent}
-              isForeground={!!isForeground}
-              currentTheme={currentTheme}
-              iframeRef={iframeRef}
-              loadingBarVariants={loadingBarVariants}
-              t={t}
-              playElevatorMusic={playElevatorMusic}
-              stopElevatorMusic={stopElevatorMusic}
-              playDingSound={playDingSound}
-              getDebugStatusMessage={getDebugStatusMessage}
-              handleGoBack={handleGoBack}
-              handleNavigate={handleNavigate}
-              handleIframeLoad={handleIframeLoad}
-              handleIframeError={handleIframeError}
-              bringInstanceToForeground={bringInstanceToForeground}
-              instanceId={instanceId}
-            />
+      <div className="flex size-full flex-col bg-os-window-bg font-os-ui text-os-text-primary">
+        {/* Toolbar: back/forward, address, link out */}
+        <div className="flex items-center gap-2 border-b border-os-window px-2 py-1">
+          <Button variant="ghost" size="icon" aria-label="Back" disabled={at === 0} onClick={() => setAt(at - 1)}>
+            <CaretLeft weight="bold" />
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="Forward" disabled={at === trail.length - 1} onClick={() => setAt(at + 1)}>
+            <CaretRight weight="bold" />
+          </Button>
+          <div className="min-w-0 flex-1 truncate rounded-md border border-os-window bg-white px-3 py-1 text-center text-[12px] text-neutral-700 os-dark:bg-neutral-800 os-dark:text-neutral-200">
+            {site ? host(site.url) : "Bookmarks"}
           </div>
+          <Button variant="ghost" size="icon" aria-label="Open in new window" disabled={!site} onClick={linkOut}>
+            <ArrowSquareOut weight="bold" />
+          </Button>
+        </div>
 
-          <InternetExplorerAppDialogs
-            isTitleDialogOpen={isTitleDialogOpen}
-            newFavoriteTitle={newFavoriteTitle}
-            isHelpDialogOpen={isHelpDialogOpen}
-            isAboutDialogOpen={isAboutDialogOpen}
-            isClearFavoritesDialogOpen={isClearFavoritesDialogOpen}
-            isClearHistoryDialogOpen={isClearHistoryDialogOpen}
-            isResetFavoritesDialogOpen={isResetFavoritesDialogOpen}
-            isFutureSettingsDialogOpen={isFutureSettingsDialogOpen}
-            isTimeMachineViewOpen={isTimeMachineViewOpen}
-            translatedHelpItems={translatedHelpItems}
-            url={url}
-            year={year}
-            chronologicallySortedYears={chronologicallySortedYears}
-            setTitleDialogOpen={setTitleDialogOpen}
-            setNewFavoriteTitle={setNewFavoriteTitle}
-            setHelpDialogOpen={setHelpDialogOpen}
-            setAboutDialogOpen={setAboutDialogOpen}
-            setClearFavoritesDialogOpen={setClearFavoritesDialogOpen}
-            setClearHistoryDialogOpen={setClearHistoryDialogOpen}
-            setResetFavoritesDialogOpen={setResetFavoritesDialogOpen}
-            setFutureSettingsDialogOpen={setFutureSettingsDialogOpen}
-            setTimeMachineViewOpen={setTimeMachineViewOpen}
-            handleTitleSubmit={handleTitleSubmit}
-            handleClearFavorites={handleClearFavorites}
-            handleResetFavorites={handleResetFavorites}
-            clearHistory={clearHistory}
-            handleNavigate={handleNavigate}
-          />
-      </TooltipProvider>
+        {/* Bookmarks bar: Friends and Portfolio only */}
+        <div className="flex items-center gap-1 border-b border-os-window px-2 py-0.5">
+          {FOLDERS.map(([k, label]) => (
+            <DropdownMenu key={k}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1 px-2 text-[11px]">
+                  <ThemedIcon name="directory.png" alt="" className="size-4 [image-rendering:pixelated]" />
+                  {label}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={4} className="max-w-xs px-0">
+                {marks[k].length === 0 ? (
+                  <DropdownMenuItem disabled className="h-6 px-3">Empty</DropdownMenuItem>
+                ) : (
+                  marks[k].map((b) => (
+                    <DropdownMenuItem key={b.id} onClick={() => open(b)} className="flex h-6 items-center gap-2 px-3">
+                      <ThemedIcon name="site.png" alt="" className="size-4 [image-rendering:pixelated]" />
+                      {b.title}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ))}
+        </div>
+
+        <div className="relative min-h-0 flex-1 bg-white os-dark:bg-neutral-900">
+          {!site ? (
+            <StartPage marks={marks} open={open} />
+          ) : framed === null ? (
+            <p className="p-4 text-[12px] text-neutral-500">Loading {host(site.url)}…</p>
+          ) : framed ? (
+            <iframe
+              key={site.url}
+              src={site.url}
+              title={site.title}
+              className="size-full border-0"
+              // the site keeps its own origin; never ours
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center p-4">
+              <div className="max-w-sm rounded-md border border-os-window p-4 text-center">
+                <p className="text-[13px] font-semibold">{site.title}</p>
+                {site.excerpt && <p className="mt-1 text-[12px] text-neutral-600 os-dark:text-neutral-300">{site.excerpt}</p>}
+                <p className="mt-2 text-[11px] text-neutral-500">This site can't be shown inside Safari.</p>
+                <Button className="mt-3" size="sm" onClick={linkOut}>
+                  Open {host(site.url)}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <AppHelpAboutDialogs
+        appId="internet-explorer"
+        helpItems={helpItems}
+        metadata={appMetadata}
+        isHelpOpen={helpOpen}
+        onHelpOpenChange={setHelpOpen}
+        isAboutOpen={aboutOpen}
+        onAboutOpenChange={setAboutOpen}
+      />
     </AppWindowShell>
+  );
+}
+
+function StartPage({ marks, open }: { marks: Bookmarks; open: (b: Bookmark) => void }) {
+  return (
+    <div className="size-full overflow-auto p-4">
+      {FOLDERS.map(([k, label]) => (
+        <section key={k} className="mb-4">
+          <h2 className="mb-2 text-[13px] font-semibold">{label}</h2>
+          {marks[k].length === 0 ? (
+            <p className="text-[12px] text-neutral-500">No sites yet.</p>
+          ) : (
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2">
+              {marks[k].map((b) => (
+                <li key={b.id}>
+                  <button
+                    type="button"
+                    onClick={() => open(b)}
+                    className="w-full rounded-md border border-os-window p-2 text-left hover:bg-neutral-100 os-dark:hover:bg-neutral-800"
+                  >
+                    <span className="block truncate text-[12px] font-semibold">{b.title}</span>
+                    <span className="block truncate text-[11px] text-neutral-500">{b.excerpt || host(b.url)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
+    </div>
   );
 }
