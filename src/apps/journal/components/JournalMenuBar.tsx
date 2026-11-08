@@ -1,11 +1,21 @@
 import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import { AppMenuBarMenus } from "@/components/shared/menubar/AppMenuBarMenus";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
-import { JOURNAL_FEATURES, JOURNAL_VIEWS } from "../types";
-import type { JournalFeatureId, JournalView } from "../types";
+import { JOURNAL_VIEWS } from "../types";
+import type { JournalView } from "../types";
 import type { JournalLogic } from "../hooks/useJournalLogic";
 
-export function JournalMenuBar({ l, onClose }: { l: JournalLogic; onClose: () => void }) {
+export function JournalMenuBar({
+  l,
+  onClose,
+  showSidebar,
+  onToggleSidebar,
+}: {
+  l: JournalLogic;
+  onClose: () => void;
+  showSidebar: boolean;
+  onToggleSidebar: () => void;
+}) {
   const { t } = l;
   const { isShareDialogOpen, setIsShareDialogOpen, isWindowsTheme, isMacOSTheme, appId, appName } =
     useAppMenuBarChrome("journal");
@@ -30,12 +40,6 @@ export function JournalMenuBar({ l, onClose }: { l: JournalLogic; onClose: () =>
             items: [
               {
                 type: "action",
-                label: t("apps.journal.menu.reset"),
-                onClick: () => l.api.resetDemo(),
-              },
-              { type: "separator" },
-              {
-                type: "action",
                 label: t("common.menu.close"),
                 onClick: onClose,
                 shortcutId: "close",
@@ -55,12 +59,13 @@ export function JournalMenuBar({ l, onClose }: { l: JournalLogic; onClose: () =>
                 })),
               },
               { type: "separator" },
-              ...JOURNAL_FEATURES.map((feature) => ({
-                type: "checkbox" as const,
-                label: t(`apps.journal.features.${feature}`),
-                checked: l.journal.toggles[feature],
-                onChange: () => l.api.toggleFeature(feature as JournalFeatureId),
-              })),
+              {
+                type: "checkbox",
+                label: "Show Sidebar",
+                checked: showSidebar,
+                onChange: () => onToggleSidebar(),
+                disabled: l.journal.view !== "daily",
+              },
             ],
           },
         ]}

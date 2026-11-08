@@ -3,7 +3,7 @@ export const JOURNAL_FEATURES = ["date", "mood", "reminder"] as const;
 export type JournalFeatureId = (typeof JOURNAL_FEATURES)[number];
 
 /** Days, Freeform, and Combined stay in the toolbar. Combined is the default. */
-export const JOURNAL_VIEWS = ["daily", "freeform", "compare"] as const;
+export const JOURNAL_VIEWS = ["daily", "freeform"] as const;
 
 export type JournalView = (typeof JOURNAL_VIEWS)[number];
 

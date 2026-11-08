@@ -17,6 +17,7 @@ export interface JournalFragment {
   y: number;
   w: number;
   rotate: number;
+  kinds?: string[];
 }
 
 export interface JournalDay {
@@ -25,11 +26,11 @@ export interface JournalDay {
   title: JournalCopy;
 }
 
-export const JOURNAL_DAYS: readonly JournalDay[] = JOURNAL_ENTRY_DAYS;
+export const JOURNAL_DAYS: JournalDay[] = JOURNAL_ENTRY_DAYS;
 
-export const JOURNAL_FRAGMENTS: readonly JournalFragment[] = JOURNAL_ENTRY_FRAGMENTS;
+export const JOURNAL_FRAGMENTS: JournalFragment[] = JOURNAL_ENTRY_FRAGMENTS;
 
-export const DEFAULT_DAY_ID = JOURNAL_DAYS[JOURNAL_DAYS.length - 1].id;
+export const defaultDayId = () => JOURNAL_DAYS[JOURNAL_DAYS.length - 1]?.id ?? "";
 
 export function journalLocale(language: string | undefined): keyof JournalCopy {
   const value = (language ?? "en").toLowerCase();

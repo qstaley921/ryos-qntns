@@ -13,9 +13,11 @@ export function useJournalLogic() {
   const journal = useJournalStore((state) => state.journal);
   const sidebarWidth = useJournalStore((state) => state.sidebarWidth);
   const notice = useJournalStore((state) => state.notice);
+  const filter = useJournalStore((state) => state.filter);
   const api = useJournalStore(
     useShallow((state) => ({
       setView: state.setView,
+      setFilter: state.setFilter,
       toggleFeature: state.toggleFeature,
       moveFragment: state.moveFragment,
       selectDay: state.selectDay,
@@ -50,6 +52,7 @@ export function useJournalLogic() {
     journal,
     sidebarWidth,
     notice,
+    filter,
     api,
   };
 }

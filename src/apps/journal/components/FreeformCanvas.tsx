@@ -4,10 +4,8 @@ import { cn } from "@/lib/utils";
 import "../journal.css";
 import type { JournalLogic } from "../hooks/useJournalLogic";
 import { clamp, isJournalDayId, journalFragments, plainTextFromDoc } from "../logic";
-import { formatJournalDay, journalText, sampleDoc } from "../sampleContent";
+import { formatJournalDay, journalText } from "../sampleContent";
 import type { FragmentPosition, JournalDoc, JournalScrap } from "../types";
-import { JournalCardMenu, type JournalCardMenuState } from "./JournalCardMenu";
-import { JournalViewToolbar, useJournalViewChrome } from "./JournalViewToolbar";
 import { isJournalSongPlayControl, JournalSongMark } from "./journalSong";
 
 interface CanvasCard {
@@ -116,17 +114,12 @@ export function FreeformCanvas({
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language;
-  const { open, hoverProps } = useJournalViewChrome();
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const lastClickRef = useRef<{ id: string; at: number } | null>(null);
   const pendingClickRef = useRef<CanvasCard | null>(null);
   const pendingTimerRef = useRef<number | null>(null);
-  const editSessionRef = useRef<{ id: string; initial: string; cancel: boolean } | null>(null);
-  const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const [livePositions, setLivePositions] = useState<Record<string, FragmentPosition>>({});
-  const [menu, setMenu] = useState<JournalCardMenuState | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const boards = l.journal.canvasPages;
   const boardId = boards.includes(l.journal.selectedCanvasPageId)
     ? l.journal.selectedCanvasPageId
@@ -207,28 +200,7 @@ export function FreeformCanvas({
     }, CANVAS_TEXT_DOUBLE_CLICK_MS);
   }
 
-  function beginTextEdit(card: CanvasCard) {
-    const initial = textFor(card);
-    editSessionRef.current = { id: card.id, initial, cancel: false };
-    setEditingId(card.id);
-  }
-
-  function finishTextEdit(value: string) {
-    const session = editSessionRef.current;
-    editSessionRef.current = null;
-    setEditingId(null);
-    if (!session || session.cancel || value === session.initial) return;
-    l.api.setEntryText(session.id, sampleDoc(value));
-  }
-
   useEffect(() => clearPendingTimer, []);
-
-  useEffect(() => {
-    const node = editorRef.current;
-    if (!editingId || !node) return;
-    node.focus();
-    node.select();
-  }, [editingId]);
 
   function onPointerDown(
     event: PointerEvent<HTMLElement>,
@@ -236,7 +208,6 @@ export function FreeformCanvas({
   ) {
     if (event.button !== 0 || event.ctrlKey) return;
     if (isJournalSongPlayControl(event.target)) return;
-    if (editingId === fragment.id) return;
     if (!canvasRef.current || (!onOpenDay && (!interactive || !onMove))) return;
     if (pendingClickRef.current && pendingClickRef.current.id !== fragment.id) {
       flushPendingClick();
@@ -308,18 +279,7 @@ export function FreeformCanvas({
       if (fragment) l.api.selectCard(fragment.id);
       if (fragment) {
         const now = event.timeStamp > 0 ? event.timeStamp : performance.now();
-        const previous = lastClickRef.current;
-        const doubleClick =
-          fragment.kind === "text" &&
-          previous?.id === fragment.id &&
-          now >= previous.at &&
-          now - previous.at <= CANVAS_TEXT_DOUBLE_CLICK_MS;
-        if (doubleClick) {
-          pendingClickRef.current = null;
-          clearPendingTimer();
-          lastClickRef.current = null;
-          beginTextEdit(fragment);
-        } else if (fragment.kind === "text") {
+        if (fragment.kind === "text") {
           lastClickRef.current = { id: fragment.id, at: now };
           armTextClick(fragment);
         } else {
@@ -336,7 +296,7 @@ export function FreeformCanvas({
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col" {...hoverProps}>
+    <div className="relative flex h-full min-h-0 flex-col">
       <div
         onPointerDown={(event) => {
           if (event.target !== event.currentTarget && event.target !== canvasRef.current) return;
@@ -355,13 +315,10 @@ export function FreeformCanvas({
         >
         {cards.map((fragment) => {
           const position = positionFor(fragment);
-          const editing = editingId === fragment.id;
           const current = fragment.pageId === activePageId;
           const selected = l.journal.selectedCardId === fragment.id;
           const isPhoto = fragment.kind === "photo" && Boolean(fragment.photo);
-          const cursorClass = editing
-            ? "cursor-text select-text"
-            : interactive
+          const cursorClass = interactive
                 ? "cursor-grab touch-none active:cursor-grabbing"
                 : "cursor-pointer";
           const note = textFor(fragment);
@@ -397,12 +354,6 @@ export function FreeformCanvas({
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                l.api.selectCard(fragment.id);
-                setMenu({ x: event.clientX, y: event.clientY, id: fragment.id });
-              }}
             >
               {isPhoto ? (
                 <img
@@ -424,31 +375,6 @@ export function FreeformCanvas({
                     ) : null}
                   </div>
                 </div>
-              ) : editing ? (
-                <textarea
-                  ref={editorRef}
-                  aria-label={t("apps.journal.toolbar.write")}
-                  defaultValue={note}
-                  placeholder={t("apps.journal.toolbar.write")}
-                  rows={Math.min(8, Math.max(2, note.split("\n").length))}
-                  className="journal-canvas-note w-full resize-none overflow-y-auto bg-transparent p-0 text-sm leading-snug text-inherit outline-none select-text"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onPointerUp={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => {
-                    event.stopPropagation();
-                    if (event.key === "Escape") {
-                      event.preventDefault();
-                      if (editSessionRef.current) editSessionRef.current.cancel = true;
-                      setEditingId(null);
-                      return;
-                    }
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      finishTextEdit(event.currentTarget.value);
-                    }
-                  }}
-                  onBlur={(event) => finishTextEdit(event.currentTarget.value)}
-                />
               ) : (
                 <CanvasNote
                   text={note || t("apps.journal.toolbar.write")}
@@ -477,8 +403,6 @@ export function FreeformCanvas({
         })}
         </div>
       </div>
-      <JournalViewToolbar l={l} open={open} pages="canvas" />
-      <JournalCardMenu menu={menu} onClose={() => setMenu(null)} l={l} />
     </div>
   );
 }

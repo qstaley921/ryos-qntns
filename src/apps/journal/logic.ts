@@ -1,5 +1,5 @@
 import {
-  DEFAULT_DAY_ID,
+  defaultDayId,
   JOURNAL_DAYS,
   JOURNAL_FRAGMENTS,
   type JournalFragment,
@@ -21,7 +21,7 @@ export const ALL_FEATURES_ON: JournalToggles = {
   reminder: true,
 };
 
-const VIEWS = new Set<JournalView>(["daily", "freeform", "compare"]);
+const VIEWS = new Set<JournalView>(["daily", "freeform"]);
 export const UPCOMING_DAY_COUNT = 7;
 export const JOURNAL_CANVAS_PAGE_ID = "board";
 export const JOURNAL_SIDEBAR_DEFAULT_WIDTH = 148;
@@ -42,12 +42,12 @@ const LEGACY_VIEWS: Record<string, JournalView> = {
   counter: "daily",
   daily: "daily",
   freeform: "freeform",
-  compare: "compare",
+  compare: "daily",
 };
 
 export function createInitialJournalState(): JournalState {
   return {
-    view: "compare",
+    view: "daily",
     toggles: { ...ALL_FEATURES_ON },
     reminderTime: "21:00",
     texts: {},
@@ -61,7 +61,7 @@ export function createInitialJournalState(): JournalState {
     fragmentDays: {},
     selectedCardId: null,
     positions: {},
-    selectedDayId: DEFAULT_DAY_ID,
+    selectedDayId: defaultDayId(),
     pageTitles: {},
     startedDayIds: [],
   };
@@ -158,7 +158,8 @@ export function journalSidebarDays(state: JournalState): string[] {
   }
   return [...ids]
     .filter((id) => state.startedDayIds.includes(id) || dayHasEntry(state, id))
-    .sort();
+    .sort()
+    .reverse(); // newest first
 }
 
 /** Days in the sidebar, then any blank pages added from the toolbar. */
@@ -357,7 +358,7 @@ function selectedCanvasPage(value: unknown, pages: string[]): string {
 const SCRAP_KINDS = new Set<JournalScrap["kind"]>(["text", "photo", "song"]);
 const MAX_SCRAP_PHOTO_LENGTH = 500_000;
 const MAX_SONG_COVER_LENGTH = 2048;
-const FRAGMENT_IDS = new Set(JOURNAL_FRAGMENTS.map((fragment) => fragment.id));
+const FRAGMENT_IDS = { has: (id: string) => JOURNAL_FRAGMENTS.some((f) => f.id === id) };
 
 function cloneRemovedFragments(value: unknown): string[] {
   if (!Array.isArray(value)) return [];

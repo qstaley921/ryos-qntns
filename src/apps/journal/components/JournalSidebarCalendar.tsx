@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
-import { MiniCalendar } from "@/apps/calendar/components/calendar-app/MiniCalendar";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import type { CalendarDayCell } from "@/apps/calendar/hooks/useCalendarLogic";
+import { TODAY_RED, TODAY_RED_XP } from "@/apps/calendar/components/calendar-app/calendarAppConstants";
+import { cn } from "@/lib/utils";
+import { JOURNAL_ENTRY_FRAGMENTS } from "../journalEntries";
 
 interface VisibleMonth {
   year: number;
@@ -120,19 +123,79 @@ export function JournalSidebarCalendar({
     );
   }, [language]);
 
+  // §22g: a dot under each day with >=1 loaded entry (follows the Filter); no new call.
+  const daysWithEntries = new Set(JOURNAL_ENTRY_FRAGMENTS.map((f) => f.dayId));
+  const useGeneva = isMacOSTheme || isSystem7Theme;
+  const prevNext = (delta: number, Icon: typeof CaretLeft) => (
+    <button
+      type="button"
+      onClick={() => setMonth((current) => shiftMonth(current, delta))}
+      className="rounded p-0.5 hover:opacity-70"
+    >
+      <Icon size={10} weight="bold" />
+    </button>
+  );
+
+  // Calendar's MiniCalendar (read-only, no event slot) drawn here with the dot row.
+  // Cell: 16px number circle + 4px dot row = 20px.
   return (
-    <MiniCalendar
-      calendarGrid={calendarGrid}
-      selectedDate={selectedDate}
-      todayStr={today}
-      onDateClick={onSelectDay}
-      isWindowsTheme={isWindowsTheme}
-      isMacOSTheme={isMacOSTheme}
-      isSystem7Theme={isSystem7Theme}
-      monthYearLabel={monthYearLabel}
-      narrowDayNames={narrowDayNames}
-      onPrevMonth={() => setMonth((current) => shiftMonth(current, -1))}
-      onNextMonth={() => setMonth((current) => shiftMonth(current, 1))}
-    />
+    <div className="os-sidebar flex select-none flex-col px-1.5 py-1">
+      <div className="flex items-center justify-between px-0.5 py-1">
+        {prevNext(-1, CaretLeft)}
+        <span className={cn("text-[10px] font-semibold", useGeneva && "font-geneva-12")}>{monthYearLabel}</span>
+        {prevNext(1, CaretRight)}
+      </div>
+      <div className="mb-0.5 grid grid-cols-7">
+        {narrowDayNames.map((label, index) => (
+          <div
+            key={index}
+            className={cn("text-center font-medium", useGeneva && "font-geneva-12")}
+            style={{ opacity: 0.5, fontSize: 9 }}
+          >
+            {label}
+          </div>
+        ))}
+      </div>
+      {calendarGrid.map((week, wi) => (
+        <div key={wi} className="grid grid-cols-7">
+          {week.map((cell) => {
+            const isToday = cell.date === today;
+            return (
+              <button
+                key={cell.date}
+                type="button"
+                onClick={() => onSelectDay(cell.date)}
+                className="flex h-5 flex-col items-center rounded-sm"
+                style={{ opacity: cell.isCurrentMonth ? 1 : 0.25 }}
+              >
+                <span
+                  className={cn("flex items-center justify-center text-[10px] leading-none", useGeneva && "font-geneva-12")}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    backgroundColor: isToday
+                      ? isWindowsTheme ? TODAY_RED_XP : TODAY_RED
+                      : cell.isSelected
+                        ? isWindowsTheme ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.08)"
+                        : "transparent",
+                    color: isToday ? "#FFF" : undefined,
+                    fontWeight: isToday ? "bold" : "normal",
+                  }}
+                >
+                  {cell.day}
+                </span>
+                {daysWithEntries.has(cell.date) ? (
+                  <span
+                    data-journal-has-entry
+                    className="size-1 rounded-full bg-current opacity-60"
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }

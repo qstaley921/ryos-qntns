@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AppProps } from "@/apps/base/types";
 import { AppHelpAboutDialogs } from "@/components/shared/AppHelpAboutDialogs";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
@@ -7,14 +7,15 @@ import { cn } from "@/lib/utils";
 import { appMetadata } from "../metadata";
 import { useJournalLogic, type JournalLogic } from "../hooks/useJournalLogic";
 import { currentJournalPage, isJournalDayId } from "../logic";
-import { CompareView } from "./CompareView";
+import { applyJournalFilter, loadJournalEntries } from "../journalEntries";
+import { defaultDayId } from "../sampleContent";
 import { FreeformCanvas } from "./FreeformCanvas";
 import { GeneratedView } from "./GeneratedView";
-import { JournalDrawer } from "./JournalDrawer";
 import { JournalMenuBar } from "./JournalMenuBar";
 import { JournalToolbar } from "./JournalToolbar";
 
 const MOBILE_BREAKPOINT = 760;
+const SIDEBAR_KEY = "ryos:journal:showSidebar";
 
 function openCanvasPage(l: JournalLogic, pageId: string) {
   if (isJournalDayId(pageId)) l.api.selectDay(pageId);
@@ -33,12 +34,38 @@ export function JournalAppComponent({
   const { t, isWindowsTheme, isMacOSTheme, isSystem7Theme, journal } = l;
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1120);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [, setLoaded] = useState(0);
+  useEffect(() => {
+    loadJournalEntries(l.filter).then(() => {
+      l.api.selectDay(defaultDayId());
+      setLoaded((n) => n + 1);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    applyJournalFilter(l.filter);
+    l.api.selectDay(defaultDayId());
+    setLoaded((n) => n + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [l.filter]);
   useResizeObserverWithRef(containerRef, (entry) => {
     setContainerWidth(entry.contentRect.width);
   });
   const isMobileLayout = containerWidth < MOBILE_BREAKPOINT;
-  const menuBar = <JournalMenuBar l={l} onClose={onClose} />;
+  // §22h: sidebar shown/hidden, kept per browser (the Journal store is outside this app's files).
+  const [showSidebar, setShowSidebar] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_KEY) !== "0"; } catch { return true; }
+  });
+  const toggleSidebar = () =>
+    setShowSidebar((shown) => {
+      try { localStorage.setItem(SIDEBAR_KEY, shown ? "0" : "1"); } catch { /* private mode */ }
+      return !shown;
+    });
+  const menuBar = (
+    <JournalMenuBar l={l} onClose={onClose} showSidebar={showSidebar} onToggleSidebar={toggleSidebar} />
+  );
 
   return (
     <AppWindowShell
@@ -53,13 +80,6 @@ export function JournalAppComponent({
         appId: "journal",
         skipInitialSound,
         instanceId,
-        drawer: (
-          <JournalDrawer
-            l={l}
-            isOpen={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-          />
-        ),
       }}
     >
       <div
@@ -72,13 +92,11 @@ export function JournalAppComponent({
         <JournalToolbar
           l={l}
           isMobileLayout={isMobileLayout}
-          drawerOpen={drawerOpen}
-          onToggleDrawer={() => setDrawerOpen((open) => !open)}
+          showSidebar={showSidebar}
+          onToggleSidebar={toggleSidebar}
         />
         <div className="flex min-h-0 flex-1 flex-col">
-          {journal.view === "compare" ? (
-            <CompareView l={l} isMobileLayout={isMobileLayout} />
-          ) : journal.view === "freeform" ? (
+          {journal.view === "freeform" ? (
             <FreeformCanvas
               l={l}
               positions={journal.positions}
@@ -91,7 +109,7 @@ export function JournalAppComponent({
               onOpenDay={(pageId) => openCanvasPage(l, pageId)}
             />
           ) : (
-            <GeneratedView l={l} isMobileLayout={isMobileLayout} />
+            <GeneratedView l={l} showSidebar={showSidebar} />
           )}
         </div>
       </div>
