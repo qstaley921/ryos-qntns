@@ -214,6 +214,7 @@ Unit suites go in `tests/unit/<domain>/` (auto-discovered). API suites go in `te
 
 ## Important Notes
 
+- **UI is Mac OS X Tiger**: every UI piece (windows, sheets, alerts, pop-ups, buttons, menus, form fields, toolbars) is native Mac OS X Aqua as of Tiger (10.4), built from the Aqua theme classes in `src/themes/macosx.ts` and `src/styles/themes/aqua.css`. Never generic web UI: no flat cards, no material buttons, no custom-styled modals.
 - **Linter warnings**: The codebase has pre-existing linter warnings for unused variables. These are not blockers.
 - **Linting**: `bun run lint` may still report pre-existing issues unrelated to your change. Check the current output before treating a lint failure as a regression.
 - **API endpoints**: API routes are Node-style handlers under `api/` and require Redis for caching/storage.
