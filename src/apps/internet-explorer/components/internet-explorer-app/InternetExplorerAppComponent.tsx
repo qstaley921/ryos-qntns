@@ -160,6 +160,28 @@ function Safari({
     };
   }, [site, reload]);
 
+  // §28i: the proxied page reports {qntnsSite:{ok}} ~2s after its load. Only our frame's window counts, and
+  // nothing in the message is rendered. Not ok, or no report 8s after onLoad, = the alert below.
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const silence = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const heard = useRef(false); // a report can beat a slow onLoad (its 10s fallback)
+  useEffect(() => {
+    heard.current = false;
+    const on = (e: MessageEvent) => {
+      if (!frameRef.current || e.source !== frameRef.current.contentWindow) return;
+      const r = (e.data as { qntnsSite?: { ok?: unknown } } | null)?.qntnsSite;
+      if (!r) return;
+      heard.current = true;
+      clearTimeout(silence.current);
+      if (r.ok !== true) setFramed(false);
+    };
+    window.addEventListener("message", on);
+    return () => {
+      window.removeEventListener("message", on);
+      clearTimeout(silence.current);
+    };
+  }, [site, reload]);
+
   useEffect(() => {
     if (bar !== 3) return;
     const id = setTimeout(() => setBar(0), 400); // after the snap (200ms) + fade (100ms delay, 200ms)
@@ -315,7 +337,12 @@ function Safari({
               // no allow-same-origin: the page runs in an opaque origin, never the Worker's (the Worker's CSP says the same)
               sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
               referrerPolicy="strict-origin-when-cross-origin"
-              onLoad={() => setBar((b) => (b ? 3 : b))}
+              ref={frameRef}
+              onLoad={() => {
+                setBar((b) => (b ? 3 : b));
+                clearTimeout(silence.current);
+                if (!heard.current) silence.current = setTimeout(() => setFramed(false), 8000);
+              }}
             />
           ) : null /* waiting: the address-field fill shows it; failed: the alert below */}
         </div>
