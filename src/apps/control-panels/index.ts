@@ -33,7 +33,7 @@ export const helpItems = [
 ];
 
 export const appMetadata = {
-  name: "Control Panels",
+  name: "System Preferences",
   version: "1.0.0",
   creator: {
     name: "Ryo Lu",

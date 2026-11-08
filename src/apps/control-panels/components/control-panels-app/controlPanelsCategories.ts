@@ -36,94 +36,33 @@ export type ControlPanelSection = {
 
 export const CONTROL_PANEL_CATEGORIES: ControlPanelCategory[] = [
   {
-    id: "appearance",
-    labelKey: "apps.control-panels.panes.appearance",
-    icon: "control-panels/appearance-pane.png",
-  },
-  {
-    id: "desktop-screen-saver",
-    labelKey: "apps.control-panels.panes.desktopScreenSaver",
-    icon: "control-panels/desktop-screen-saver.png",
-  },
-  {
-    id: "international",
-    labelKey: "apps.control-panels.panes.international",
-    icon: "control-panels/international.png",
-  },
-  {
-    id: "assistant",
-    labelKey: "apps.control-panels.panes.assistant",
-    icon: "assistant.png",
-  },
-  {
-    id: "security",
-    labelKey: "apps.control-panels.panes.security",
-    icon: "control-panels/keychain.png",
-  },
-  {
-    id: "displays",
-    labelKey: "apps.control-panels.panes.displays",
-    icon: "control-panels/displays.png",
-  },
-  {
     id: "sound",
     labelKey: "apps.control-panels.panes.sound",
     icon: "sound.png",
-  },
-  {
-    id: "dot-mac",
-    labelKey: "apps.control-panels.panes.dotMac",
-    icon: "cloud-sync.png",
-  },
-  {
-    id: "sharing",
-    labelKey: "apps.control-panels.panes.sharing",
-    icon: "control-panels/backup-restore.png",
   },
   {
     id: "accounts",
     labelKey: "apps.control-panels.panes.accounts",
     icon: "control-panels/users.png",
   },
-  {
-    id: "software-update",
-    labelKey: "apps.control-panels.panes.softwareUpdate",
-    icon: "software-update.png",
-  },
 ];
 
 /** Home grid — functional panes grouped like Mac OS X 10.3 System Preferences. */
 export const CONTROL_PANEL_SECTIONS: ControlPanelSection[] = [
   {
-    id: "personal",
-    labelKey: "apps.control-panels.sections.personal",
-    paneIds: ["appearance", "desktop-screen-saver", "international", "assistant"],
-  },
-  {
     id: "hardware-system",
     labelKey: "apps.control-panels.sections.hardwareSystem",
-    paneIds: ["displays", "sound", "accounts", "security"],
-  },
-  {
-    id: "internet-network",
-    labelKey: "apps.control-panels.sections.internetNetwork",
-    paneIds: ["dot-mac", "sharing", "software-update"],
+    paneIds: ["sound", "accounts"],
   },
 ];
 
 /** Pinned quick-access icons (10.3-style toolbar). */
 export const CONTROL_PANEL_PINNED_PANES: ControlPanelPaneId[] = [
-  "appearance",
-  "desktop-screen-saver",
+  "sound",
   "accounts",
 ];
 
-const LEGACY_PANE_ALIASES: Record<string, ControlPanelPaneId> = {
-  sync: "dot-mac",
-  system: "international",
-  wallpaper: "desktop-screen-saver",
-  screensaver: "desktop-screen-saver",
-};
+const LEGACY_PANE_ALIASES: Record<string, ControlPanelPaneId> = {};
 
 /** Maps macOS-only deep-link aliases back to classic tab IDs. */
 const CLASSIC_TAB_ALIASES: Record<ControlPanelDeepLinkAlias, ControlPanelLegacyTabId> = {

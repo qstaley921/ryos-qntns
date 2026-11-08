@@ -23,6 +23,7 @@ import {
   type SystemFontId,
 } from "@/themes/systemFonts";
 import { controlPanelItemIconShell } from "./constants";
+import { ReadingGroup } from "./ReadingGroup";
 import { AccountProfileHeader } from "./AccountProfileHeader";
 import { ControlPanelsPrefFormRow } from "./ControlPanelsPrefFormRow";
 import {
@@ -193,6 +194,7 @@ export function AccountsPaneContent({
                 </div>
               </div>
             )}
+            <ReadingGroup signedIn={!!username} />
           </div>
           {isAdmin && (
             <div
