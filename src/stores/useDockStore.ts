@@ -27,7 +27,6 @@ const DEFAULT_PINNED_ITEMS: DockItem[] = [
   { type: "app", id: "dashboard" },
   { type: "app", id: "ipod" },
   { type: "app", id: "calendar" },
-  { type: "app", id: "mail" },
 ];
 
 const DOCK_STORE_VERSION = 3;
@@ -47,7 +46,8 @@ export function computeDockPinnedItems(pinnedItems: DockItem[]): DockItem[] {
       continue;
     }
 
-    if (!APP_ID_SET.has(item.id) || seenAppIds.has(item.id as AppId)) {
+    // §73a: Mail is never in the dock, including saved pin lists.
+    if (item.id === "mail" || !APP_ID_SET.has(item.id) || seenAppIds.has(item.id as AppId)) {
       continue;
     }
 

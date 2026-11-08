@@ -1047,7 +1047,7 @@ export function MacDock() {
                 })}
 
                 {/* Divider between open apps and Applications */}
-                <DockDivider 
+                {!shortViewport && (<DockDivider 
                   key="divider-between" 
                   idKey="between" 
                   length={scaledButtonSize}
@@ -1055,9 +1055,10 @@ export function MacDock() {
                   onResizeStart={handleResizeStart}
                   onContextMenu={handleDividerContextMenu}
                   {...dividerLongPress}
-                />
+                />)}
 
-                <DockApplicationsButton
+                {/* §73: short viewports show Applications on the desktop instead */}
+                {!shortViewport && (<DockApplicationsButton
                   key="__applications__"
                   dockContainerRef={dockContainerRef}
                   setApplicationsContextMenuPos={setApplicationsContextMenuPos}
@@ -1072,10 +1073,7 @@ export function MacDock() {
                   handleIconHover={handleIconHover}
                   handleIconLeave={handleIconLeave}
                   t={t}
-                />
-
-
-
+                />)}
               </AnimatePresence>
             </LayoutGroup>
           </DockPlacementContext.Provider>
