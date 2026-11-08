@@ -28,6 +28,7 @@ interface FileIconProps {
   size?: "small" | "large";
   className?: string;
   context?: "desktop" | "finder";
+  unread?: boolean; // Ghost post not yet opened: blue dot, like the list row
 }
 
 type PreviewState = {
@@ -71,6 +72,7 @@ export const FileIcon = memo(function FileIcon({
   size = "small",
   className,
   context = "desktop",
+  unread,
 }: FileIconProps) {
   const { t } = useTranslation();
   const { play: playClick } = useSound(Sounds.BUTTON_CLICK, 0.3);
@@ -359,6 +361,7 @@ export const FileIcon = memo(function FileIcon({
         }`}
       >
         {renderIcon()}
+        {unread && <span aria-label="Unread" className="ml-1 size-2 shrink-0 rounded-full bg-blue-500" />}
       </div>
       <div className={`${sizes.labelMinH} flex items-start justify-center`}>
         <span

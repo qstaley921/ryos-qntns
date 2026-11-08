@@ -1,3 +1,4 @@
+import { APPLICATIONS_HIDDEN } from "@/components/layout/dock/dockConstants";
 import { transitionVfsFiles } from "@/services/vfs/FileLifecycleTransaction";
 import { saveVfsFile } from "@/services/vfs/FileSaveTransaction";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -14,6 +15,7 @@ import { useFilesStore, FileSystemItem, ensureFileContentLoaded } from "@/stores
 import { useTextEditStore } from "@/stores/useTextEditStore";
 import { useAppStore, type LaunchOriginRect } from "@/stores/useAppStore";
 import { useFinderStore } from "@/stores/useFinderStore";
+import { useGhostList, useGhostExtras, markGhostRead, listGhostPath } from "../utils/ghostPlaces";
 import { useFilesStoreShallow } from "@/stores/useFilesStore";
 import { useIpodStoreShallow } from "@/stores/useIpodStore";
 import { useVideoStoreShallow } from "@/stores/useVideoStore";
@@ -334,6 +336,10 @@ export function useFileSystem(
     reset: state.reset,
   }));
   const launchApp = useLaunchApp();
+  const ghostList = useGhostList();
+  const ghostExtras = useGhostExtras(ghostList);
+  const reads = useFinderStore((s) => s.reads);
+  const markRead = useFinderStore((s) => s.markRead);
   const {
     tracks: ipodTracks,
     setLibrarySource: setIpodLibrarySource,
@@ -487,7 +493,7 @@ export function useFileSystem(
 
       // 1. Handle Virtual Directories
       if (currentPath === "/Applications") {
-        displayFiles = getNonFinderApps(isAdmin).map((app) => ({
+        displayFiles = getNonFinderApps(isAdmin).filter((app) => !APPLICATIONS_HIDDEN.has(app.id)).map((app) => ({
           name: app.name,
           isDirectory: false,
           path: `/Applications/${app.name}`,
@@ -501,8 +507,11 @@ export function useFileSystem(
           ipodTracks,
           videoTracks
         );
+        const ghostItems = listGhostPath(currentPath, ghostList, reads, ghostExtras.counts);
         if (virtualMedia) {
           displayFiles = virtualMedia.items;
+        } else if (ghostItems) {
+          displayFiles = ghostItems;
         } else if (currentPath.startsWith("/Sites")) {
         log.debug("Loading Sites path", { currentPath });
         const pathParts = currentPath.split("/").filter(Boolean);
@@ -709,6 +718,9 @@ export function useFileSystem(
     videoTracks,
     internetExplorerFavorites,
     isAdmin,
+    ghostList,
+    reads,
+    ghostExtras,
   ]);
 
   // Define handleFileOpen
@@ -779,6 +791,14 @@ export function useFileSystem(
       
       // Use the resolved file for the rest of the function
       file = currentFile;
+
+      // Ghost post: open in TextEdit by id (TextEdit fetches the body), remember the read.
+      if (file.type === "ghost-doc" && file.data) {
+        markRead(file.data.id);
+        markGhostRead(file.data);
+        launchApp("textedit", { initialData: { ghost: file.data }, launchOrigin });
+        return;
+      }
 
       // 1. Handle Directories (Virtual and Real)
       if (file.isDirectory) {
@@ -1039,6 +1059,7 @@ export function useFileSystem(
       ensureDefaultContent,
       fetchAppletContentFromShare,
       getFileItem,
+      markRead,
     ]
   );
 

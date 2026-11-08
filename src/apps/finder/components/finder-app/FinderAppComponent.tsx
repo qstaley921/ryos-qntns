@@ -101,7 +101,6 @@ export function FinderAppComponent({
     fileMenuItems,
     blankLongPressHandlers,
     canCreateFolder,
-    rootFolders,
     windowTitle,
     isWindowsTheme,
     isMacOSTheme,
@@ -156,6 +155,8 @@ export function FinderAppComponent({
       onViewTypeChange={setViewType}
       sortType={logic.sortType}
       onSortTypeChange={logic.setSortType}
+      readFilter={logic.readFilter}
+      onReadFilterChange={logic.setReadFilter}
       selectedFile={selectedFile}
       onMoveToTrash={moveToTrash}
       onEmptyTrash={handleEmptyTrash}
@@ -164,22 +165,15 @@ export function FinderAppComponent({
       isInTrash={Boolean(
         selectedFile && (currentPath === "/Trash" || selectedFile.status === "trashed")
       )}
-      onNavigateBack={navigateBack}
-      onNavigateForward={navigateForward}
-      canNavigateBack={canNavigateBack()}
-      canNavigateForward={canNavigateForward()}
-      onNavigateToPath={navigateToPath}
       onImportFile={handleImportFile}
       onRename={handleRename}
       onDuplicate={handleDuplicate}
       onNewFolder={handleNewFolder}
       canCreateFolder={canCreateFolder}
-      rootFolders={rootFolders}
       onNewWindow={handleNewWindow}
       instanceId={instanceId}
       showSidebar={showSidebar}
       onToggleSidebar={() => setShowSidebar((s) => !s)}
-      onNavigateToAirDrop={navigateToAirDrop}
     />
   );
 
@@ -308,6 +302,8 @@ export function FinderAppComponent({
             handleNewFolder,
             handleImportFile,
             handleNewWindow,
+            sortType: logic.sortType,
+            onSortTypeChange: logic.setSortType,
           }}
           legacyToolbarProps={{
             t,

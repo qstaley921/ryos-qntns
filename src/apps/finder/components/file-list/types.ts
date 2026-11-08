@@ -17,6 +17,9 @@ export interface FileItem {
   originalPath?: string;
   deletedAt?: number;
   status?: "active" | "trashed";
+  kind?: string; // overrides the Kind column (Ghost posts: the main tag, singular)
+  words?: number; // replaces the Size column with a word count
+  unread?: boolean; // Ghost posts not yet opened by this reader
 }
 
 export interface FileListProps {

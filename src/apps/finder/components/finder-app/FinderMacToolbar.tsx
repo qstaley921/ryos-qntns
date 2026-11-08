@@ -5,6 +5,7 @@ import {
   List,
   GearSix,
   CaretDown,
+  ArrowsDownUp,
 } from "@phosphor-icons/react";
 import { SearchInput } from "@/components/ui/search-input";
 import { ToolbarButton, ToolbarButtonGroup } from "@/components/ui/toolbar-button";
@@ -14,9 +15,21 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import type { ViewType } from "../FinderMenuBar";
+import type { SortType, ViewType } from "../FinderMenuBar";
 import type { TFunction } from "i18next";
+
+// Same options and labels as FinderMenuBar's sort items.
+const SORT_OPTIONS: [SortType, string, string][] = [
+  ["name", "apps.finder.menu.byName", "By Name"],
+  ["date", "apps.finder.menu.byDate", "By Date"],
+  ["size", "apps.finder.menu.bySize", "By Size"],
+  ["kind", "apps.finder.menu.byKind", "By Kind"],
+  ["viewed", "apps.finder.menu.byViewed", "By Viewed"],
+  ["liked", "apps.finder.menu.byLiked", "By Liked"],
+];
 
 export interface FinderMacToolbarProps {
   t: TFunction;
@@ -36,6 +49,8 @@ export interface FinderMacToolbarProps {
   handleNewFolder: () => void;
   handleImportFile: () => void;
   handleNewWindow: () => void;
+  sortType: SortType;
+  onSortTypeChange: (sortType: SortType) => void;
 }
 
 export function FinderMacToolbar({
@@ -56,6 +71,8 @@ export function FinderMacToolbar({
   handleNewFolder,
   handleImportFile,
   handleNewWindow,
+  sortType,
+  onSortTypeChange,
 }: FinderMacToolbarProps) {
   return (
     <div
@@ -128,6 +145,28 @@ export function FinderMacToolbar({
             <DropdownMenuItem className="text-md h-6 px-3" onClick={handleNewWindow}>
               {t("apps.finder.menu.newWindow")}
             </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <ToolbarButtonGroup>
+              <ToolbarButton icon className="gap-0.5">
+                <ArrowsDownUp size={14} weight="bold" />
+                <CaretDown size={8} weight="bold" />
+              </ToolbarButton>
+            </ToolbarButtonGroup>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuRadioGroup
+              value={sortType}
+              onValueChange={(v) => onSortTypeChange(v as SortType)}
+            >
+              {SORT_OPTIONS.map(([value, key, fallback]) => (
+                <DropdownMenuRadioItem key={value} value={value} className="text-md h-6 px-3">
+                  {t(key, fallback)}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

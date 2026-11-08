@@ -14,7 +14,7 @@ import type {
   MouseEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ViewType, SortType } from "../components/FinderMenuBar";
+import { ViewType, SortType, ReadFilter } from "../components/FinderMenuBar";
 import { useFileSystem, DocumentContent } from "./useFileSystem";
 import { dbOperations } from "@/utils/indexedDB";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/stores/useFinderStore";
 import { FileItem } from "../components/FileList";
 import { useFinderStore } from "@/stores/useFinderStore";
+import { useGhostList, ghostPlaces, isGhostPlace } from "../utils/ghostPlaces";
 import { useAppStore, type LaunchOriginRect } from "@/stores/useAppStore";
 import { MenuItem } from "@/components/ui/right-click-menu";
 import { usePointerLongPress } from "@/hooks/usePointerLongPress";
@@ -95,6 +96,7 @@ const getFileType = (
   // Check for specific known virtual types *before* appId
   if (file.type === "Music") return t("apps.finder.fileTypes.mp3Audio");
   if (file.type === "Video") return t("apps.finder.fileTypes.quicktimeMovie");
+  if (file.type === "ghost-doc") return "Post";
   if (file.type === "site-link") {
     return t("apps.finder.fileTypes.internetShortcut");
   }
@@ -202,6 +204,7 @@ export function useFinderLogic({
 
   // UI state
   const [searchQuery, setSearchQuery] = useState("");
+  const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [storageSpace, setStorageSpace] = useState(() =>
     calculateStorageSpace()
@@ -511,10 +514,11 @@ export function useFinderLogic({
           // Sort by directory first, then by file extension
           if (a.isDirectory && !b.isDirectory) return -1;
           if (!a.isDirectory && b.isDirectory) return 1;
-          const extA = a.name.split(".").pop() || "";
-          const extB = b.name.split(".").pop() || "";
+          // Ghost posts carry kind (main tag); other files keep the extension sort
+          const kindA = a.kind ?? (a.name.split(".").pop() || "");
+          const kindB = b.kind ?? (b.name.split(".").pop() || "");
           return (
-            compareFinderSortText(extA, extB, finderSortLanguage) ||
+            compareFinderSortText(kindA, kindB, finderSortLanguage) ||
             compareFinderItemsByDisplayName(a, b, finderSortLanguage)
           );
         }
@@ -522,7 +526,14 @@ export function useFinderLogic({
           // For now, directories are considered smaller than files
           if (a.isDirectory && !b.isDirectory) return -1;
           if (!a.isDirectory && b.isDirectory) return 1;
+          // Ghost posts carry words (replaces Size column)
+          if (a.words !== undefined && b.words !== undefined) return a.words - b.words;
           return 0;
+        case "viewed":
+        case "liked": {
+          const k = sortType === "viewed" ? "views" : "likes";
+          return (b[k] ?? 0) - (a[k] ?? 0) || compareFinderItemsByDisplayName(a, b, finderSortLanguage);
+        }
         case "date":
           // Sort by modified date, directories first
           if (a.isDirectory && !b.isDirectory) return -1;
@@ -547,11 +558,15 @@ export function useFinderLogic({
   }, [files, sortType, i18n.language, i18n.resolvedLanguage]);
 
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  // Client-side only: title or tag match (CHECKLIST-36 §40), and the Read/Unread filter (§41).
   const filteredFiles = useMemo(() => {
-    if (!deferredSearchQuery.trim()) return sortedFiles;
-    const q = deferredSearchQuery.toLowerCase();
-    return sortedFiles.filter((f) => f.name.toLowerCase().includes(q));
-  }, [sortedFiles, deferredSearchQuery]);
+    const q = deferredSearchQuery.trim().toLowerCase();
+    return sortedFiles.filter(
+      (f) =>
+        (!q || f.name.toLowerCase().includes(q) || f.tags?.some((t) => t.toLowerCase().includes(q))) &&
+        (readFilter === "all" || f.type !== "ghost-doc" || (readFilter === "unread") === !!f.unread)
+    );
+  }, [sortedFiles, deferredSearchQuery, readFilter]);
 
   const handleEmptyTrash = () => {
     setIsEmptyTrashDialogOpen(true);
@@ -1239,23 +1254,28 @@ export function useFinderLogic({
           },
         ],
       },
-      { type: "separator" },
-      ...(currentPath === "/Trash"
-        ? [
-            {
-              type: "item" as const,
-              label: t("apps.finder.contextMenu.emptyTrash"),
-              onSelect: handleEmptyTrash,
-              disabled: trashItemsCount === 0,
-            },
-          ]
+      // Ghost places are read-only: Sort only, no New Folder, not even greyed.
+      ...(isGhostPlace(currentPath)
+        ? []
         : [
-            {
-              type: "item" as const,
-              label: t("apps.finder.contextMenu.newFolder"),
-              onSelect: handleNewFolder,
-              disabled: !isWritablePath(currentPath),
-            },
+            { type: "separator" as const },
+            ...(currentPath === "/Trash"
+              ? [
+                  {
+                    type: "item" as const,
+                    label: t("apps.finder.contextMenu.emptyTrash"),
+                    onSelect: handleEmptyTrash,
+                    disabled: trashItemsCount === 0,
+                  },
+                ]
+              : [
+                  {
+                    type: "item" as const,
+                    label: t("apps.finder.contextMenu.newFolder"),
+                    onSelect: handleNewFolder,
+                    disabled: !isWritablePath(currentPath),
+                  },
+                ]),
           ]),
     ],
     [sortType, setSortType, currentPath, trashItemsCount, t, handleNewFolder]
@@ -1438,7 +1458,7 @@ export function useFinderLogic({
   const fileMenuItems = (file: FileItem): MenuItem[] => {
     const isTrashedItem = currentPath === "/Trash" || file.status === "trashed";
     const openWithApps =
-      file.appId || file.type === "site-link" || file.type === "Music" || file.type === "Video"
+      file.appId || file.type === "site-link" || file.type === "ghost-doc" || file.type === "Music" || file.type === "Video"
         ? []
         : getOpenWithApps(file);
 
@@ -1561,8 +1581,9 @@ export function useFinderLogic({
     [getFileItem, sendFileToUser, t]
   );
 
+  const ghostList = useGhostList();
   const sidebarItems = useMemo(() => {
-    const places = orderSidebarRootFolders(rootFolders).map((f) => ({
+    const places = [...orderSidebarRootFolders(rootFolders), ...ghostPlaces(ghostList)].map((f) => ({
       name: getTranslatedFolderNameFromName(f.name) || f.name,
       path: f.path,
       icon: f.icon,
@@ -1571,16 +1592,9 @@ export function useFinderLogic({
     }));
     return [
       { name: t("apps.finder.window.macintoshHd"), path: "/", icon: "/icons/default/disk.png", divider: false, isAirDrop: false },
-      {
-        name: t("apps.finder.airdrop.title"),
-        path: "__airdrop__",
-        icon: "/icons/default/airdrop.png",
-        divider: true,
-        isAirDrop: true,
-      },
       ...places,
     ];
-  }, [rootFolders, t]);
+  }, [rootFolders, ghostList, t]);
 
   const activeSidebarPath = useMemo(() => {
     if (isAirDropView) return "__airdrop__";
@@ -1747,6 +1761,8 @@ export function useFinderLogic({
     setViewType,
     sortType,
     setSortType,
+    readFilter,
+    setReadFilter,
 
     // Navigation
     navigateUp,

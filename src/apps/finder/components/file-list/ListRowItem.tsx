@@ -164,13 +164,18 @@ export const ListRowItem = memo(function ListRowItem({
           <span className="min-w-0 flex-1 truncate">
             {getDisplayName(file)}
           </span>
+          {file.unread && (
+            <span aria-label="Unread" className="size-2 shrink-0 rounded-full bg-blue-500" />
+          )}
         </div>
       </TableCell>
       <TableCell className="w-[136px] min-w-[136px] overflow-hidden text-ellipsis whitespace-nowrap">
-        {getFileType(file)}
+        {file.kind ?? getFileType(file)}
       </TableCell>
       <TableCell className="w-[72px] min-w-[72px] whitespace-nowrap">
-        {file.size
+        {file.words != null
+          ? `${file.words} words`
+          : file.size
           ? file.size < 1024
             ? `${file.size} B`
             : file.size < 1024 * 1024

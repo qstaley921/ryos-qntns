@@ -78,6 +78,7 @@ export const GridItem = memo(function GridItem({
         name={getDisplayName(file)}
         isDirectory={file.isDirectory}
         icon={file.icon}
+        unread={file.unread}
         content={isImageFile(file) ? file.content : undefined}
         contentUrl={shouldShowThumbnail(file) ? file.contentUrl : undefined}
         onDoubleClick={(e) => {

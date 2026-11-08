@@ -1,7 +1,15 @@
 import { compareFinderSortText } from "@/utils/finderDisplay";
 import { getTranslatedFolderNameFromName } from "@/utils/i18n";
 
-export const SIDEBAR_HIDDEN_FOLDERS = new Set(["/Trash", "/Sites"]);
+export const SIDEBAR_HIDDEN_FOLDERS = new Set([
+  "/Trash",
+  "/Sites",
+  "/Documents",
+  "/Downloads",
+  "/Images",
+  "/Music",
+  "/Videos",
+]);
 
 /** Pinned at the top of Finder places (sidebar + Go menu), in this order. */
 export const SIDEBAR_PINNED_FOLDERS = ["/Applications", "/Applets"];
