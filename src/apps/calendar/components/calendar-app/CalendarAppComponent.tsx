@@ -387,7 +387,7 @@ export function CalendarAppComponent({
                 )}
                 {effectiveView === "week" && (
                   <WeekTimeGrid weekDates={weekDates} selectedEventId={selectedEventId}
-                    onDateClick={handleDateClick} bookable={bookable} onSlot={handleNewEventAtSlot}
+                    onDateClick={handleDateClick} bookable={bookable} onSlot={handleNewEventAtSlot} onPast={() => setTimeTravel(true)}
                     onEventClick={(ev) => handleSelectEvent(ev.id)}
                     onEventDoubleClick={(ev) => handleSelectEvent(ev.id, { toggle: false })}
                     isWindowsTheme={isWindowsTheme} isMacOSTheme={isMacOSTheme} isSystem7Theme={isSystem7Theme} searchQuery={normalizedSearchQuery} hourLabels={hourLabels}
@@ -396,7 +396,7 @@ export function CalendarAppComponent({
                 )}
                 {effectiveView === "day" && (
                   <DayTimeGrid date={selectedDate} events={selectedDateEvents} selectedEventId={selectedEventId}
-                    bookable={bookable} onSlot={handleNewEventAtSlot}
+                    bookable={bookable} onSlot={handleNewEventAtSlot} onPast={() => setTimeTravel(true)}
                     onEventClick={(ev) => handleSelectEvent(ev.id)}
                     onEventDoubleClick={(ev) => handleSelectEvent(ev.id, { toggle: false })}
                     isWindowsTheme={isWindowsTheme} isMacOSTheme={isMacOSTheme} isSystem7Theme={isSystem7Theme} searchQuery={normalizedSearchQuery} hourLabels={hourLabels}

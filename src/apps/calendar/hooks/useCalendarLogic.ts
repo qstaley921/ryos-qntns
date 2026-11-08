@@ -418,9 +418,10 @@ export function useCalendarLogic() {
 
   const handleDateClick = useCallback(
     (date: string) => {
-      setSelectedDate(date);
+      if (date < todayStr) setTimeTravel(true);
+      else setSelectedDate(date);
     },
-    [setSelectedDate]
+    [setSelectedDate, todayStr]
   );
 
   // a visitor can't make an all-day event: a double click only selects the day

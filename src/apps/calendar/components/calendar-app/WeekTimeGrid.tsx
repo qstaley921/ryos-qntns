@@ -28,6 +28,7 @@ export function WeekTimeGrid({
   onDateClick,
   bookable,
   onSlot,
+  onPast,
   onEventClick,
   onEventDoubleClick,
   isWindowsTheme,
@@ -44,6 +45,7 @@ export function WeekTimeGrid({
   onDateClick: (date: string) => void;
   bookable: Bookable;
   onSlot: (slot: string, minutes: number) => void;
+  onPast: () => void;
   onEventClick: (event: CalendarEvent) => void;
   onEventDoubleClick: (event: CalendarEvent) => void;
   isWindowsTheme: boolean;
@@ -234,7 +236,7 @@ export function WeekTimeGrid({
                   />
                 ))}
 
-                <Availability date={day.date} bookable={bookable} hourHeight={hourHeight} gridStart={gridStart} onSlot={onSlot} />
+                <Availability date={day.date} bookable={bookable} hourHeight={hourHeight} gridStart={gridStart} onSlot={onSlot} onPast={onPast} />
 
                 {day.timedEvents.map((ev) => (
                   <TimedEventBlock

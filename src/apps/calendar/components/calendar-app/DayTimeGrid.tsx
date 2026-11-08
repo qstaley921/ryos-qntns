@@ -25,6 +25,7 @@ export function DayTimeGrid({
   selectedEventId,
   bookable,
   onSlot,
+  onPast,
   onEventClick,
   onEventDoubleClick,
   isWindowsTheme,
@@ -41,6 +42,7 @@ export function DayTimeGrid({
   selectedEventId: string | null;
   bookable: Bookable;
   onSlot: (slot: string, minutes: number) => void;
+  onPast: () => void;
   onEventClick: (event: CalendarEvent) => void;
   onEventDoubleClick: (event: CalendarEvent) => void;
   isWindowsTheme: boolean;
@@ -163,7 +165,7 @@ export function DayTimeGrid({
               />
             ))}
 
-            <Availability date={date} bookable={bookable} hourHeight={hourHeight} gridStart={gridStart} onSlot={onSlot} />
+            <Availability date={date} bookable={bookable} hourHeight={hourHeight} gridStart={gridStart} onSlot={onSlot} onPast={onPast} />
 
             {timedEvents.map((ev) => (
               <TimedEventBlock

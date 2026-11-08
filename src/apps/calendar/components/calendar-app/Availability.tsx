@@ -65,8 +65,8 @@ function dayRanges(date: string, b: Bookable) {
 }
 
 /** A day column's availability: read-only "Busy" blocks everywhere that is not a free slot, a button on each free slot. */
-export function Availability({ date, bookable, hourHeight, gridStart, onSlot }: {
-  date: string; bookable: Bookable; hourHeight: number; gridStart: number; onSlot: (slot: string, minutes: number) => void;
+export function Availability({ date, bookable, hourHeight, gridStart, onSlot, onPast }: {
+  date: string; bookable: Bookable; hourHeight: number; gridStart: number; onSlot: (slot: string, minutes: number) => void; onPast: () => void;
 }) {
   if (!bookable.slots) return null; // loading or failed: no blocks, nothing to click
   const { free, busy } = dayRanges(date, bookable);
@@ -78,7 +78,13 @@ export function Availability({ date, bookable, hourHeight, gridStart, onSlot }: 
           className="absolute left-0 right-0 hover:bg-black/[0.04] transition-colors" style={{ top: y(f.a), height: y(f.b) - y(f.a) }} />
       ))}
       {busy.map(([a, b]) => (
-        <div key={a} onClick={(e) => e.stopPropagation()} className="absolute left-0.5 right-0.5 rounded overflow-hidden select-none px-1 py-0.5"
+        <div key={a} onClick={(e) => {
+          e.stopPropagation();
+          // a click on a moment already gone: time traveling is not allowed
+          const t = e.currentTarget.getBoundingClientRect();
+          const at = new Date(`${date}T00:00:00`).getTime() + (a + ((e.clientY - t.top) / hourHeight) * 60) * 60000;
+          if (at < Date.now()) onPast();
+        }} className="absolute left-0.5 right-0.5 rounded overflow-hidden select-none px-1 py-0.5"
           style={{ top: y(a), height: y(b) - y(a), backgroundColor: "rgba(0,0,0,0.06)", borderLeft: "3px solid rgba(0,0,0,0.3)", zIndex: 1 }}>
           <span className="text-[10px] leading-tight opacity-60">Busy</span>
         </div>
