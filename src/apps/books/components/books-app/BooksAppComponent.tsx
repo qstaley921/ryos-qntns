@@ -223,6 +223,14 @@ export function BooksAppComponent({
       isSpeaking={isSpeaking}
       onStartSpeaking={() => readerRef.current?.startSpeaking()}
       onStopSpeaking={() => readerRef.current?.stopSpeaking()}
+      onPreviousPage={() => readerRef.current?.goToPreviousPage()}
+      onNextPage={() => readerRef.current?.goToNextPage()}
+      bookmarks={activeBookBookmarks}
+      isCurrentPageBookmarked={isCurrentPageBookmarked}
+      onToggleBookmark={() => readerRef.current?.toggleBookmark()}
+      onGoToBookmark={(cfi) => readerRef.current?.goToCfi(cfi)}
+      shelfMode={shelfMode}
+      onShelfMode={setShelfMode}
     />
   );
 

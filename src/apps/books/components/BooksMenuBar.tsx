@@ -3,7 +3,9 @@ import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
 import {
   AppMenuBarMenus,
   type MenuDescriptor,
+  type MenuItemDescriptor,
 } from "@/components/shared/menubar/AppMenuBarMenus";
+import { fileSubmenus } from "@/components/shared/menubar/fileSubmenus";
 import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
@@ -20,6 +22,7 @@ import {
   normalizeBooksSpeechRate,
   type BooksReaderSettings,
 } from "@/stores/useBooksStore";
+import type { BookBookmark } from "@/stores/useBooksStore";
 import type { BooksNavigationState } from "./BooksReaderPane";
 
 interface BooksMenuBarProps {
@@ -39,6 +42,14 @@ interface BooksMenuBarProps {
   isSpeaking: boolean;
   onStartSpeaking: () => void;
   onStopSpeaking: () => void;
+  onPreviousPage: () => void;
+  onNextPage: () => void;
+  bookmarks: BookBookmark[];
+  isCurrentPageBookmarked: boolean;
+  onToggleBookmark: () => void;
+  onGoToBookmark: (cfi: string) => void;
+  shelfMode: "store" | "library";
+  onShelfMode: (mode: "store" | "library") => void;
 }
 
 export function BooksMenuBar({
@@ -57,6 +68,14 @@ export function BooksMenuBar({
   isSpeaking,
   onStartSpeaking,
   onStopSpeaking,
+  onPreviousPage,
+  onNextPage,
+  bookmarks,
+  isCurrentPageBookmarked,
+  onToggleBookmark,
+  onGoToBookmark,
+  shelfMode,
+  onShelfMode,
 }: BooksMenuBarProps) {
   const { t } = useTranslation();
   const isCompactMenu = useMediaQuery("(max-width: 768px)");
@@ -83,6 +102,7 @@ export function BooksMenuBar({
           onClick: onBackToShelf,
           disabled: !isReading,
         },
+        ...fileSubmenus({ t, onShareApp: () => setIsShareDialogOpen(true) }),
         { type: "separator" },
         {
           type: "action",
@@ -104,6 +124,29 @@ export function BooksMenuBar({
   const viewMenu: MenuDescriptor = {
       label: t("common.menu.view"),
       items: [
+        {
+          type: "radioGroup",
+          value: shelfMode,
+          onValueChange: (v) => onShelfMode(v === "library" ? "library" : "store"),
+          options: [
+            { label: "Store", value: "store", disabled: isReading },
+            { label: "Library", value: "library", disabled: isReading },
+          ],
+        },
+        { type: "separator" },
+        {
+          type: "action",
+          label: t("apps.books.menu.previousPage"),
+          onClick: onPreviousPage,
+          disabled: !canNavigateReader || !navigationState.canGoPreviousPage,
+        },
+        {
+          type: "action",
+          label: t("apps.books.menu.nextPage"),
+          onClick: onNextPage,
+          disabled: !canNavigateReader || !navigationState.canGoNextPage,
+        },
+        { type: "separator" },
         // Contents moved here from the dropped Go menu (CHECKLIST-36 §14e, §14f).
         {
           type: "submenu",
@@ -293,10 +336,36 @@ export function BooksMenuBar({
     ],
   };
 
+  // The bookmarks list lived only in the dropped Go menu (§14e); back here (§63d).
+  const bookmarksMenu: MenuDescriptor = {
+    label: t("apps.books.bookmarks.title"),
+    contentClassName: "max-w-[260px] sm:max-w-[320px] max-h-[400px] overflow-y-auto",
+    items: [
+      {
+        type: "action",
+        label: isCurrentPageBookmarked
+          ? t("apps.books.bookmarks.remove")
+          : t("apps.books.bookmarks.add"),
+        onClick: onToggleBookmark,
+        disabled: !canNavigateReader,
+      },
+      { type: "separator" },
+      ...bookmarks.map(
+        (b, i): MenuItemDescriptor => ({
+          type: "action",
+          label: b.text?.trim() || `${i + 1}`,
+          onClick: () => onGoToBookmark(b.cfi),
+          disabled: !canNavigateReader,
+        })
+      ),
+    ],
+  };
+
   const menus = buildBooksMenuLayout({
     fileMenu,
     viewMenu,
     speechMenu,
+    bookmarksMenu,
     isCompact: isCompactMenu,
   });
 
