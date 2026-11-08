@@ -172,12 +172,13 @@ export function StoreCallout({
       ) : (
       <form onSubmit={submit} noValidate aria-busy={busy} className="mt-3 border-t pt-3">
         <label htmlFor="books-restore" className="block leading-4">
-          Bought it already? Enter the password from your receipt.
+          Already bought
         </label>
         <div className="mt-2 flex flex-col gap-2">
           <Input
             id="books-restore"
             type="password"
+            placeholder="Enter the password from the first page"
             value={phrase}
             onChange={(e) => setPhrase(e.target.value)}
             autoComplete="off"
