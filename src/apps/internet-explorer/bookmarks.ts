@@ -1,56 +1,26 @@
-// Safari's bookmarks (CHECKLIST-37 §28): one Ghost page per site, internal tag
-// #friend or #portfolio, title = name, canonical URL = site (else the body's
-// first link), excerpt = one line. One Content API call; every failure is silent.
-import { api } from "@/lib/ghost";
-
+// Safari's bookmarks (CHECKLIST-37 §28b): a hardcoded list, no fetch. The Ghost-pages
+// version (#friend / #portfolio tagged pages via the Content API) is in git history.
 export type Bookmark = { id: string; title: string; url: string; excerpt: string };
 export type Bookmarks = { friends: Bookmark[]; portfolio: Bookmark[] };
 
 // The QNTNs Worker; the theme's one runtime origin (QNTNs-ghost CLAUDE.md).
 const WORKER = "https://qntns-reads.qstaley921.workers.dev";
 
-type Page = {
-  id: string;
-  title: string;
-  canonical_url: string | null;
-  custom_excerpt: string | null;
-  excerpt: string | null;
-  html: string | null;
-  tags: { slug: string }[];
+const b = (id: string, title: string, url: string): Bookmark => ({ id, title, url, excerpt: "" });
+const LIST: Bookmarks = {
+  friends: [
+    b("julia", "J\u00falia - Land of J\u00falia", "https://landofjulia.com"),
+    b("burke", "Burke", "https://burkeswanson.com"),
+    b("yogananda", "Yogananda", "https://yogananda.org"),
+  ],
+  portfolio: [
+    b("jostaley", "Jostaley.com", "https://jostaley.com"),
+    b("coldfoam", "Coldfoamconsultancy.com", "https://coldfoamconsultancy.com"),
+    b("kalstaley", "Kalstaley.com", "https://kalstaley.com"),
+  ],
 };
 
-const firstLink = (html: string | null) => /<a\s[^>]*href="(https?:\/\/[^"]+)"/i.exec(html ?? "")?.[1].replace(/&amp;/g, "&") ?? "";
-
-let cached: Promise<Bookmarks> | null = null;
-export function loadBookmarks(): Promise<Bookmarks> {
-  return (cached ??= (async () => {
-    const { base, key } = api();
-    const q = new URLSearchParams({
-      key,
-      filter: "tag:[hash-friend,hash-portfolio]",
-      include: "tags",
-      formats: "html",
-      limit: "all",
-      order: "title asc",
-    });
-    const r = await fetch(`${base}/ghost/api/content/pages/?${q}`);
-    if (!r.ok) throw new Error(String(r.status));
-    const { pages } = (await r.json()) as { pages: Page[] };
-    const out: Bookmarks = { friends: [], portfolio: [] };
-    for (const p of pages) {
-      const url = p.canonical_url || firstLink(p.html);
-      if (!/^https?:\/\//.test(url)) continue;
-      const b = { id: p.id, title: p.title, url, excerpt: p.custom_excerpt || p.excerpt || "" };
-      const tags = p.tags.map((t) => t.slug);
-      if (tags.includes("hash-friend")) out.friends.push(b);
-      if (tags.includes("hash-portfolio")) out.portfolio.push(b);
-    }
-    return out;
-  })().catch(() => {
-    cached = null; // a later open retries
-    return { friends: [], portfolio: [] };
-  }));
-}
+export const loadBookmarks = (): Promise<Bookmarks> => Promise.resolve(LIST);
 
 // Whether the site lets www.qntns.com frame it. Any failure or a 4 s wait = no (link-out card).
 export async function canFrame(url: string): Promise<boolean> {
