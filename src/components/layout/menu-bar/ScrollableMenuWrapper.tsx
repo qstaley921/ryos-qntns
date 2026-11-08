@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useIsPhone } from "@/hooks/useIsPhone";
 
 const ScrollingContext = React.createContext<{
   isScrolling: boolean;
@@ -9,21 +8,18 @@ const ScrollingContext = React.createContext<{
   preventInteraction: () => false,
 });
 
-const NON_SCROLLING_CONTEXT_VALUE = {
-  isScrolling: false,
-  preventInteraction: () => false,
-};
-
 export function ScrollableMenuWrapper({
   children,
   style,
   className,
+  contentRef,
 }: {
   children: React.ReactNode;
   style?: React.CSSProperties;
   className?: string;
+  /** The natural-width box inside the scroller, for the caller to measure. */
+  contentRef?: React.Ref<HTMLDivElement>;
 }) {
-  const isPhone = useIsPhone();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [scrollWidth, setScrollWidth] = useState(0);
@@ -109,7 +105,7 @@ export function ScrollableMenuWrapper({
   const canScrollRight = scrollLeft < scrollWidth - clientWidth - 1;
 
   const maskImage = useMemo(() => {
-    if (!isPhone || scrollWidth <= clientWidth) {
+    if (scrollWidth <= clientWidth) {
       return undefined;
     }
     
@@ -126,7 +122,7 @@ export function ScrollableMenuWrapper({
       return `linear-gradient(to right, black 0%, black calc(100% - ${fadeWidth}px), transparent 100%)`;
     }
     return undefined;
-  }, [canScrollLeft, canScrollRight, clientWidth, isPhone, scrollWidth]);
+  }, [canScrollLeft, canScrollRight, clientWidth, scrollWidth]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -173,22 +169,12 @@ export function ScrollableMenuWrapper({
     [preventInteraction, scrollLeft, scrollWidth, clientWidth]
   );
 
-  if (!isPhone) {
-    return (
-      <ScrollingContext.Provider value={NON_SCROLLING_CONTEXT_VALUE}>
-        <div className={`flex items-stretch h-full${className ? ` ${className}` : ""}`} style={style}>
-          {children}
-        </div>
-      </ScrollingContext.Provider>
-    );
-  }
-
   return (
     <ScrollingContext.Provider value={scrollingContextValue}>
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className={`flex-1 h-full overflow-x-auto overflow-y-hidden${className ? ` ${className}` : ""}`}
+        className={`min-w-0 h-full overflow-x-auto overflow-y-hidden${className ? ` ${className}` : ""}`}
         style={{
           WebkitOverflowScrolling: "touch",
           overscrollBehaviorX: "contain",
@@ -197,13 +183,15 @@ export function ScrollableMenuWrapper({
           maskImage,
           WebkitMaskImage: maskImage,
           touchAction: "pan-x",
+          // Grow never, shrink to the room left: ends where the status area begins.
+          flex: "0 1 auto",
           ...style,
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="flex items-stretch h-full min-w-max">
+        <div ref={contentRef} className="flex items-stretch h-full min-w-max">
           {children}
         </div>
       </div>

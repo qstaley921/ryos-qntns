@@ -25,12 +25,12 @@ export const PROTECTED_DOCK_ITEMS = new Set(["finder", "__applications__", "__tr
 const DEFAULT_PINNED_ITEMS: DockItem[] = [
   { type: "app", id: "finder" },
   { type: "app", id: "dashboard" },
-  { type: "app", id: "chats" },
-  { type: "app", id: "internet-explorer" },
-  { type: "app", id: "karaoke" },
+  { type: "app", id: "ipod" },
+  { type: "app", id: "calendar" },
+  { type: "app", id: "mail" },
 ];
 
-const DOCK_STORE_VERSION = 1;
+const DOCK_STORE_VERSION = 3;
 const APP_ID_SET = new Set<string>(appIds);
 
 /**
@@ -83,7 +83,7 @@ export const useDockStore = create<DockStoreState>()(
   persist(
     (set, get) => ({
       pinnedItems: DEFAULT_PINNED_ITEMS,
-      scale: 1, // Default scale
+      scale: 0.5, // Default scale: half ryOS stock (1)
       hiding: false, // Default: dock always visible
       magnification: true, // Default: magnification enabled
 
@@ -185,13 +185,18 @@ export const useDockStore = create<DockStoreState>()(
       },
 
       reset: () => {
-        set({ pinnedItems: DEFAULT_PINNED_ITEMS, scale: 1, hiding: false, magnification: true });
+        set({ pinnedItems: DEFAULT_PINNED_ITEMS, scale: 0.5, hiding: false, magnification: true });
       },
     }),
     {
       name: STORAGE_KEYS.dock,
       version: DOCK_STORE_VERSION,
       storage: createJSONStorage(() => localStorage),
+      // v2: reset old pins to the six-door default; v3: stock scale 1 -> 0.5
+      migrate: (state) => {
+        const s = state as DockStoreState;
+        return { ...s, pinnedItems: DEFAULT_PINNED_ITEMS, scale: s.scale === 1 ? 0.5 : s.scale };
+      },
     }
   )
 );

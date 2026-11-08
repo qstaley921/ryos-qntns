@@ -9,6 +9,7 @@ import {
 } from "@/utils/dynamicWallpaper";
 import { useWallpaper } from "@/hooks/useWallpaper";
 import { safeLazy } from "@/utils/safeLazy";
+import { QNTNS_WALLPAPER } from "@/utils/wallpapers";
 
 /** Recompute the day/night gradient roughly once a minute. */
 const GRADIENT_REFRESH_MS = 60 * 1000;
@@ -66,6 +67,34 @@ function DayNightGradientLayer() {
   );
 }
 
+/** "QNTNs" in Gill Sans Ultra on beige; every value is a --qntns-wall-* token. */
+export function QntnsWallpaperLayer() {
+  return (
+    <div
+      aria-hidden
+      className="absolute inset-0 w-full h-full z-[-10] grid select-none pointer-events-none"
+      style={{
+        background: "var(--qntns-wall-bg)",
+        placeItems: "var(--qntns-wall-place)",
+        padding: "var(--qntns-wall-pad)",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: '"Gill Sans Ultra", "Arial Black", sans-serif',
+          fontWeight: 800,
+          fontSize: "var(--qntns-wall-size)",
+          lineHeight: 1,
+          color: "var(--qntns-wall-ink)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        QNTNs
+      </span>
+    </div>
+  );
+}
+
 /** CSS-only weather sky shown while the shader layer's chunk loads. */
 function WeatherGradientFallback() {
   return (
@@ -92,6 +121,9 @@ function DarkWallpaperFallback() {
 export function DesktopDynamicWallpaper() {
   const { currentWallpaper } = useWallpaper();
 
+  if (currentWallpaper === QNTNS_WALLPAPER) {
+    return <QntnsWallpaperLayer />;
+  }
   if (isDayNightGradientWallpaper(currentWallpaper)) {
     return <DayNightGradientLayer />;
   }

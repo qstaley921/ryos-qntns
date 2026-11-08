@@ -10,10 +10,12 @@ import {
 import type { DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import type { SortType } from "@/apps/finder/components/FinderMenuBar";
 import { usePointerLongPress } from "@/hooks/usePointerLongPress";
+import { isFolderTag } from "@/apps/finder/utils/ghostPlaces";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useFilesStore, type FileSystemItem } from "@/stores/useFilesStore";
 import { useShallow } from "zustand/react/shallow";
 import { useLaunchApp } from "@/hooks/useLaunchApp";
+import { useAppStore } from "@/stores/useAppStore";
 import type { LaunchOriginRect } from "@/stores/useAppStore";
 import { STORES, dbOperations } from "@/utils/indexedDB";
 import { useTranslation } from "react-i18next";
@@ -42,6 +44,14 @@ import {
   getDesktopShortcutDisplayName,
   getDesktopShortcutIcon,
 } from "./desktopShortcutUtils";
+import {
+  useGhostList,
+  ghostPlaces,
+  RECENTS_PATH,
+} from "@/apps/finder/utils/ghostPlaces";
+import { useShortViewport } from "./desktopConstants";
+import type { DesktopFolder } from "./DesktopIconGrid";
+import { listHomeContent } from "@/lib/ghost";
 import { createClientLogger } from "@/utils/logger";
 import type {
   DesktopProps,
@@ -102,6 +112,32 @@ export function useDesktop({
 
   const launchApp = useLaunchApp();
 
+  // Desktop item id -> the instance that icon launched, so the icon bounces
+  // while that instance's isLoading is true (CHECKLIST-35 §46b).
+  const [launchedInstances, setLaunchedInstances] = useState<
+    Record<DesktopItemId, string>
+  >({});
+  const loadingItemIds = useAppStore(
+    useShallow((state) =>
+      Object.entries(launchedInstances)
+        .filter(([, id]) => state.instances[id]?.isLoading)
+        .map(([itemId]) => itemId)
+    )
+  );
+  /** Run a launch; the instance it newly creates is tied to `itemId`. */
+  const trackLaunch = useCallback(
+    async (itemId: DesktopItemId, launch: () => unknown) => {
+      const before = new Set(Object.keys(useAppStore.getState().instances));
+      await launch();
+      const created = Object.keys(useAppStore.getState().instances).filter(
+        (id) => !before.has(id)
+      );
+      const id = created[created.length - 1];
+      if (id) setLaunchedInstances((prev) => ({ ...prev, [itemId]: id }));
+    },
+    []
+  );
+
   const desktopAndTrashItems = useFilesStore(
     useShallow((state) => {
       const result: FileSystemItem[] = [];
@@ -160,14 +196,16 @@ export function useDesktop({
 
   const handleAliasOpen = useCallback(
     async (shortcut: FileSystemItem, launchOrigin?: LaunchOriginRect) => {
-      await openDesktopAlias(shortcut, {
-        toggleApp,
-        launchApp,
-        getItem,
-        launchOrigin,
-      });
+      await trackLaunch(getDesktopShortcutItemId(shortcut.path), () =>
+        openDesktopAlias(shortcut, {
+          toggleApp,
+          launchApp,
+          getItem,
+          launchOrigin,
+        })
+      );
     },
-    [toggleApp, launchApp, getItem]
+    [toggleApp, launchApp, getItem, trackLaunch]
   );
 
   const handleDragOver = (e: DragEvent) => {
@@ -281,9 +319,57 @@ export function useDesktop({
     []
   );
 
-  const handleFinderOpen = (e: ReactMouseEvent<HTMLDivElement>) => {
+  const ghost = useGhostList();
+  // Ids of #home-content posts (quotes, rules, notes: Journal only, no folder).
+  // The baked list hides internal tags, so one read-only Content API call.
+  const [homeIds, setHomeIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let live = true;
+    listHomeContent().then((r) => live && setHomeIds(new Set(r.map((p) => p.id))));
+    return () => {
+      live = false;
+    };
+  }, []);
+  // One folder per public tag with >=1 non-home-content post, most posts first.
+  const shortViewport = useShortViewport();
+  const baseFolders = useMemo<DesktopFolder[]>(() => {
+    const posts = ghost.docs.filter((d) => d.type === "post" && !homeIds.has(d.id));
+    const count = (slug: string) =>
+      posts.filter((d) => d.tags.some((t) => t.slug === slug)).length;
+    return ghostPlaces(ghost)
+      .filter((p) => p.path !== RECENTS_PATH)
+      .filter((p) => !p.name.startsWith("#") && !p.path.startsWith("/Tag-hash-"))
+      .filter((p) => isFolderTag({ name: p.name, slug: p.path.slice(5) }))
+      .map((p) => ({
+        ...p,
+        n: count(p.path.startsWith("/Tag-") ? p.path.slice(5) : "poems"),
+      }))
+      .filter((p) => p.n > 0)
+      .sort((a, b) => b.n - a.n)
+      .map(({ name, path, icon }) => ({ name, path, icon }));
+  }, [ghost, homeIds]);
+  // §49: dock is hidden on a short viewport, so Applications sits on the desktop (after HD, before content folders).
+  // §49a: on a short viewport the content folders are dropped too; only Applications stays.
+  const folders = useMemo<DesktopFolder[]>(
+    () =>
+      shortViewport
+        ? [
+            {
+              name: t("common.dock.applications"),
+              path: "/Applications",
+              icon: "/icons/default/applications.png",
+            },
+          ]
+        : baseFolders,
+    [shortViewport, baseFolders, t]
+  );
+
+  const handleFinderOpen = (
+    e: ReactMouseEvent<HTMLDivElement>,
+    path = "/"
+  ) => {
     e.stopPropagation();
-    localStorage.setItem("ryos:app:finder:initial-path", "/");
+    localStorage.setItem("ryos:app:finder:initial-path", path);
     const finderApp = apps.find((app) => app.id === "finder");
     if (finderApp) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -293,7 +379,12 @@ export function useDesktop({
         width: rect.width,
         height: rect.height,
       };
-      toggleApp(finderApp.id, undefined, launchOrigin);
+      void trackLaunch(
+        path === "/"
+          ? getDesktopAppItemId("macintosh-hd")
+          : getDesktopShortcutItemId(path),
+        () => toggleApp(finderApp.id, undefined, launchOrigin)
+      );
     }
     clearSelection();
   };
@@ -402,30 +493,19 @@ export function useDesktop({
         id: getDesktopAppItemId("macintosh-hd"),
         kind: "app",
       },
-      ...desktopShortcuts.map((shortcut) => ({
-        id: getDesktopShortcutItemId(shortcut.path),
+      ...folders.map((f) => ({
+        id: getDesktopShortcutItemId(f.path),
         kind: "shortcut" as const,
       })),
     ];
 
-    if (desktopShortcuts.length === 0) {
-      items.push(
-        ...displayedApps.map((app) => ({
-          id: getDesktopAppItemId(app.id),
-          kind: "app" as const,
-        }))
-      );
-    }
-
-    if (!isMacOSTheme) {
-      items.push({
-        id: getDesktopAppItemId("trash"),
-        kind: "app",
-      });
-    }
-
     return items;
-  }, [isMacOSTheme, desktopShortcuts, displayedApps]);
+  }, [folders]);
+
+  const handleFolderOpen = (
+    path: string,
+    e: ReactMouseEvent<HTMLDivElement>
+  ) => handleFinderOpen(e, path);
 
   // Paint the marquee rect element directly (no React state per pointer move).
   const paintMarqueeRect = useCallback(
@@ -709,10 +789,12 @@ export function useDesktop({
         width: rect.width,
         height: rect.height,
       };
-      toggleApp(app.id, undefined, launchOrigin);
+      void trackLaunch(getDesktopAppItemId(app.id), () =>
+        toggleApp(app.id, undefined, launchOrigin)
+      );
       clearSelection();
     },
-    [toggleApp, clearSelection]
+    [toggleApp, clearSelection, trackLaunch]
   );
 
   const handleTrashDoubleClick = useCallback(
@@ -775,6 +857,9 @@ export function useDesktop({
     selectedItemIds,
     handleDesktopItemClick,
     handleFinderOpen,
+    handleFolderOpen,
+    loadingItemIds,
+    folders,
     handleIconContextMenu,
     handleShortcutContextMenu,
     handlePrefetchShortcut,

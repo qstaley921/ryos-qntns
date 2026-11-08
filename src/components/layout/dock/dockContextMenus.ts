@@ -1,3 +1,4 @@
+import { APPLICATIONS_HIDDEN } from "./dockConstants";
 import type { TFunction } from "i18next";
 import type { AppId } from "@/config/appRegistry";
 import { appRegistry, getAppIconPath, getNonFinderApps } from "@/config/appRegistry";
@@ -338,7 +339,7 @@ export function getFolderContextMenuItems(
   }> = [];
 
   if (folderPath === "/Applications") {
-    const apps = getNonFinderApps(isAdmin);
+    const apps = getNonFinderApps(isAdmin).filter((a) => !APPLICATIONS_HIDDEN.has(a.id));
     sortedItems = apps
       .map((app) => ({
         name: app.name,

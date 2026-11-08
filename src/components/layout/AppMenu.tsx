@@ -14,13 +14,14 @@ import { ShareItemDialog } from "@/components/dialogs/ShareItemDialog";
 import { generateAppShareUrl } from "@/utils/sharedUrl";
 import { useAppStore, useAppStoreShallow } from "@/stores/useAppStore";
 import { appRegistry, type AppId } from "@/config/appRegistry";
+import { useMenuShortcuts } from "@/hooks/useMenuShortcuts";
 import { getTranslatedAppName } from "@/utils/i18n";
 
 // Apps that support multiple windows
 const MULTI_INSTANCE_APPS: AppId[] = ["textedit", "finder", "applet-viewer"];
 
 // Apps that support fullscreen mode
-const FULLSCREEN_APPS: AppId[] = ["ipod", "karaoke", "videos", "pc"];
+const FULLSCREEN_APPS: AppId[] = ["ipod", "karaoke", "videos"];
 
 interface AppMenuProps {
   appId: AppId;
@@ -111,10 +112,20 @@ export function AppMenu({
     }
   };
 
-  // Quit app (close current instance)
+  // Quit app: close every open window of this app, like macOS.
   const handleQuit = () => {
-    closeAppInstance(instanceId);
+    Object.values(useAppStore.getState().instances).forEach((inst) => {
+      if (inst.appId === appId && inst.isOpen) closeAppInstance(inst.instanceId);
+    });
   };
+
+  useMenuShortcuts(instanceId, {
+    quit: () => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el?.closest("input, textarea, [contenteditable='true']")) return;
+      handleQuit();
+    },
+  });
 
   return (
     <>
@@ -190,6 +201,7 @@ export function AppMenu({
             className="text-md h-6 px-3"
           >
             {t("common.appMenu.quitApp", { appName: translatedAppName })}
+            <ShortcutHint id="quit" />
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>

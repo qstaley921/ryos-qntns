@@ -10,7 +10,7 @@ import { useAppStore, useAppStoreShallow } from "@/stores/useAppStore";
 import { AppId, appRegistry } from "@/config/appRegistry";
 import { useLaunchApp } from "@/hooks/useLaunchApp";
 import { useFinderStore } from "@/stores/useFinderStore";
-import { selectTrashedCount, useFilesStore } from "@/stores/useFilesStore";
+import { useFilesStore } from "@/stores/useFilesStore";
 import { useDockStore } from "@/stores/useDockStore";
 import { useIsPhone } from "@/hooks/useIsPhone";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
@@ -19,7 +19,6 @@ import { usePointerLongPress } from "@/hooks/usePointerLongPress";
 import { useSound, Sounds } from "@/hooks/useSound";
 import type { LaunchOriginRect } from "@/stores/useAppStore";
 import { RightClickMenu } from "@/components/ui/right-click-menu";
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { AnimatePresence, motion, LayoutGroup, useMotionValue } from "motion/react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -42,11 +41,10 @@ import { renderDockPinnedItems } from "./DockPinnedItems";
 import { renderDockOpenItems } from "./DockOpenItems";
 import { computeDockOpenItems } from "./dockOpenList";
 import { computeDockPinnedItems } from "./dockPinnedList";
+import { useShortViewport } from "../desktop/desktopConstants";
 import { DockApplicationsButton } from "./DockApplicationsButton";
-import { DockTrashButton } from "./DockTrashButton";
 import { useDockContextMenus } from "./useDockContextMenus";
 import { useDockDragDrop } from "./useDockDragDrop";
-import { createDockTrashHandlers } from "./dockTrashHandlers";
 import { DockDivider } from "./DockDivider";
 import { desktopContentEdge } from "../menu-bar/menubarEdgePadding";
 import { useDockIconHover } from "./useDockIconHover";
@@ -92,11 +90,6 @@ export function MacDock() {
   const launchApp = useLaunchApp();
   const getFileItem = useFilesStore((s) => s.getItem);
   const getFilesInPath = useFilesStore((s) => s.getItemsInPath);
-  const removeFileItem = useFilesStore((s) => s.removeItem);
-  const emptyTrash = useFilesStore((s) => s.emptyTrash);
-  const trashIcon = useFilesStore(
-    (s) => s.items["/Trash"]?.icon || "/icons/trash-empty.png"
-  );
   // Path-only signature: Finder view/selection writes must not re-render the dock.
   const finderInstancesSignature = useFinderStore((s) =>
     getFinderInstancesSignature(s.instances)
@@ -117,7 +110,7 @@ export function MacDock() {
     reorderItems, 
     scale: dockScale, 
     setScale: setDockScale,
-    hiding: dockHiding,
+    hiding: storedDockHiding,
     setHiding: setDockHiding,
     magnification: dockMagnification,
     setMagnification: setDockMagnification,
@@ -136,16 +129,47 @@ export function MacDock() {
     }))
   );
   
-  const [isDraggingOverTrash, setIsDraggingOverTrash] = useState(false);
-  const [trashContextMenuPos, setTrashContextMenuPos] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+  // §49: a short viewport forces the same auto-hide the setting turns on.
+  const shortViewport = useShortViewport();
+  // §49b: below 600px the dock still shows whenever no window is in the way:
+  // none open, all minimized, desktop revealed (§54) or an app launching.
+  const dockNeeded = useAppStore((s) => {
+    if (s.desktopRevealed) return true;
+    const open = Object.values(s.instances).filter((i) => i.isOpen);
+    return (
+      !open.some((i) => !i.isMinimized) || open.some((i) => i.isLoading)
+    );
+  });
+  // Every minimize shows the dock for the animation (~1s), then it hides again.
+  const [minimizing, setMinimizing] = useState(false);
+  useEffect(() => {
+    const count = () =>
+      Object.values(useAppStore.getState().instances).filter(
+        (i) => i.isOpen && i.isMinimized,
+      ).length;
+    let prev = count();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsub = useAppStore.subscribe(() => {
+      const n = count();
+      if (n > prev) {
+        setMinimizing(true);
+        clearTimeout(timer);
+        timer = setTimeout(() => setMinimizing(false), 1000);
+      }
+      prev = n;
+    });
+    return () => {
+      unsub();
+      clearTimeout(timer);
+    };
+  }, []);
+  const dockHiding =
+    storedDockHiding || (shortViewport && !dockNeeded && !minimizing);
+
   const [applicationsContextMenuPos, setApplicationsContextMenuPos] = useState<{
     x: number;
     y: number;
   } | null>(null);
-  const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
   const dockContainerRef = useRef<HTMLDivElement | null>(null);
   const dockBarRef = useRef<HTMLDivElement | null>(null);
   const iconRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -326,7 +350,7 @@ export function MacDock() {
     
     // Don't start timer if dragging or context menu open
     if (draggingItemId || externalDragIndex !== null || 
-        trashContextMenuPos || applicationsContextMenuPos || appContextMenu || dividerContextMenuPos) {
+        applicationsContextMenuPos || appContextMenu || dividerContextMenuPos) {
       return;
     }
     
@@ -347,7 +371,7 @@ export function MacDock() {
         restartAutoHideTimer();
       }
     }, delay);
-  }, [isPhone, dockHiding, draggingItemId, externalDragIndex, trashContextMenuPos, applicationsContextMenuPos, appContextMenu, dividerContextMenuPos]);
+  }, [isPhone, dockHiding, draggingItemId, externalDragIndex, applicationsContextMenuPos, appContextMenu, dividerContextMenuPos]);
   
   // Restart auto-hide timer when context menus close or dragging ends
   useEffect(() => {
@@ -355,7 +379,7 @@ export function MacDock() {
     if (dockHiding && isDockVisible) {
       restartAutoHideTimer();
     }
-  }, [dockHiding, isDockVisible, trashContextMenuPos, applicationsContextMenuPos, appContextMenu, dividerContextMenuPos, draggingItemId, externalDragIndex, restartAutoHideTimer]);
+  }, [dockHiding, isDockVisible, applicationsContextMenuPos, appContextMenu, dividerContextMenuPos, draggingItemId, externalDragIndex, restartAutoHideTimer]);
   
   // Show dock (called when mouse enters dock zone)
   const showDock = useCallback(() => {
@@ -382,7 +406,7 @@ export function MacDock() {
     // Don't hide while dragging
     if (draggingItemId || externalDragIndex !== null) return;
     // Don't hide while context menu is open
-    if (trashContextMenuPos || applicationsContextMenuPos || appContextMenu || dividerContextMenuPos) return;
+    if (applicationsContextMenuPos || appContextMenu || dividerContextMenuPos) return;
     
     // Clear auto-hide timer
     if (autoHideTimerRef.current) {
@@ -391,7 +415,7 @@ export function MacDock() {
     }
     
     setIsDockVisible(false);
-  }, [dockHiding, draggingItemId, externalDragIndex, trashContextMenuPos, applicationsContextMenuPos, appContextMenu, dividerContextMenuPos]);
+  }, [dockHiding, draggingItemId, externalDragIndex, applicationsContextMenuPos, appContextMenu, dividerContextMenuPos]);
 
   // Mobile / small-height: swipe up from bottom (or in from a side dock's
   // strip) reveals the dock; taps pass through (no overlay).
@@ -527,7 +551,6 @@ export function MacDock() {
 
   // Scalar from the path-query cache — avoids O(n) Object.values scans on
   // every files-store write (create/rename/move) that don't touch trash.
-  const isTrashEmpty = useFilesStore((s) => selectTrashedCount(s) === 0);
 
   // Normalize pinned app ids before rendering. Stale localStorage / cloud sync
   // entries would otherwise throw in getAppIconPath and paint a blank slot.
@@ -724,7 +747,6 @@ export function MacDock() {
     setDockHiding,
     setDockMagnification,
     isAdmin,
-    isTrashEmpty,
     getFileItem,
     getFilesInPath,
     launchApp,
@@ -738,9 +760,7 @@ export function MacDock() {
     focusFinderAtPathOrLaunch,
     focusOrLaunchFinder,
     focusOrLaunchApp,
-    setTrashContextMenuPos,
     setApplicationsContextMenuPos,
-    setIsEmptyTrashDialogOpen,
   });
 
   // Handle app context menu
@@ -765,9 +785,6 @@ export function MacDock() {
     []
   );
 
-  const { handleTrashDragOver, handleTrashDrop, handleTrashDragLeave } =
-    createDockTrashHandlers(removeFileItem, setIsDraggingOverTrash);
-
   // A side dock scrolls inside its strip, which would clip magnified icons.
   const { mouseX, effectiveMagnifyEnabled } = useDockMagnification(
     dockMagnification && !sidePlacement,
@@ -785,7 +802,6 @@ export function MacDock() {
         item.type === "applet" ? item.instanceId! : item.appId
       ),
       "__applications__",
-      "__trash__",
     ];
     return ids;
   }, [sanitizedPinnedItems, openItems]);
@@ -929,14 +945,14 @@ export function MacDock() {
             if (dockHiding) {
               hideDock();
             }
-            if (effectiveMagnifyEnabled && !trashContextMenuPos && !appContextMenu) {
+            if (effectiveMagnifyEnabled && !appContextMenu) {
               mouseX.set(Infinity);
               handleIconLeave();
             }
           }}
           onMouseMove={(e) => {
             // Update mouse position for magnification
-            if (effectiveMagnifyEnabled && !trashContextMenuPos && !appContextMenu) {
+            if (effectiveMagnifyEnabled && !appContextMenu) {
               mouseX.set(e.clientX);
             }
             // Restart auto-hide timer on mouse movement (desktop fallback, throttled)
@@ -1030,7 +1046,7 @@ export function MacDock() {
                   t,
                 })}
 
-                {/* Divider between open apps and Applications/Trash */}
+                {/* Divider between open apps and Applications */}
                 <DockDivider 
                   key="divider-between" 
                   idKey="between" 
@@ -1058,27 +1074,7 @@ export function MacDock() {
                   t={t}
                 />
 
-                <DockTrashButton
-                  key="__trash__"
-                  dockContainerRef={dockContainerRef}
-                  setTrashContextMenuPos={setTrashContextMenuPos}
-                  focusFinderAtPathOrLaunch={focusFinderAtPathOrLaunch}
-                  trashIcon={trashIcon}
-                  handleTrashDragOver={handleTrashDragOver}
-                  handleTrashDrop={handleTrashDrop}
-                  handleTrashDragLeave={handleTrashDragLeave}
-                  isDraggingOverTrash={isDraggingOverTrash}
-                  mouseX={mouseX}
-                  effectiveMagnifyEnabled={effectiveMagnifyEnabled}
-                  scaledButtonSize={scaledButtonSize}
-                  hasMounted={hasMounted}
-                  seenIdsRef={seenIdsRef}
-                  hoveredId={hoveredId}
-                  isSwapping={isSwapping}
-                  handleIconHover={handleIconHover}
-                  handleIconLeave={handleIconLeave}
-                  t={t}
-                />
+
 
               </AnimatePresence>
             </LayoutGroup>
@@ -1108,14 +1104,6 @@ export function MacDock() {
       )}
       
       <RightClickMenu
-        items={getFolderContextMenuItems("/Trash", true)}
-        position={trashContextMenuPos}
-        onClose={() => {
-          setTrashContextMenuPos(null);
-          mouseX.set(Infinity);
-        }}
-      />
-      <RightClickMenu
         items={getFolderContextMenuItems("/Applications", false)}
         position={applicationsContextMenuPos}
         onClose={() => {
@@ -1143,16 +1131,6 @@ export function MacDock() {
           }}
         />
       )}
-      <ConfirmDialog
-        isOpen={isEmptyTrashDialogOpen}
-        onOpenChange={setIsEmptyTrashDialogOpen}
-        onConfirm={() => {
-          emptyTrash();
-          setIsEmptyTrashDialogOpen(false);
-        }}
-        title={t("apps.finder.dialogs.emptyTrash.title")}
-        description={t("apps.finder.dialogs.emptyTrash.description")}
-      />
     </div>
   );
 }

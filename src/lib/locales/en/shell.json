@@ -5,7 +5,7 @@
     "loading": {
       "default": "Loading…",
       "openingAppletStore": "Opening Applet Store…",
-      "openingSharedIELink": "Opening shared Internet Explorer link…",
+      "openingSharedIELink": "Opening shared Safari link…",
       "openingSharedApplet": "Opening shared applet…",
       "openingSharedIpodTrack": "Opening shared iPod track…",
       "openingSharedKaraokeTrack": "Opening shared Karaoke track…",
@@ -194,7 +194,7 @@
       "aboutThisComputer": "About This Computer",
       "softwareUpdate": "Software Update…",
       "systemPreferences": "System Preferences…",
-      "controlPanels": "Control Panels…",
+      "controlPanels": "System Preferences…",
       "appletStore": "Applet Store…",
       "recentItems": "Recent Items",
       "noRecentApps": "No Recent Apps",
@@ -370,7 +370,7 @@
   },
   "spotlight": {
     "title": "Spotlight",
-    "placeholder": "Search ryOS",
+    "placeholder": "Search QNTNs",
     "sections": {
       "apps": "Applications",
       "documents": "Documents",
@@ -685,7 +685,7 @@
       "importedSoundboard": "Imported Soundboard"
     },
     "internet-explorer": {
-      "name": "Internet Explorer",
+      "name": "Safari",
       "description": "Browse the web",
       "futureTimeline": {
         "title": "Edit Future Timeline",
@@ -1459,7 +1459,7 @@
       "description": "View and run applets"
     },
     "control-panels": {
-      "name": "Control Panels",
+      "name": "System Preferences",
       "description": "System settings",
       "nameForMacosX": "System Preferences",
       "autoSync": {

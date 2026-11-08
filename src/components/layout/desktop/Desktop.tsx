@@ -6,16 +6,49 @@ import { DesktopIconGrid } from "./DesktopIconGrid";
 import { DesktopDragRegion } from "./DesktopDragRegion";
 import { DesktopDynamicWallpaper } from "./DesktopDynamicWallpaper";
 import { DesktopStaticWallpaper } from "./DesktopStaticWallpaper";
+import { useRef, type MouseEvent } from "react";
+import { useAppStore } from "@/stores/useAppStore";
+
+/**
+ * §54 Show Desktop: a plain click on bare wallpaper (no icon, no drag-select,
+ * no modifier) toggles desktopRevealed when a window is showing, or when the
+ * desktop is already revealed. Focus, restore and launch clear it (store).
+ */
+function toggleRevealOnWallpaperClick(
+  e: MouseEvent<HTMLDivElement>,
+  down: { x: number; y: number } | null,
+) {
+  if (!down || e.button !== 0) return;
+  if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (Math.abs(e.clientX - down.x) > 3 || Math.abs(e.clientY - down.y) > 3) return;
+  // Portaled menus/dialogs bubble through React but sit outside this DOM.
+  if (!e.currentTarget.contains(e.target as Node)) return;
+  if ((e.target as HTMLElement).closest("[data-desktop-icon]")) return;
+  const s = useAppStore.getState();
+  if (s.exposeMode) return;
+  const anyShowing = Object.values(s.instances).some(
+    (i) => i.isOpen && !i.isMinimized,
+  );
+  if (s.desktopRevealed || anyShowing) s.setDesktopRevealed(!s.desktopRevealed);
+}
 
 export function Desktop(props: DesktopProps) {
   const d = useDesktop(props);
+  const downRef = useRef<{ x: number; y: number } | null>(null);
 
   return (
     <div
       ref={d.desktopRef}
       className="absolute inset-0 min-h-screen h-full z-[-1] desktop-background"
-      onMouseDown={d.handleBlankMouseDown}
-      onClick={d.handleDesktopClick}
+      onMouseDown={(e) => {
+        downRef.current = { x: e.clientX, y: e.clientY };
+        d.handleBlankMouseDown(e);
+      }}
+      onClick={(e) => {
+        d.handleDesktopClick();
+        toggleRevealOnWallpaperClick(e, downRef.current);
+        downRef.current = null;
+      }}
       onContextMenu={d.desktopContextMenuHandler}
       onDragOver={d.handleDragOver}
       onDragLeave={d.handleDragLeave}
@@ -47,23 +80,14 @@ export function Desktop(props: DesktopProps) {
         isWindowsTheme={d.isWindowsTheme}
         isMacOSTheme={d.isMacOSTheme}
         hasWindowChrome={d.hasWindowChrome}
-        currentTheme={d.currentTheme}
         macintoshHdName={d.macintoshHdName}
-        trashName={d.trashName}
-        trashIcon={d.trashIcon}
-        desktopShortcuts={d.desktopShortcuts}
-        displayedApps={d.displayedApps}
-        getDisplayName={d.getDisplayName}
-        getShortcutIcon={d.getShortcutIcon}
+        folders={d.folders}
         selectedItemIds={d.selectedItemIds}
+        loadingItemIds={d.loadingItemIds}
         onDesktopItemClick={d.handleDesktopItemClick}
         onFinderOpen={d.handleFinderOpen}
         onIconContextMenu={d.handleIconContextMenu}
-        onShortcutContextMenu={d.handleShortcutContextMenu}
-        onShortcutPointerDown={d.handlePrefetchShortcut}
-        onShortcutDoubleClick={d.handleShortcutDoubleClick}
-        onAppDoubleClick={d.handleAppDoubleClick}
-        onTrashDoubleClick={d.handleTrashDoubleClick}
+        onFolderOpen={d.handleFolderOpen}
       />
       {d.isMarqueeSelecting ? (
         // Geometry is painted directly onto this element per pointer move

@@ -71,7 +71,8 @@ export type ShortcutId =
   | "underline"
   | "minimize"
   | "hide"
-  | "hideOthers";
+  | "hideOthers"
+  | "quit";
 
 export const SHORTCUTS: Record<ShortcutId, ShortcutDef> = {
   newFile: { primary: { cmd: true, key: "n" }, browserReserved: true },
@@ -112,6 +113,11 @@ export const SHORTCUTS: Record<ShortcutId, ShortcutDef> = {
   // as plain Alt combos that work on web and desktop alike.
   hide: { primary: { alt: true, key: "h" } },
   hideOthers: { primary: { alt: true, shift: true, key: "h" } },
+  quit: {
+    primary: { cmd: true, key: "q" },
+    browserReserved: true,
+    webFallback: { alt: true, key: "q" },
+  },
 };
 
 /**

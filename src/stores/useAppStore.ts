@@ -17,6 +17,8 @@ import { measureMenubarSafeTop } from "@/components/layout/menu-bar/menubarEdgeP
 import {
   applyUserWindowMove,
   layoutForViewport,
+  MOBILE_VIEWPORT_BREAKPOINT,
+  persistedRectIsDesktopLayout,
   toStoredRect,
   toWindowRect,
   windowRectChanged,
@@ -24,9 +26,11 @@ import {
 } from "@/utils/constrainWindowToViewport";
 import {
   getDesktopContentBounds,
+  windowSnapEdges,
   type DesktopContentBounds,
 } from "@/utils/desktopContentBounds";
 import { readLiveWindowInsets } from "@/utils/windowInsets";
+import { SHORT_VIEWPORT_PX } from "@/components/layout/desktop/desktopConstants";
 export type { AIModel } from "@/types/aiModels";
 
 // ---------------- Types ---------------------------------------------------------
@@ -123,6 +127,9 @@ interface AppStoreState {
   // Expose/Mission Control mode
   exposeMode: boolean;
   setExposeMode: (v: boolean) => void;
+  /** §54 Show Desktop: open windows slid off the side edges. Not persisted. */
+  desktopRevealed: boolean;
+  setDesktopRevealed: (v: boolean) => void;
   
   // ryOS version (fetched from version.json)
   ryOSVersion: string | null;
@@ -197,7 +204,7 @@ function stripInstanceForeground(instance: AppInstance): AppInstance {
   return rest as AppInstance;
 }
 
-type WindowConstraintContext = {
+export type WindowConstraintContext = {
   viewportWidth: number;
   viewportHeight: number;
   bounds: DesktopContentBounds;
@@ -219,12 +226,18 @@ function readWindowConstraintContext(): WindowConstraintContext | null {
   }
   try {
     const insets = readLiveWindowInsets();
+    // §49b: below 600px the dock is momentary (it draws over windows), so
+    // windows may use its area; at 600+ it is permanent and they stay above it.
+    const bottomInset =
+      viewportHeight < SHORT_VIEWPORT_PX
+        ? insets.bottomInset - insets.dockHeight
+        : insets.bottomInset;
     return {
       viewportWidth,
       viewportHeight,
       bounds: getDesktopContentBounds(),
       topInset: insets.topInset,
-      bottomInset: insets.bottomInset,
+      bottomInset,
     };
   } catch {
     return null;
@@ -255,15 +268,57 @@ function defaultDesktopWindowRect(
 }
 
 /** Fit one saved window to the viewport. Returns the same instance when nothing moves. */
+/**
+ * §55 reach rule, shared by drag end and the §43 viewport clamp: a window may
+ * hang past the left, right and bottom edges, but TITLE_BAR_REACH (64) px of
+ * its title bar stays on screen sideways, its top never goes above the menu
+ * bar, and the bar stays TITLE_BAR_KEEP (32) px clear above the dock.
+ */
+export const TITLE_BAR_REACH = 64;
+const TITLE_BAR_KEEP = 32;
+
+export function clampTitleBarReach(
+  rect: { x: number; y: number; width: number },
+  ctx: WindowConstraintContext,
+): { x: number; y: number } {
+  const { left, right } = windowSnapEdges(ctx.viewportWidth, ctx.bounds);
+  // A status-bar inset (iPhone Duo) still keeps windows out from under it.
+  const minX = ctx.bounds.x > 0 ? ctx.bounds.x : left + TITLE_BAR_REACH - rect.width;
+  const maxX = Math.max(minX, right - TITLE_BAR_REACH);
+  const top = Math.max(0, ctx.topInset);
+  const maxY = Math.max(top, ctx.viewportHeight - ctx.bottomInset - TITLE_BAR_KEEP);
+  return {
+    x: Math.min(Math.max(rect.x, minX), maxX),
+    y: Math.min(Math.max(rect.y, top), maxY),
+  };
+}
+
+/** Viewport the last §43 pass ran against, so a resize can tell a window that
+ * was fully inside (§43 fits it back in) from one the user left hanging off
+ * an edge (§55 only keeps its title bar reachable). */
+let lastConstrainedViewport: { width: number; height: number } | null = null;
+
 function constrainInstanceGeometry(
   inst: AppInstance,
   ctx: WindowConstraintContext,
   index = 0,
+  prev: { width: number; height: number } = {
+    width: ctx.viewportWidth,
+    height: ctx.viewportHeight,
+  },
 ): AppInstance {
   if (!inst?.position || !inst.size) return inst;
   const config = readInstanceWindowConfig(inst.appId);
   const current = toWindowRect({ position: inst.position, size: inst.size });
-  const desktop = inst.desktopRect ? toWindowRect(inst.desktopRect) : null;
+  const mobileViewport = ctx.viewportWidth < MOBILE_VIEWPORT_BREAKPOINT;
+  // On desktop the live rect is the source: a window the user sized stays
+  // where it is when the viewport grows. The saved desktop rect only
+  // restores a window coming back from the phone frame.
+  const desktop =
+    inst.desktopRect &&
+    (mobileViewport || !persistedRectIsDesktopLayout(current))
+      ? toWindowRect(inst.desktopRect)
+      : null;
   let layout: { current: WindowRect; desktop: WindowRect };
   try {
     layout = layoutForViewport({
@@ -283,9 +338,31 @@ function constrainInstanceGeometry(
   } catch {
     return inst;
   }
+  if (!mobileViewport) {
+    // Position moves first (done by the layout), then size shrinks to the
+    // area between menubar and dock, never below the app's minSize.
+    const top = Math.max(0, ctx.topInset);
+    const area = Math.max(0, ctx.viewportHeight - ctx.bottomInset - top);
+    const minH = config?.minSize?.height ?? 0;
+    const minW = config?.minSize?.width ?? 0;
+    const r = layout.current;
+    const height = Math.max(Math.min(r.height, area), Math.min(minH, current.height));
+    const width = Math.max(r.width, Math.min(minW, current.width));
+    let x = r.x;
+    let y = Math.max(top, Math.min(r.y, top + area - height));
+    const wasInside =
+      current.x >= 0 &&
+      current.x + current.width <= prev.width &&
+      current.y + current.height <= prev.height - ctx.bottomInset;
+    if (!wasInside) {
+      ({ x, y } = clampTitleBarReach({ x: current.x, y: current.y, width }, ctx));
+    }
+    layout.current = { ...r, x, y, height, width };
+    layout.desktop = layout.current;
+  }
   const currentChanged = windowRectChanged(current, layout.current);
   const desktopChanged =
-    !desktop || windowRectChanged(desktop, layout.desktop);
+    !inst.desktopRect || windowRectChanged(toWindowRect(inst.desktopRect), layout.desktop);
   if (!currentChanged && !desktopChanged) return inst;
   return {
     ...inst,
@@ -342,6 +419,8 @@ const createUseAppStore = () =>
         }
         set({ exposeMode: v });
       },
+      desktopRevealed: false,
+      setDesktopRevealed: (v) => set({ desktopRevealed: v }),
 
       // ryOS version (fetched from version.json)
       ryOSVersion: null,
@@ -426,10 +505,6 @@ const createUseAppStore = () =>
             typeof window !== "undefined" && window.innerWidth < 768;
           const safeTop = measureMenubarSafeTop();
           const cfg = getWindowConfig(appId);
-          const desktopPosition = {
-            x: baseOffset + openInstances * offsetStep,
-            y: 40 + safeTop + openInstances * 20,
-          };
           let desktopSize = cfg.defaultSize;
 
           // If creating an Applet Viewer window and we have a path, prefer saved size
@@ -446,6 +521,29 @@ const createUseAppStore = () =>
               // ignore and fall back to default size
             }
           }
+
+          // Centre cascade (§42): area = viewport minus menubar (topInset) and dock
+          // (bottomInset). n = open % 5, so the 6th window wraps back to centre.
+          // x = (vw - w)/2 + 32n, y = top + (areaH - h)/2 + 32n, each clamped so the
+          // frame stays inside the area (pinned to its top-left when larger than it).
+          const ctx = readWindowConstraintContext();
+          const n = openInstances % 5;
+          const desktopPosition = ctx
+            ? (() => {
+                const top = ctx.topInset;
+                const bottom = ctx.viewportHeight - ctx.bottomInset;
+                const { width: w, height: h } = desktopSize;
+                const clamp = (v: number, lo: number, hi: number) =>
+                  Math.round(Math.max(lo, Math.min(v, hi)));
+                return {
+                  x: clamp((ctx.viewportWidth - w) / 2 + n * offsetStep, 0, ctx.viewportWidth - w),
+                  y: clamp(top + (bottom - top - h) / 2 + n * offsetStep, top, bottom - h),
+                };
+              })()
+            : {
+                x: baseOffset + openInstances * offsetStep,
+                y: 40 + safeTop + openInstances * 20,
+              };
 
           const position = isMobile
             ? {
@@ -623,6 +721,7 @@ const createUseAppStore = () =>
       },
 
       bringInstanceToForeground: (instanceId) => {
+        if (get().desktopRevealed) set({ desktopRevealed: false });
         set((state) => {
           if (instanceId && !state.instances[instanceId]) {
             console.warn(`[AppStore] focus missing instance ${instanceId}`);
@@ -778,6 +877,7 @@ const createUseAppStore = () =>
         });
       },
       restoreInstance: (instanceId) => {
+        if (get().desktopRevealed) set({ desktopRevealed: false });
         set((state) => {
           const inst = state.instances[instanceId];
           if (!inst || !inst.isMinimized) return state;
@@ -837,6 +937,7 @@ const createUseAppStore = () =>
         });
       },
       launchApp: (appId, initialData, title, multiWindow = false, launchOrigin) => {
+        if (get().desktopRevealed) set({ desktopRevealed: false });
         appStoreLog.debug("Launch requested", {
           appId,
           multiWindow,
@@ -1121,6 +1222,11 @@ export { useAppStore };
 export function constrainOpenWindowsToViewport(): void {
   const ctx = readWindowConstraintContext();
   if (!ctx) return;
+  const prev = lastConstrainedViewport ?? {
+    width: ctx.viewportWidth,
+    height: ctx.viewportHeight,
+  };
+  lastConstrainedViewport = { width: ctx.viewportWidth, height: ctx.viewportHeight };
   useAppStore.setState((state) => {
     let changed = false;
     const instances: Record<string, AppInstance> = {};
@@ -1132,7 +1238,7 @@ export function constrainOpenWindowsToViewport(): void {
         instances[id] = inst;
         continue;
       }
-      const fitted = constrainInstanceGeometry(inst, ctx, index);
+      const fitted = constrainInstanceGeometry(inst, ctx, index, prev);
       instances[id] = fitted;
       if (fitted !== inst) changed = true;
     }

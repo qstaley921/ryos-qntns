@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Menubar } from "@/components/ui/menubar";
 import { AppleMenu } from "../AppleMenu";
 import { AppMenu } from "../AppMenu";
@@ -36,16 +36,27 @@ export interface MacTopMenuBarProps {
 }
 
 export function MacTopMenuBar({ children }: MacTopMenuBarProps) {
-  const { getForegroundInstance, exposeMode } = useAppStoreShallow((s) => ({
-    getForegroundInstance: s.getForegroundInstance,
-    exposeMode: s.exposeMode,
-  }));
+  const { foregroundAppId, foregroundInstanceId, exposeMode } =
+    useAppStoreShallow((s) => {
+      const id = s.foregroundInstanceId;
+      const inst = id ? s.instances[id] : null;
+      return {
+        // Subscribe to the id values, not the getter: a function reference
+        // never changes, so the bar would not re-render on a focus switch.
+        foregroundAppId: inst?.isOpen ? inst.appId : null,
+        foregroundInstanceId: inst?.isOpen ? id : null,
+        exposeMode: s.exposeMode,
+      };
+    });
 
   const { debugMode, showResizers } = useDisplaySettingsStoreShallow((s) => ({
     debugMode: s.debugMode,
     showResizers: s.showResizers,
   }));
-  const foregroundInstance = getForegroundInstance();
+  const foregroundInstance =
+    foregroundAppId && foregroundInstanceId
+      ? { appId: foregroundAppId, instanceId: foregroundInstanceId }
+      : null;
   const hasActiveApp = !!foregroundInstance;
 
   const { isMacOSTheme, isMacTheme, isAquaGlass } = useThemeFlags();
@@ -70,6 +81,14 @@ export function MacTopMenuBar({ children }: MacTopMenuBarProps) {
     }
   }, [iosShell, glassMenubarTone]);
   const isPhone = useIsPhone();
+  // Right side collapses to Search only once the left menus would overflow.
+  // fullRightWidth is cached from the last full render, since the compact
+  // right side is too narrow to say how much room the full one needs.
+  const barRef = useRef<HTMLDivElement>(null);
+  const menusRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+  const fullRightWidth = useRef(0);
+  const [compact, setCompact] = useState(false);
   const hasWindowChrome = hasDesktopWindowChrome();
   const showDesktopDragDebugZone = shouldShowDesktopDragDebugZone({
     isDesktopApp: hasWindowChrome,
@@ -89,8 +108,31 @@ export function MacTopMenuBar({ children }: MacTopMenuBarProps) {
     ? "32px"
     : "var(--os-metrics-menubar-height)";
 
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const menus = menusRef.current;
+    if (!bar || !menus) return;
+    const measure = () => {
+      if (rightRef.current && !compact) {
+        fullRightWidth.current = rightRef.current.offsetWidth;
+      }
+      const cs = getComputedStyle(bar);
+      const inner =
+        bar.clientWidth -
+        (parseFloat(cs.paddingLeft) || 0) -
+        (parseFloat(cs.paddingRight) || 0);
+      setCompact(menus.offsetWidth > inner - fullRightWidth.current);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(bar);
+    ro.observe(menus); // fires when the front app swaps its menus
+    return () => ro.disconnect();
+  }, [compact, foregroundAppId]);
+
   return (
     <div
+      ref={barRef}
       className={`mac-top-menubar fixed top-0 left-0 right-0 flex items-center font-os-ui ${isAquaGlass ? "border-transparent" : "border-b-[length:var(--os-metrics-border-width)] border-os-menubar"} ${exposeMode ? "z-[9997]" : "z-[10002]"}`}
       data-menubar-text-tone={isAquaGlass ? glassMenubarTone : undefined}
       style={{
@@ -143,9 +185,11 @@ export function MacTopMenuBar({ children }: MacTopMenuBarProps) {
         maxHeight: menuBarHeight,
       }}
     >
-      <ScrollableMenuWrapper style={noDragRegionStyle}>
+      <ScrollableMenuWrapper style={noDragRegionStyle} contentRef={menusRef}>
         <Menubar className="flex items-stretch border-none bg-transparent space-x-0 p-0 rounded-none h-full">
-          <AppleMenu />
+          <div className="flex flex-shrink-0 items-stretch h-full">
+            <AppleMenu />
+          </div>
           {isMacOSTheme && hasActiveApp && foregroundInstance && (
             <AppMenu
               appId={foregroundInstance.appId}
@@ -176,14 +220,19 @@ export function MacTopMenuBar({ children }: MacTopMenuBarProps) {
         />
       )}
       <div
-        className={`menubar-status-controls ${isPhone ? "flex-shrink-0 pl-1 pr-0.5" : "ml-auto"} flex items-center h-full`}
+        ref={rightRef}
+        className={`menubar-status-controls ${compact ? "pl-1 pr-0.5" : ""} ml-auto flex-shrink-0 flex items-center h-full`}
         style={noDragRegionStyle}
       >
-        <OfflineIndicator />
-        <CloudSyncIndicator />
-        <ExposeButton />
-        <VolumeControl />
-        <Clock enableCalendarOpen />
+        {!compact && (
+          <>
+            <OfflineIndicator />
+            <CloudSyncIndicator />
+            <ExposeButton />
+            <VolumeControl />
+            <Clock enableCalendarOpen />
+          </>
+        )}
         <SpotlightMenuBarButton />
       </div>
     </div>

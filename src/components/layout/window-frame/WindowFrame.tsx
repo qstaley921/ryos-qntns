@@ -1,4 +1,5 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useInstanceHeld } from "@/hooks/useInstanceReady";
 import { useAppStoreShallow } from "@/stores/useAppStore";
 import { useAppStore } from "@/stores/useAppStore";
 import { useDisplaySettingsStore } from "@/stores/useDisplaySettingsStore";
@@ -79,6 +80,7 @@ export function WindowFrame({
     closeAppInstance,
     updateInstanceTitle,
     exposeMode,
+    desktopRevealed,
   } = useAppStoreShallow((state) => ({
     bringInstanceToForeground: state.bringInstanceToForeground,
     updateInstanceWindowState: state.updateInstanceWindowState,
@@ -86,6 +88,7 @@ export function WindowFrame({
     closeAppInstance: state.closeAppInstance,
     updateInstanceTitle: state.updateInstanceTitle,
     exposeMode: state.exposeMode,
+    desktopRevealed: state.desktopRevealed,
   }));
   // Scalar count selected separately so geometry/title writes on other
   // windows don't rebuild this shallow tuple while Exposé is active.
@@ -263,6 +266,34 @@ export function WindowFrame({
     snapZone,
   });
 
+  // Opted-in app still waiting for its data: mounted (fetch runs) but hidden.
+  const isHeld = useInstanceHeld(instanceId);
+  const [justReleased, setJustReleased] = useState(false);
+  const wasHeldRef = useRef(false);
+  useEffect(() => {
+    if (wasHeldRef.current && !isHeld) {
+      setJustReleased(true);
+      const t = setTimeout(() => setJustReleased(false), 300);
+      wasHeldRef.current = false;
+      return () => clearTimeout(t);
+    }
+    wasHeldRef.current = isHeld;
+  }, [isHeld]);
+
+  // §54 Show Desktop: slide off the nearer side edge by centre, fully clear
+  // (+16 for the shadow), and back. The 300ms ease-out is used only on the
+  // render where the flag flips, so drags and other moves keep their timing.
+  const revealX = desktopRevealed
+    ? windowPosition.x + windowSize.width / 2 < window.innerWidth / 2
+      ? -(windowPosition.x + windowSize.width + 16)
+      : window.innerWidth - windowPosition.x + 16
+    : 0;
+  const lastRevealedRef = useRef(desktopRevealed);
+  const revealFlipped = lastRevealedRef.current !== desktopRevealed;
+  useEffect(() => {
+    lastRevealedRef.current = desktopRevealed;
+  }, [desktopRevealed]);
+
   const shouldShow = keepMountedWhenMinimized
     ? isOpen
     : !isMinimized && isOpen;
@@ -297,12 +328,14 @@ export function WindowFrame({
                 windowSize.height,
                 mergedConstraints.minHeight || 0
               ),
-              x: exposeTransform?.translateX ?? 0,
+              x: exposeTransform?.translateX ?? revealX,
               y: exposeTransform?.translateY ?? 0,
               scale: exposeTransform?.scale ?? 1,
             }}
             transition={
-              exposeMode
+              revealFlipped && !exposeMode
+                ? { duration: 0.3, ease: "easeOut" }
+                : exposeMode
                 ? {
                     duration: 0.4,
                     ease: [0.32, 0.72, 0, 1],
@@ -336,6 +369,8 @@ export function WindowFrame({
                 ? 10000 + exposeTransform.index
                 : undefined,
               cursor: exposeMode ? "pointer" : undefined,
+              visibility: isHeld ? "hidden" : undefined,
+              pointerEvents: isHeld || desktopRevealed ? "none" : undefined,
               transformOrigin: "center center",
             }}
             whileHover={
@@ -361,14 +396,14 @@ export function WindowFrame({
                 isInitialMount,
                 launchOriginOffset,
               })}
-              animate={getAnimateState({
+              animate={isHeld ? { ...(getInitialAnimation({ shouldAnimateRestore: false, dockIconOffset, isInitialMount: true, launchOriginOffset }) || {}), transition: { duration: 0 } } : getAnimateState({
                 isClosing,
                 keepMountedWhenMinimized,
                 isMinimized,
                 dockIconOffset,
                 isShaking,
                 shouldAnimateRestore,
-                isInitialMount,
+                isInitialMount: isInitialMount || justReleased,
                 launchOriginOffset,
               })}
               onAnimationComplete={() => {

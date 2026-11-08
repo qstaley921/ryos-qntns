@@ -24,7 +24,6 @@ export interface UseDockContextMenusParams {
   setDockHiding: (hiding: boolean) => void;
   setDockMagnification: (magnification: boolean) => void;
   isAdmin: boolean;
-  isTrashEmpty: boolean;
   getFileItem: (path: string) => FileSystemItem | undefined;
   getFilesInPath: (path: string) => FileSystemItem[];
   launchApp: (appId: AppId, options?: LaunchAppOptions) => void;
@@ -46,9 +45,7 @@ export interface UseDockContextMenusParams {
     initialData?: unknown,
     launchOrigin?: LaunchOriginRect,
   ) => void;
-  setTrashContextMenuPos: (pos: null) => void;
   setApplicationsContextMenuPos: (pos: null) => void;
-  setIsEmptyTrashDialogOpen: (open: boolean) => void;
 }
 
 export function useDockContextMenus(params: UseDockContextMenusParams) {
@@ -62,7 +59,6 @@ export function useDockContextMenus(params: UseDockContextMenusParams) {
     setDockHiding,
     setDockMagnification,
     isAdmin,
-    isTrashEmpty,
     getFileItem,
     getFilesInPath,
     launchApp,
@@ -76,9 +72,7 @@ export function useDockContextMenus(params: UseDockContextMenusParams) {
     focusFinderAtPathOrLaunch,
     focusOrLaunchFinder,
     focusOrLaunchApp,
-    setTrashContextMenuPos,
     setApplicationsContextMenuPos,
-    setIsEmptyTrashDialogOpen,
   } = params;
 
   const getDividerContextMenuItems = useCallback((): MenuItem[] => {
@@ -137,15 +131,16 @@ export function useDockContextMenus(params: UseDockContextMenusParams) {
         {
           t,
           isAdmin,
-          isTrashEmpty,
+          // Trash is gone from the dock (read-only site); these args are inert.
+          isTrashEmpty: true,
           getFilesInPath,
           getFileItem,
           focusFinderAtPathOrLaunch,
           focusOrLaunchFinder,
           focusOrLaunchApp,
-          setTrashContextMenuPos,
+          setTrashContextMenuPos: () => {},
           setApplicationsContextMenuPos,
-          setIsEmptyTrashDialogOpen,
+          setIsEmptyTrashDialogOpen: () => {},
         },
         folderPath,
         isTrash,
@@ -157,12 +152,9 @@ export function useDockContextMenus(params: UseDockContextMenusParams) {
       focusFinderAtPathOrLaunch,
       focusOrLaunchFinder,
       focusOrLaunchApp,
-      isTrashEmpty,
       t,
       isAdmin,
-      setTrashContextMenuPos,
       setApplicationsContextMenuPos,
-      setIsEmptyTrashDialogOpen,
     ],
   );
 

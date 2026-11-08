@@ -16,3 +16,10 @@ export const DOCK_MULTI_WINDOW_APPS: AppId[] = [
   "preview",
   "applet-viewer",
 ];
+
+/** §10: apps kept out of the /Applications listing (everything else shows). */
+export const APPLICATIONS_HIDDEN = new Set<string>([
+  "chats", "preview", "photo-booth", "tv", "karaoke", "terminal",
+  "applet-viewer", "admin", "contacts", "maps", "stuff", "dictionary", "fitness",
+  "stickies",
+]);

@@ -7,7 +7,7 @@ import {
   ResizeStart,
 } from "../types/types";
 import { appIds, AppId } from "@/config/appIds";
-import { useAppStore } from "@/stores/useAppStore";
+import { useAppStore, clampTitleBarReach } from "@/stores/useAppStore";
 import { useSound, Sounds } from "./useSound";
 import { getWindowConfig, getMobileWindowSize } from "@/config/appRegistry";
 import { useWindowInsets } from "./useWindowInsets";
@@ -17,7 +17,6 @@ import {
   clampWindowToContentBounds,
   getDesktopContentBounds,
   mobileFullWidthFrame,
-  windowDragLimits,
   windowResizeMaxWidth,
   windowResizeMinLeft,
   windowSnapEdges,
@@ -366,7 +365,7 @@ export const useWindowManager = ({
         const newX = clientX - dragOffset.x;
         const newY = clientY - dragOffset.y;
 
-        const { topInset: menuBarHeight } = computeInsets();
+        const { topInset: menuBarHeight, bottomInset } = computeInsets();
 
         // Play move sound once when movement begins
         if (!isMobile && !isMovePlayingRef.current) {
@@ -387,17 +386,21 @@ export const useWindowManager = ({
           });
           updateSnapZone(null);
         } else {
-          // Allow dragging past edges, but keep at least 80px of window visible
+          // §55: past the edges is fine; the title bar stays reachable.
+          // Same rule as the §43 viewport clamp (useAppStore).
           const bounds = getDesktopContentBounds();
-          const { minX, maxX } = windowDragLimits({
-            windowWidth: windowSize.width,
-            viewportWidth: window.innerWidth,
-            bounds,
-          });
-          const maxY = window.innerHeight - 80; // Can drag down, keeping 80px visible at top
-          const x = Math.min(Math.max(minX, newX), maxX);
-          const y = Math.min(Math.max(menuBarHeight, newY), Math.max(0, maxY));
-          applyLiveWindowPosition({ x, y });
+          applyLiveWindowPosition(
+            clampTitleBarReach(
+              { x: newX, y: newY, width: windowSize.width },
+              {
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+                bounds,
+                topInset: menuBarHeight,
+                bottomInset,
+              },
+            ),
+          );
 
           // Detect snap zones - trigger when cursor is within 20px of the content edge
           const SNAP_THRESHOLD = 20;
@@ -438,8 +441,9 @@ export const useWindowManager = ({
         if (!isMobile) {
           const appMaxWidth = config.maxSize?.width;
           if (resizeType.includes("e")) {
+            // §55: a window hanging past an edge must not snap smaller on grab.
             const maxPossibleWidth = limitWidthToAppMax(
-              maxWidth - resizeStart.left,
+              Math.max(resizeStart.width, maxWidth - resizeStart.left),
               appMaxWidth,
               window.innerWidth,
             );
@@ -449,7 +453,7 @@ export const useWindowManager = ({
             );
           } else if (resizeType.includes("w")) {
             const maxPossibleWidth = limitWidthToAppMax(
-              resizeStart.width + resizeStart.left,
+              Math.max(resizeStart.width, resizeStart.width + resizeStart.left),
               appMaxWidth,
               window.innerWidth,
             );
@@ -459,7 +463,7 @@ export const useWindowManager = ({
             );
             if (potentialWidth !== resizeStart.width) {
               newLeft = Math.max(
-                minLeft,
+                Math.min(minLeft, resizeStart.left),
                 resizeStart.left + (resizeStart.width - potentialWidth)
               );
               newWidth = potentialWidth;
@@ -468,7 +472,10 @@ export const useWindowManager = ({
         }
 
         if (resizeType.includes("s")) {
-          const maxPossibleHeight = maxHeight - resizeStart.top;
+          const maxPossibleHeight = Math.max(
+            resizeStart.height,
+            maxHeight - resizeStart.top,
+          );
           newHeight = Math.min(
             Math.max(resizeStart.height + deltaY, minHeight),
             maxPossibleHeight
